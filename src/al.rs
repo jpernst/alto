@@ -1,13 +1,3 @@
-#[nolink]
-#[link_args="-framework OpenAL"]
-#[cfg(target_os = "macos")]
-extern mod linkhack {}
-
-#[nolink]
-#[link_args="-lopenal"]
-#[cfg(target_os = "linux")]
-extern mod linkhack {}
-
 use libc::*;
 
 type ALboolean  = c_char;

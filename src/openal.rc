@@ -6,3 +6,16 @@
 
 #[comment = "OpenAL 1.1 bindings for Rust."];
 #[crate_type = "lib"];
+
+#[nolink]
+#[link_args="-framework OpenAL"]
+#[cfg(target_os = "macos")]
+pub extern mod linkhack {}
+
+#[nolink]
+#[link_args="-lopenal"]
+#[cfg(target_os = "linux")]
+pub extern mod linkhack {}
+
+pub mod al;
+pub mod alc;

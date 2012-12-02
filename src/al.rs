@@ -1,18 +1,18 @@
 use libc::*;
 
-type ALboolean  = c_char;
-type ALchar     = c_char;
-type ALbyte     = c_char;
-type ALubyte    = c_uchar;
-type ALshort    = c_short;
-type ALushort   = c_ushort;
-type ALint      = c_int;
-type ALuint     = c_uint;
-type ALsizei    = c_int;
-type ALenum     = c_int;
-type ALfloat    = c_float;
-type ALdouble   = c_double;
-type ALvoid     = c_void;
+pub type ALboolean  = c_char;
+pub type ALchar     = c_char;
+pub type ALbyte     = c_char;
+pub type ALubyte    = c_uchar;
+pub type ALshort    = c_short;
+pub type ALushort   = c_ushort;
+pub type ALint      = c_int;
+pub type ALuint     = c_uint;
+pub type ALsizei    = c_int;
+pub type ALenum     = c_int;
+pub type ALfloat    = c_float;
+pub type ALdouble   = c_double;
+pub type ALvoid     = c_void;
 
 pub const AL_NONE                           : ALenum = 0;
 pub const AL_FALSE                          : ALenum = 0;

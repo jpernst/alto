@@ -111,7 +111,7 @@ pub extern "C" {
     pub fn alGetListener3i(param: ALenum, value1: *ALint, value2: *ALint, value3: *ALint);
     pub fn alGetListeneriv(param: ALenum, values: *ALint);
     pub fn alGenSources(n: ALsizei, sources: *ALuint); 
-    pub fn alDeleteSources(n: ALsizei, sources: ALuint);
+    pub fn alDeleteSources(n: ALsizei, sources: *ALuint);
     pub fn alIsSource(sid: ALuint) -> ALboolean;
     pub fn alSourcef(sid: ALuint, param: ALenum, value: ALfloat); 
     pub fn alSource3f(sid: ALuint, param: ALenum, value1: ALfloat, value2: ALfloat, value3: ALfloat);

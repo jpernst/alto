@@ -1,84 +1,8 @@
-use core::libc::*;
+/**
+ * Low-level function bindings
+ */
 
-pub type ALboolean  = c_char;
-pub type ALchar     = c_char;
-pub type ALbyte     = c_char;
-pub type ALubyte    = c_uchar;
-pub type ALshort    = c_short;
-pub type ALushort   = c_ushort;
-pub type ALint      = c_int;
-pub type ALuint     = c_uint;
-pub type ALsizei    = c_int;
-pub type ALenum     = c_int;
-pub type ALfloat    = c_float;
-pub type ALdouble   = c_double;
-pub type ALvoid     = c_void;
-
-pub static AL_NONE                           : ALenum = 0;
-pub static AL_FALSE                          : ALCboolean = 0;
-pub static AL_TRUE                           : ALCboolean = 1;
-pub static AL_SOURCE_RELATIVE                : ALenum = 0x202;
-pub static AL_CONE_INNER_ANGLE               : ALenum = 0x1001;
-pub static AL_CONE_OUTER_ANGLE               : ALenum = 0x1002;
-pub static AL_PITCH                          : ALenum = 0x1003;
-pub static AL_POSITION                       : ALenum = 0x1004;
-pub static AL_DIRECTION                      : ALenum = 0x1005;
-pub static AL_VELOCITY                       : ALenum = 0x1006;
-pub static AL_LOOPING                        : ALenum = 0x1007;
-pub static AL_BUFFER                         : ALenum = 0x1009;
-pub static AL_GAIN                           : ALenum = 0x100A;
-pub static AL_MIN_GAIN                       : ALenum = 0x100D;
-pub static AL_MAX_GAIN                       : ALenum = 0x100E;
-pub static AL_ORIENTATION                    : ALenum = 0x100F;
-pub static AL_SOURCE_STATE                   : ALenum = 0x1010;
-pub static AL_INITIAL                        : ALenum = 0x1011;
-pub static AL_PLAYING                        : ALenum = 0x1012;
-pub static AL_PAUSED                         : ALenum = 0x1013;
-pub static AL_STOPPED                        : ALenum = 0x1014;
-pub static AL_BUFFERS_QUEUED                 : ALenum = 0x1015;
-pub static AL_BUFFERS_PROCESSED              : ALenum = 0x1016;
-pub static AL_SEC_OFFSET                     : ALenum = 0x1024;
-pub static AL_SAMPLE_OFFSET                  : ALenum = 0x1025;
-pub static AL_BYTE_OFFSET                    : ALenum = 0x1026;
-pub static AL_SOURCE_TYPE                    : ALenum = 0x1027;
-pub static AL_STATIC                         : ALenum = 0x1028;
-pub static AL_STREAMING                      : ALenum = 0x1029;
-pub static AL_UNDETERMINED                   : ALenum = 0x1030;
-pub static AL_FORMAT_MONO8                   : ALenum = 0x1100;
-pub static AL_FORMAT_MONO16                  : ALenum = 0x1101;
-pub static AL_FORMAT_STEREO8                 : ALenum = 0x1102;
-pub static AL_FORMAT_STEREO16                : ALenum = 0x1103;
-pub static AL_REFERENCE_DISTANCE             : ALenum = 0x1020;
-pub static AL_ROLLOFF_FACTOR                 : ALenum = 0x1021;
-pub static AL_CONE_OUTER_GAIN                : ALenum = 0x1022;
-pub static AL_MAX_DISTANCE                   : ALenum = 0x1023;
-pub static AL_FREQUENCY                      : ALenum = 0x2001;
-pub static AL_BITS                           : ALenum = 0x2002;
-pub static AL_CHANNELS                       : ALenum = 0x2003;
-pub static AL_SIZE                           : ALenum = 0x2004;
-pub static AL_UNUSED                         : ALenum = 0x2010;
-pub static AL_PENDING                        : ALenum = 0x2011;
-pub static AL_PROCESSED                      : ALenum = 0x2012;
-pub static AL_NO_ERROR                       : ALenum = AL_FALSE as ALenum;
-pub static AL_INVALID_NAME                   : ALenum = 0xA001;
-pub static AL_INVALID_ENUM                   : ALenum = 0xA002;
-pub static AL_INVALID_VALUE                  : ALenum = 0xA003;
-pub static AL_INVALID_OPERATION              : ALenum = 0xA004;
-pub static AL_OUT_OF_MEMORY                  : ALenum = 0xA005;
-pub static AL_VENDOR                         : ALenum = 0xB001;
-pub static AL_VERSION                        : ALenum = 0xB002;
-pub static AL_RENDERER                       : ALenum = 0xB003;
-pub static AL_EXTENSIONS                     : ALenum = 0xB004;
-pub static AL_DOPPLER_FACTOR                 : ALenum = 0xC000;
-pub static AL_DOPPLER_VELOCITY               : ALenum = 0xC001;
-pub static AL_SPEED_OF_SOUND                 : ALenum = 0xC003;
-pub static AL_DISTANCE_MODEL                 : ALenum = 0xD000;
-pub static AL_INVERSE_DISTANCE               : ALenum = 0xD001;
-pub static AL_INVERSE_DISTANCE_CLAMPED       : ALenum = 0xD002;
-pub static AL_LINEAR_DISTANCE                : ALenum = 0xD003;
-pub static AL_LINEAR_DISTANCE_CLAMPED        : ALenum = 0xD004;
-pub static AL_EXPONENT_DISTANCE              : ALenum = 0xD005;
-pub static AL_EXPONENT_DISTANCE_CLAMPED      : ALenum = 0xD006;
+use types::*;
 
 pub extern "C" {
     pub fn alEnable(capability: ALenum);
@@ -95,7 +19,7 @@ pub extern "C" {
     pub fn alGetDouble(param: ALenum) -> ALdouble;
     pub fn alGetError() -> ALenum;
     pub fn alIsExtensionPresent(extname: *ALchar) -> ALboolean;
-    pub fn alGetProcAddress(fname: *ALchar) -> *c_void;
+    pub fn alGetProcAddress(fname: *ALchar) -> *libc::c_void;
     pub fn alGetEnumValue(ename: *ALchar) -> ALenum;
 
     pub fn alListenerf(param: ALenum, value: ALfloat);
@@ -154,58 +78,7 @@ pub extern "C" {
     pub fn alDopplerFactor(value: ALfloat);
     pub fn alDopplerVelocity(value: ALfloat);
     pub fn alSpeedOfSound(value: ALfloat);
-}
-
-// TODO: not sure what types these are meant to be...
-pub static ALC_INVALID           : c_int = 0;
-pub static ALC_VERSION_0_1       : c_int = 1;
-
-pub struct ALCdevice {}
-pub struct ALCcontext {}
-
-pub type ALCboolean             = c_char;
-pub type ALCchar                = c_char;
-pub type ALCbyte                = c_char;
-pub type ALCubyte               = c_uchar;
-pub type ALCshort               = c_short;
-pub type ALCushort              = c_ushort;
-pub type ALCint                 = c_int;
-pub type ALCuint                = c_uint;
-pub type ALCsizei               = c_int;
-pub type ALCenum                = c_int;
-pub type ALCfloat               = c_float;
-pub type ALCdouble              = c_double;
-pub type ALCvoid                = c_void;
-
-pub static ALC_FALSE                                : ALCboolean = 0;
-pub static ALC_TRUE                                 : ALCboolean = 1;
-pub static ALC_FREQUENCY                            : ALCenum = 0x1007;
-pub static ALC_REFRESH                              : ALCenum = 0x1008;
-pub static ALC_SYNC                                 : ALCenum = 0x1009;
-pub static ALC_MONO_SOURCES                         : ALCenum = 0x1010;
-pub static ALC_STEREO_SOURCES                       : ALCenum = 0x1011;
-
-pub static ALC_NO_ERROR                             : ALCenum = ALC_FALSE as ALCenum;
-pub static ALC_INVALID_DEVICE                       : ALCenum = 0xA001;
-pub static ALC_INVALID_CONTEXT                      : ALCenum = 0xA002;
-pub static ALC_INVALID_ENUM                         : ALCenum = 0xA003;
-pub static ALC_INVALID_VALUE                        : ALCenum = 0xA004;
-pub static ALC_OUT_OF_MEMORY                        : ALCenum = 0xA005;
-
-pub static ALC_DEFAULT_DEVICE_SPECIFIER             : ALCenum = 0x1004;
-pub static ALC_DEVICE_SPECIFIER                     : ALCenum = 0x1005;
-pub static ALC_EXTENSIONS                           : ALCenum = 0x1006;
-pub static ALC_MAJOR_VERSION                        : ALCenum = 0x1000;
-pub static ALC_MINOR_VERSION                        : ALCenum = 0x1001;
-pub static ALC_ATTRIBUTES_SIZE                      : ALCenum = 0x1002;
-pub static ALC_ALL_ATTRIBUTES                       : ALCenum = 0x1003;
-pub static ALC_DEFAULT_ALL_DEVICES_SPECIFIER        : ALCenum = 0x1012;
-pub static ALC_ALL_DEVICES_SPECIFIER                : ALCenum = 0x1013;
-pub static ALC_CAPTURE_DEVICE_SPECIFIER             : ALCenum = 0x310;
-pub static ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER     : ALCenum = 0x311;
-pub static ALC_CAPTURE_SAMPLES                      : ALCenum = 0x312;
-
-pub extern "C" {
+    
     pub fn alcCreateContext(device: *ALCdevice, attrlist: *ALCint) -> *ALCcontext;
     pub fn alcMakeContextCurrent(context: *ALCcontext) -> ALCboolean;
     pub fn alcProcessContext(context: *ALCcontext);
@@ -217,7 +90,7 @@ pub extern "C" {
     pub fn alcCloseDevice(device: *ALCdevice) -> ALCboolean;
     pub fn alcGetError(device: *ALCdevice) -> ALCenum;
     pub fn alcIsExtensionPresent(device: *ALCdevice, extname: *ALCchar) -> ALCboolean;
-    pub fn alcGetProcAddress(device: *ALCdevice, funcname: *ALCchar) -> *c_void;
+    pub fn alcGetProcAddress(device: *ALCdevice, funcname: *ALCchar) -> *libc::c_void;
     pub fn alcGetEnumValue(device: *ALCdevice, enumname: *ALCchar) -> ALCenum;
     pub fn alcGetString(device: *ALCdevice, param: ALCenum) -> *ALCchar;
     pub fn alcGetIntegerv(device: *ALCdevice, param: ALCenum, size: ALCsizei, data: *ALCint);

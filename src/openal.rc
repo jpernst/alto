@@ -17,7 +17,13 @@ pub extern mod linkhack {}
 #[cfg(target_os = "linux")]
 pub extern mod linkhack {}
 
-/// Low-level function bindings for OpenAL 1.1
+/// Core OpenAL typedefs
+pub mod types;
+
+/// Core OpenAL consts
+pub mod consts;
+
+/// Low-level function bindings
 pub mod ll;
 
 /// Basic AL wrapper functions 

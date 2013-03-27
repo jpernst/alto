@@ -1,8 +1,10 @@
 /**
- * A high-level, ideomatic wrapper around the OpenAL API
+ * A high-level ideomatic wrapper around the OpenAL API
  */
 
 use ll::*;
+use types::*;
+use consts::{al,alc};
 
 pub struct Device(*ALCdevice);
 
@@ -25,26 +27,26 @@ pub impl Device {
         match unsafe {
             alcCloseDevice(**self)
         } {
-            ALC_TRUE => Ok(()),
+            alc::TRUE => Ok(()),
             _ => Err(())
         }
     }
     
     fn get_name(&self) -> ~str {
         unsafe { str::raw::from_c_str(
-            alcGetString(**self, ALC_DEVICE_SPECIFIER)
+            alcGetString(**self, alc::DEVICE_SPECIFIER)
         )}
     }
     
     fn default_name() -> ~str {
         unsafe { str::raw::from_c_str(
-            alcGetString(ptr::null(), ALC_DEFAULT_DEVICE_SPECIFIER)
+            alcGetString(ptr::null(), alc::DEFAULT_DEVICE_SPECIFIER)
         )}
     }
     
     fn get_available() -> ~[~str] {
         unsafe { util::from_c_strs(
-            alcGetString(ptr::null(), ALC_DEVICE_SPECIFIER)
+            alcGetString(ptr::null(), alc::DEVICE_SPECIFIER)
         )}
     }
 }
@@ -63,7 +65,7 @@ pub impl Context {
         match unsafe {
             alcMakeContextCurrent(**self)
         } {
-            ALC_TRUE => Ok(()),
+            alc::TRUE => Ok(()),
             _ => Err(())
         }
     }
@@ -123,7 +125,7 @@ pub impl CaptureDevice {
         match unsafe {
             alcCaptureCloseDevice(**self)
         } {
-            ALC_TRUE => Ok(()),
+            alc::TRUE => Ok(()),
             _ => Err(())
         }
     }
@@ -140,19 +142,19 @@ pub impl CaptureDevice {
     
     fn get_name(&self) -> ~str {
         unsafe { str::raw::from_c_str(
-            alcGetString(**self, ALC_CAPTURE_DEVICE_SPECIFIER)
+            alcGetString(**self, alc::CAPTURE_DEVICE_SPECIFIER)
         )}
     }
     
     fn default_name() -> ~str {
         unsafe { str::raw::from_c_str(
-            alcGetString(ptr::null(), ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)
+            alcGetString(ptr::null(), alc::CAPTURE_DEFAULT_DEVICE_SPECIFIER)
         )}
     }
     
     fn get_available() -> ~[~str] {
         unsafe { util::from_c_strs(
-            alcGetString(ptr::null(), ALC_CAPTURE_DEVICE_SPECIFIER)
+            alcGetString(ptr::null(), alc::CAPTURE_DEVICE_SPECIFIER)
         )}
     }
 }

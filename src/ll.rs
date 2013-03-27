@@ -98,5 +98,5 @@ pub extern "C" {
     pub fn alcCaptureCloseDevice(device: *ALCdevice) -> ALCboolean;
     pub fn alcCaptureStart(device: *ALCdevice);
     pub fn alcCaptureStop(device: *ALCdevice);
-    pub fn alcCaptureSamples(device: *ALCdevice, buffer: ALCvoid, samples: ALCsizei);
+    pub fn alcCaptureSamples(device: *ALCdevice, buffer: *ALCvoid, samples: ALCsizei);
 }

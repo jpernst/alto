@@ -2,6 +2,16 @@
  * Low-level function bindings
  */
 
+#[nolink]
+#[link_args="-framework OpenAL"]
+#[cfg(target_os = "macos")]
+pub extern mod linkhack {}
+
+#[nolink]
+#[link_args="-lopenal"]
+#[cfg(target_os = "linux")]
+pub extern mod linkhack {}
+
 use types::*;
 
 pub extern "C" {

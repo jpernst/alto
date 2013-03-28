@@ -1,165 +1,172 @@
 /**
- * A high-level ideomatic wrapper around the OpenAL API
+ * High-level wrapper for the OpenAL API
  */
 
-use ll::*;
-use types::*;
-use consts::{al,alc};
-
-pub struct Device(*ALCdevice);
-
-pub impl Device {
-    fn open_default() -> Result<Device,()> {
-        util::err_if_null(
-            unsafe { alcOpenDevice(ptr::null()) },
-            (), |d| Device(d)
-        )
-    }
+pub mod al {
     
-    fn open(name: &str) -> Result<Device,()> {
-        util::err_if_null(
-            unsafe { alcOpenDevice(str::as_c_str(name, |a| a)) },
-            (), |d| Device(d)
-        )
-    }
+}
+
+pub mod alc {
+    use ll::*;
+    use types::*;
+    use hl::util;
+    use consts::alc;
     
-    fn close(&self) -> Result<(),()> {
-        match unsafe {
-            alcCloseDevice(**self)
-        } {
-            alc::TRUE => Ok(()),
-            _ => Err(())
+    pub struct Device(*ALCdevice);
+
+    pub impl Device {
+        fn open_default() -> Result<Device,()> {
+            util::err_if_null(
+                unsafe { alcOpenDevice(ptr::null()) },
+                (), |d| Device(d)
+            )
+        }
+        
+        fn open(name: &str) -> Result<Device,()> {
+            util::err_if_null(
+                unsafe { alcOpenDevice(str::as_c_str(name, |a| a)) },
+                (), |d| Device(d)
+            )
+        }
+        
+        fn close(&self) -> Result<(),()> {
+            match unsafe {
+                alcCloseDevice(**self)
+            } {
+                alc::TRUE => Ok(()),
+                _ => Err(())
+            }
+        }
+        
+        fn get_name(&self) -> ~str {
+            unsafe { str::raw::from_c_str(
+                alcGetString(**self, alc::DEVICE_SPECIFIER)
+            )}
+        }
+        
+        fn default_name() -> ~str {
+            unsafe { str::raw::from_c_str(
+                alcGetString(ptr::null(), alc::DEFAULT_DEVICE_SPECIFIER)
+            )}
+        }
+        
+        fn get_available() -> ~[~str] {
+            unsafe { util::from_c_strs(
+                alcGetString(ptr::null(), alc::DEVICE_SPECIFIER)
+            )}
         }
     }
-    
-    fn get_name(&self) -> ~str {
-        unsafe { str::raw::from_c_str(
-            alcGetString(**self, alc::DEVICE_SPECIFIER)
-        )}
+
+    pub struct Context(*ALCcontext);
+
+    pub impl Context {
+        fn create(device: &Device) -> Result<Context,()> {
+            util::err_if_null(
+                unsafe { alcCreateContext(**device, ptr::null()) },
+                (), |c| Context(c)
+            )
+        }
+        
+        fn make_current(&self) -> Result<(),()> {
+            match unsafe {
+                alcMakeContextCurrent(**self)
+            } {
+                alc::TRUE => Ok(()),
+                _ => Err(())
+            }
+        }
+        
+        fn suspend(&self) {
+            unsafe { alcSuspendContext(**self); }
+        }
+        
+        fn destroy(&self) {
+            unsafe { alcDestroyContext(**self) };
+        }
+        
+        fn get_current() -> Context {
+            Context(unsafe { alcGetCurrentContext() })
+        }
+        
+        fn get_device(&self) -> Device {
+            Device(unsafe { alcGetContextsDevice(**self) })
+        }
     }
-    
-    fn default_name() -> ~str {
-        unsafe { str::raw::from_c_str(
-            alcGetString(ptr::null(), alc::DEFAULT_DEVICE_SPECIFIER)
-        )}
-    }
-    
-    fn get_available() -> ~[~str] {
-        unsafe { util::from_c_strs(
-            alcGetString(ptr::null(), alc::DEVICE_SPECIFIER)
-        )}
+
+    pub struct CaptureDevice(*ALCdevice);
+
+    pub impl CaptureDevice {
+        fn open_default(
+            frequency: ALCuint,
+            format: ALCenum,
+            buffersize: ALCsizei
+        ) -> Result<CaptureDevice,()> {
+            util::err_if_null(
+                unsafe { alcCaptureOpenDevice(
+                    ptr::null(),
+                    frequency,
+                    format,
+                    buffersize
+                ) }, (), |d| CaptureDevice(d)
+            )
+        }
+        
+        fn open(
+            name: &str,
+            frequency: ALCuint,
+            format: ALCenum,
+            buffersize: ALCsizei
+        ) -> Result<CaptureDevice,()> {
+            util::err_if_null(
+                unsafe { alcCaptureOpenDevice(
+                    str::as_c_str(name, |a| a),
+                    frequency,
+                    format,
+                    buffersize
+                ) }, (), |d| CaptureDevice(d)
+            )
+        }
+        
+        fn close(&self) -> Result<(),()> {
+            match unsafe {
+                alcCaptureCloseDevice(**self)
+            } {
+                alc::TRUE => Ok(()),
+                _ => Err(())
+            }
+        }
+        
+        fn start(&self) {
+            unsafe { alcCaptureStart(**self) };
+        }
+        
+        fn stop(&self) {
+            unsafe { alcCaptureStop(**self) };
+        }
+        
+        // fn get_samples(&self, samples: ALCsizei) -> *ALCvoid {}
+        
+        fn get_name(&self) -> ~str {
+            unsafe { str::raw::from_c_str(
+                alcGetString(**self, alc::CAPTURE_DEVICE_SPECIFIER)
+            )}
+        }
+        
+        fn default_name() -> ~str {
+            unsafe { str::raw::from_c_str(
+                alcGetString(ptr::null(), alc::CAPTURE_DEFAULT_DEVICE_SPECIFIER)
+            )}
+        }
+        
+        fn get_available() -> ~[~str] {
+            unsafe { util::from_c_strs(
+                alcGetString(ptr::null(), alc::CAPTURE_DEVICE_SPECIFIER)
+            )}
+        }
     }
 }
 
-pub struct Context(*ALCcontext);
-
-pub impl Context {
-    fn create(device: &Device) -> Result<Context,()> {
-        util::err_if_null(
-            unsafe { alcCreateContext(**device, ptr::null()) },
-            (), |c| Context(c)
-        )
-    }
-    
-    fn make_current(&self) -> Result<(),()> {
-        match unsafe {
-            alcMakeContextCurrent(**self)
-        } {
-            alc::TRUE => Ok(()),
-            _ => Err(())
-        }
-    }
-    
-    fn suspend(&self) {
-        unsafe { alcSuspendContext(**self); }
-    }
-    
-    fn destroy(&self) {
-        unsafe { alcDestroyContext(**self) };
-    }
-    
-    fn get_current() -> Context {
-        Context(unsafe { alcGetCurrentContext() })
-    }
-    
-    fn get_device(&self) -> Device {
-        Device(unsafe { alcGetContextsDevice(**self) })
-    }
-}
-
-pub struct CaptureDevice(*ALCdevice);
-
-pub impl CaptureDevice {
-    fn open_default(
-        frequency: ALCuint,
-        format: ALCenum,
-        buffersize: ALCsizei
-    ) -> Result<CaptureDevice,()> {
-        util::err_if_null(
-            unsafe { alcCaptureOpenDevice(
-                ptr::null(),
-                frequency,
-                format,
-                buffersize
-            ) }, (), |d| CaptureDevice(d)
-        )
-    }
-    
-    fn open(
-        name: &str,
-        frequency: ALCuint,
-        format: ALCenum,
-        buffersize: ALCsizei
-    ) -> Result<CaptureDevice,()> {
-        util::err_if_null(
-            unsafe { alcCaptureOpenDevice(
-                str::as_c_str(name, |a| a),
-                frequency,
-                format,
-                buffersize
-            ) }, (), |d| CaptureDevice(d)
-        )
-    }
-    
-    fn close(&self) -> Result<(),()> {
-        match unsafe {
-            alcCaptureCloseDevice(**self)
-        } {
-            alc::TRUE => Ok(()),
-            _ => Err(())
-        }
-    }
-    
-    fn start(&self) {
-        unsafe { alcCaptureStart(**self) };
-    }
-    
-    fn stop(&self) {
-        unsafe { alcCaptureStop(**self) };
-    }
-    
-    // fn get_samples(&self, samples: ALCsizei) -> *ALCvoid {}
-    
-    fn get_name(&self) -> ~str {
-        unsafe { str::raw::from_c_str(
-            alcGetString(**self, alc::CAPTURE_DEVICE_SPECIFIER)
-        )}
-    }
-    
-    fn default_name() -> ~str {
-        unsafe { str::raw::from_c_str(
-            alcGetString(ptr::null(), alc::CAPTURE_DEFAULT_DEVICE_SPECIFIER)
-        )}
-    }
-    
-    fn get_available() -> ~[~str] {
-        unsafe { util::from_c_strs(
-            alcGetString(ptr::null(), alc::CAPTURE_DEVICE_SPECIFIER)
-        )}
-    }
-}
-
-mod util {
+pub mod util {
     #[inline(always)]
     pub fn err_if_null<T,U,V>(ptr: *T, err: U, f: &fn(*T) -> V) -> Result<V,U> {
         if !ptr.is_null() {

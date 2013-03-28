@@ -57,17 +57,17 @@ pub fn get_error() -> ALenum {
     unsafe { alGetError() }
 }
 
-pub fn is_extension_present(extname: ~str) -> bool {
+pub fn is_extension_present(extname: &str) -> bool {
     unsafe { alIsExtensionPresent(str::as_c_str(extname, |s| s)) as bool }
 }
 
-pub fn get_proc_address(fname: ~str) -> extern fn() {
+pub fn get_proc_address(fname: &str) -> extern fn() {
     unsafe { cast::transmute(
         alGetProcAddress(str::as_c_str(fname, |s| s))
     ) }
 }
 
-pub fn get_enum_value(ename: ~str) -> ALenum {
+pub fn get_enum_value(ename: &str) -> ALenum {
     unsafe { alGetEnumValue(str::as_c_str(ename, |s| s)) }
 }
 

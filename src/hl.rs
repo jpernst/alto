@@ -10,31 +10,23 @@ pub mod alc {
     use ll::*;
     use types::*;
     use hl::util;
-    use consts::alc;
+    use ml::alc;
     
     pub struct Device(*ALCdevice);
 
     pub impl Device {
         fn open_default() -> Result<Device,()> {
-            util::err_if_null(
-                unsafe { alcOpenDevice(ptr::null()) },
-                (), |d| Device(d)
-            )
+            util::err_if_null(alc::open_device(""), (), |d| Device(d))
         }
         
         fn open(name: &str) -> Result<Device,()> {
-            util::err_if_null(
-                unsafe { alcOpenDevice(str::as_c_str(name, |a| a)) },
-                (), |d| Device(d)
-            )
+            util::err_if_null(alc::open_device(name), (), |d| Device(d))
         }
         
         fn close(&self) -> Result<(),()> {
-            match unsafe {
-                alcCloseDevice(**self)
-            } {
-                alc::TRUE => Ok(()),
-                _ => Err(())
+            match alc::close_device(**self) {
+                true  => Ok(()),
+                false => Err(())
             }
         }
         
@@ -68,28 +60,26 @@ pub mod alc {
         }
         
         fn make_current(&self) -> Result<(),()> {
-            match unsafe {
-                alcMakeContextCurrent(**self)
-            } {
-                alc::TRUE => Ok(()),
-                _ => Err(())
+            match alc::make_context_current(**self) {
+                true  => Ok(()),
+                false => Err(())
             }
         }
         
         fn suspend(&self) {
-            unsafe { alcSuspendContext(**self); }
+            alc::suspend_context(**self);
         }
         
         fn destroy(&self) {
-            unsafe { alcDestroyContext(**self) };
+            alc::destroy_context(**self);
         }
         
         fn get_current() -> Context {
-            Context(unsafe { alcGetCurrentContext() })
+            Context(alc::get_current_context())
         }
         
         fn get_device(&self) -> Device {
-            Device(unsafe { alcGetContextsDevice(**self) })
+            Device(alc::get_contexts_device(**self))
         }
     }
 
@@ -102,12 +92,12 @@ pub mod alc {
             buffersize: ALCsizei
         ) -> Result<CaptureDevice,()> {
             util::err_if_null(
-                unsafe { alcCaptureOpenDevice(
+                alc::capture_open_device(
                     ptr::null(),
                     frequency,
                     format,
                     buffersize
-                ) }, (), |d| CaptureDevice(d)
+                ), (), |d| CaptureDevice(d)
             )
         }
         
@@ -118,30 +108,28 @@ pub mod alc {
             buffersize: ALCsizei
         ) -> Result<CaptureDevice,()> {
             util::err_if_null(
-                unsafe { alcCaptureOpenDevice(
+                alc::capture_open_device(
                     str::as_c_str(name, |a| a),
                     frequency,
                     format,
                     buffersize
-                ) }, (), |d| CaptureDevice(d)
+                ), (), |d| CaptureDevice(d)
             )
         }
         
         fn close(&self) -> Result<(),()> {
-            match unsafe {
-                alcCaptureCloseDevice(**self)
-            } {
-                alc::TRUE => Ok(()),
-                _ => Err(())
+            match alc::capture_close_device(**self) {
+                true  => Ok(()),
+                false => Err(())
             }
         }
         
         fn start(&self) {
-            unsafe { alcCaptureStart(**self) };
+            alc::capture_start(**self);
         }
         
         fn stop(&self) {
-            unsafe { alcCaptureStop(**self) };
+            alc::capture_stop(**self);
         }
         
         // fn get_samples(&self, samples: ALCsizei) -> *ALCvoid {}

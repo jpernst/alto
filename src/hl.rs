@@ -7,7 +7,6 @@ pub mod al {
 }
 
 pub mod alc {
-    use ll::*;
     use types::*;
     use hl::util;
     use ml::alc;
@@ -32,19 +31,19 @@ pub mod alc {
         
         fn get_name(&self) -> ~str {
             unsafe { str::raw::from_c_str(
-                alcGetString(**self, alc::DEVICE_SPECIFIER)
+                ::ll::alcGetString(**self, alc::DEVICE_SPECIFIER)
             )}
         }
         
         fn default_name() -> ~str {
             unsafe { str::raw::from_c_str(
-                alcGetString(ptr::null(), alc::DEFAULT_DEVICE_SPECIFIER)
+                ::ll::alcGetString(ptr::null(), alc::DEFAULT_DEVICE_SPECIFIER)
             )}
         }
         
         fn get_available() -> ~[~str] {
             unsafe { util::from_c_strs(
-                alcGetString(ptr::null(), alc::DEVICE_SPECIFIER)
+                ::ll::alcGetString(ptr::null(), alc::DEVICE_SPECIFIER)
             )}
         }
     }
@@ -52,11 +51,8 @@ pub mod alc {
     pub struct Context(*ALCcontext);
 
     pub impl Context {
-        fn create(device: &Device) -> Result<Context,()> {
-            util::err_if_null(
-                unsafe { alcCreateContext(**device, ptr::null()) },
-                (), |c| Context(c)
-            )
+        fn create(device: &Device, attrlist: &[ALCint]) -> Result<Context,()> {
+            util::err_if_null(alc::create_context(**device, attrlist), (), |c| Context(c))
         }
         
         fn make_current(&self) -> Result<(),()> {
@@ -136,19 +132,19 @@ pub mod alc {
         
         fn get_name(&self) -> ~str {
             unsafe { str::raw::from_c_str(
-                alcGetString(**self, alc::CAPTURE_DEVICE_SPECIFIER)
+                ::ll::alcGetString(**self, alc::CAPTURE_DEVICE_SPECIFIER)
             )}
         }
         
         fn default_name() -> ~str {
             unsafe { str::raw::from_c_str(
-                alcGetString(ptr::null(), alc::CAPTURE_DEFAULT_DEVICE_SPECIFIER)
+                ::ll::alcGetString(ptr::null(), alc::CAPTURE_DEFAULT_DEVICE_SPECIFIER)
             )}
         }
         
         fn get_available() -> ~[~str] {
             unsafe { util::from_c_strs(
-                alcGetString(ptr::null(), alc::CAPTURE_DEVICE_SPECIFIER)
+                ::ll::alcGetString(ptr::null(), alc::CAPTURE_DEVICE_SPECIFIER)
             )}
         }
     }

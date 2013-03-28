@@ -357,9 +357,10 @@ pub mod alc {
     use types::*;
     pub use consts::alc::*;
 
-    // pub fn create_context(device: *ALCdevice, attrlist: *ALCint) -> *ALCcontext {
-    //     unsafe { ::ll::alcCreateContext(device, attrlist) }
-    // }
+    pub fn create_context(device: *ALCdevice, attrlist: &[ALCint]) -> *ALCcontext {
+        let attrs_terminated = vec::append_one(attrlist.to_owned(), 0);  // teminate attributes with a 0
+        unsafe { ::ll::alcCreateContext(device, cast::transmute(&attrs_terminated[0])) }
+    }
 
     pub fn make_context_current(context: *ALCcontext) -> bool {
         unsafe { ::ll::alcMakeContextCurrent(context) as bool }

@@ -127,11 +127,12 @@ pub mod consts {
 
         pub static FALSE                                : ALCboolean = 0;
         pub static TRUE                                 : ALCboolean = 1;
-        pub static FREQUENCY                            : ALCenum = 0x1007;
-        pub static REFRESH                              : ALCenum = 0x1008;
-        pub static SYNC                                 : ALCenum = 0x1009;
-        pub static MONO_SOURCES                         : ALCenum = 0x1010;
-        pub static STEREO_SOURCES                       : ALCenum = 0x1011;
+        
+        pub static FREQUENCY                            : ALCint = 0x1007;
+        pub static REFRESH                              : ALCint = 0x1008;
+        pub static SYNC                                 : ALCint = 0x1009;
+        pub static MONO_SOURCES                         : ALCint = 0x1010;
+        pub static STEREO_SOURCES                       : ALCint = 0x1011;
 
         pub static NO_ERROR                             : ALCenum = FALSE as ALCenum;
         pub static INVALID_DEVICE                       : ALCenum = 0xA001;

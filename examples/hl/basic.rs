@@ -13,7 +13,7 @@ fn main() {
     }
     
     let device = alc::Device::open_default().get();
-    let context = alc::Context::create(&device).get();
+    let context = alc::Context::create(&device, []).get();
     
     // ...
     

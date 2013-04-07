@@ -29,8 +29,8 @@ pub mod types {
     pub type ALdouble               = c_double;
     pub type ALvoid                 = c_void;
 
-    pub struct ALCdevice {}
-    pub struct ALCcontext {}
+    pub struct ALCdevice;
+    pub struct ALCcontext;
 
     pub type ALCboolean             = c_char;
     pub type ALCchar                = c_char;

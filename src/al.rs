@@ -1,4 +1,5 @@
 use types::*;
+use std::{cast, str, sys};
 
 pub static NONE                           : ALenum = 0;
 pub static FALSE                          : ALboolean = 0;
@@ -66,89 +67,110 @@ pub static LINEAR_DISTANCE_CLAMPED        : ALenum = 0xD004;
 pub static EXPONENT_DISTANCE              : ALenum = 0xD005;
 pub static EXPONENT_DISTANCE_CLAMPED      : ALenum = 0xD006;
 
+#[fixed_stack_segment]
 pub fn enable(capability: ALenum) {
     unsafe { ::ll::alEnable(capability); }
 }
 
+#[fixed_stack_segment]
 pub fn disable(capability: ALenum) {
     unsafe { ::ll::alDisable(capability); }
 }
 
+#[fixed_stack_segment]
 pub fn is_enabled(capability: ALenum) -> ALboolean {
     unsafe { ::ll::alIsEnabled(capability) }
 }
 
+#[fixed_stack_segment]
 pub fn get_string(param: ALenum) -> ~str {
     unsafe { str::raw::from_c_str(::ll::alGetString(param)) }
 }
 
+#[fixed_stack_segment]
 pub fn get_booleanv(param: ALenum, data: &mut ALboolean) {
     unsafe { ::ll::alGetBooleanv(param, cast::transmute(data)); }
 }
 
+#[fixed_stack_segment]
 pub fn get_integerv(param: ALenum, data: &mut ALint) {
     unsafe { ::ll::alGetIntegerv(param, cast::transmute(data)); }
 }
 
+#[fixed_stack_segment]
 pub fn get_floatv(param: ALenum, data: &mut ALfloat) {
     unsafe { ::ll::alGetFloatv(param, cast::transmute(data)); }
 }
 
+#[fixed_stack_segment]
 pub fn get_doublev(param: ALenum, data: &mut ALdouble) {
     unsafe { ::ll::alGetDoublev(param, cast::transmute(data)); }
 }
 
+#[fixed_stack_segment]
 pub fn get_boolean(param: ALenum) -> ALboolean {
     unsafe { ::ll::alGetBoolean(param) }
 }
 
+#[fixed_stack_segment]
 pub fn get_integer(param: ALenum) -> ALint {
     unsafe { ::ll::alGetInteger(param) }
 }
 
+#[fixed_stack_segment]
 pub fn get_float(param: ALenum) -> ALfloat {
     unsafe { ::ll::alGetFloat(param) }
 }
 
+#[fixed_stack_segment]
 pub fn get_double(param: ALenum) -> ALdouble {
     unsafe { ::ll::alGetDouble(param) }
 }
 
+#[fixed_stack_segment]
 pub fn get_error() -> ALenum {
     unsafe { ::ll::alGetError() }
 }
 
+#[fixed_stack_segment]
 pub fn is_extension_present(extname: &str) -> ALboolean {
-    unsafe { ::ll::alIsExtensionPresent(str::as_c_str(extname, |s| s)) }
+    unsafe { ::ll::alIsExtensionPresent(extname.with_c_str( |s| s)) }
 }
 
+#[fixed_stack_segment]
 pub fn get_proc_address(fname: &str) -> extern fn() {
     unsafe { cast::transmute(
-        ::ll::alGetProcAddress(str::as_c_str(fname, |s| s))
+        ::ll::alGetProcAddress( fname.with_c_str( |s| s))
     ) }
 }
 
+#[fixed_stack_segment]
 pub fn get_enum_value(ename: &str) -> ALenum {
-    unsafe { ::ll::alGetEnumValue(str::as_c_str(ename, |s| s)) }
+    unsafe { ::ll::alGetEnumValue( ename.with_c_str( |s| s)) }
 }
 
 
+#[fixed_stack_segment]
 pub fn listenerf(param: ALenum, value: ALfloat) {
     unsafe { ::ll::alListenerf(param, value); }
 }
 
+#[fixed_stack_segment]
 pub fn listener3f(param: ALenum, value1: ALfloat, value2: ALfloat, value3: ALfloat) {
     unsafe { ::ll::alListener3f(param, value1, value2, value3); }
 }
 
+// #[fixed_stack_segment]
 // pub fn Listenerfv(param: ALenum, values: *ALfloat) {
 //     unsafe { ::ll::alListenerfv(param, values); }
 // }
 
+#[fixed_stack_segment]
 pub fn listeneri(param: ALenum, value: ALint) {
     unsafe { ::ll::alListeneri(param, value); }
 }
 
+#[fixed_stack_segment]
 pub fn listener3i(param: ALenum, value1: ALint, value2: ALint, value3: ALint) {
     unsafe { ::ll::alListener3i(param, value1, value2, value3); }
 }
@@ -157,257 +179,307 @@ pub fn listener3i(param: ALenum, value1: ALint, value2: ALint, value3: ALint) {
 //     unsafe { ::ll::alListeneriv(param, values); }
 // }
 
+#[fixed_stack_segment]
 pub fn get_listenerf(param: ALenum) -> ALfloat {
     let mut value = 0.0;
     unsafe { ::ll::alGetListenerf(param, cast::transmute(&value)) }
     value
 }
 
+#[fixed_stack_segment]
 pub fn get_listener3f(param: ALenum) -> (ALfloat, ALfloat, ALfloat) {
-    let mut value1 = 0.0,
-            value2 = 0.0,
-            value3 = 0.0;
+    let mut value1 = 0.0;
+    let mut value2 = 0.0;
+    let mut value3 = 0.0;
     unsafe { ::ll::alGetListener3f(param, cast::transmute(&value1),
                                         cast::transmute(&value2),
                                         cast::transmute(&value3)) }
     (value1, value2, value3)
 }
 
+// #[fixed_stack_segment]
 // pub fn GetListenerfv(param: ALenum, values: *ALfloat) {
 //     unsafe { ::ll::alGetListenerfv(param, values) }
 // }
 
+#[fixed_stack_segment]
 pub fn get_listeneri(param: ALenum) -> ALint {
     let mut value = 0;
     unsafe { ::ll::alGetListeneri(param, cast::transmute(&value)) }
     value
 }
 
+#[fixed_stack_segment]
 pub fn get_listener3i(param: ALenum) -> (ALint, ALint, ALint) {
-    let mut value1 = 0,
-            value2 = 0,
-            value3 = 0;
+    let mut value1 = 0;
+    let mut value2 = 0;
+    let mut value3 = 0;
     unsafe { ::ll::alGetListener3i(param, cast::transmute(&value1),
                                         cast::transmute(&value2),
                                         cast::transmute(&value3)) }
     (value1, value2, value3)
 }
 
+// #[fixed_stack_segment]
 // pub fn GetListeneriv(param: ALenum, values: *ALint) {
 //     unsafe { ::ll::alGetListeneriv(param, values) }
 // }
 
+#[fixed_stack_segment]
 pub fn gen_sources(sources: &[ALuint]) {
     unsafe { ::ll::alGenSources(sources.len() as ALsizei, cast::transmute(&sources[0])); }
 }
 
+#[fixed_stack_segment]
 pub fn delete_sources(sources: &[ALuint]) {
     unsafe { ::ll::alDeleteSources(sources.len() as ALsizei, cast::transmute(&sources[0])); }
 }
 
+#[fixed_stack_segment]
 pub fn is_source(sid: ALuint) -> ALboolean {
     unsafe { ::ll::alIsSource(sid) }
 }
 
+#[fixed_stack_segment]
 pub fn sourcef(sid: ALuint, param: ALenum, value: ALfloat) {
     unsafe { ::ll::alSourcef(sid, param, value); }
 }
 
+#[fixed_stack_segment]
 pub fn source3f(sid: ALuint, param: ALenum, value1: ALfloat, value2: ALfloat, value3: ALfloat) {
     unsafe { ::ll::alSource3f(sid, param, value1, value2, value3); }
 }
 
+// #[fixed_stack_segment]
 // pub fn Sourcefv(sid: ALuint, param: ALenum, values: *ALfloat) {
 //     unsafe { ::ll::alSourcefv(); }
 // }
 
+#[fixed_stack_segment]
 pub fn sourcei(sid: ALuint, param: ALenum, value: ALint) {
     unsafe { ::ll::alSourcei(sid, param, value); }
 }
 
+#[fixed_stack_segment]
 pub fn source3i(sid: ALuint, param: ALenum, value1: ALint, value2: ALint, value3: ALint) {
     unsafe { ::ll::alSource3i(sid, param, value1, value2, value3); }
 }
 
+// #[fixed_stack_segment]
 // pub fn Sourceiv(sid: ALuint, param: ALenum, values: *ALint) {
 //     unsafe { ::ll::alSourceiv(); }
 // }
 
+#[fixed_stack_segment]
 pub fn get_sourcef(sid: ALuint, param: ALenum) -> ALfloat {
     let mut value = 0.0;
     unsafe { ::ll::alGetSourcef(sid, param, cast::transmute(&value)); }
     value
 }
 
+#[fixed_stack_segment]
 pub fn get_source3f(sid: ALuint, param: ALenum) -> (ALfloat, ALfloat, ALfloat) {
-    let mut value1 = 0.0,
-            value2 = 0.0,
-            value3 = 0.0;
+    let mut value1 = 0.0;
+    let mut value2 = 0.0;
+    let mut value3 = 0.0;
     unsafe { ::ll::alGetSource3f(sid, param, cast::transmute(&value1),
                                            cast::transmute(&value2),
                                            cast::transmute(&value3)); }
     (value1, value2, value3)
 }
 
+// #[fixed_stack_segment]
 // pub fn GetSourcefv(sid: ALuint, param: ALenum, values: *ALfloat) {
 //     unsafe { ::ll::alGetSourcefv(); }
 // }
 
+#[fixed_stack_segment]
 pub fn get_sourcei(sid: ALuint,  param: ALenum) -> ALint {
     let mut value = 0;
     unsafe { ::ll::alGetSourcei(sid, param, cast::transmute(&value)); }
     value
 }
 
+#[fixed_stack_segment]
 pub fn get_source3i(sid: ALuint, param: ALenum) -> (ALint, ALint, ALint) {
-    let mut value1 = 0,
-            value2 = 0,
-            value3 = 0;
+    let mut value1 = 0;
+    let mut value2 = 0;
+    let mut value3 = 0;
     unsafe { ::ll::alGetSource3i(sid, param, cast::transmute(&value1),
                                            cast::transmute(&value2),
                                            cast::transmute(&value3)); }
     (value1, value2, value3)
 }
 
+// #[fixed_stack_segment]
 // pub fn GetSourceiv(sid: ALuint,  param: ALenum, values: *ALint) {
 //     unsafe { ::ll::alGetSourceiv(); }
 // }
 
+#[fixed_stack_segment]
 pub fn source_playv(sids: &[ALuint]) {
     unsafe { ::ll::alSourcePlayv(sids.len() as ALsizei, cast::transmute(&sids[0])); }
 }
 
+#[fixed_stack_segment]
 pub fn source_stopv(sids: &[ALuint]) {
     unsafe { ::ll::alSourceStopv(sids.len() as ALsizei, cast::transmute(&sids[0])); }
 }
 
+#[fixed_stack_segment]
 pub fn source_rewindv(sids: &[ALuint]) {
     unsafe { ::ll::alSourceRewindv(sids.len() as ALsizei, cast::transmute(&sids[0])); }
 }
 
+#[fixed_stack_segment]
 pub fn source_pausev(sids: &[ALuint]) {
     unsafe { ::ll::alSourcePausev(sids.len() as ALsizei, cast::transmute(&sids[0])); }
 }
 
+#[fixed_stack_segment]
 pub fn source_play(sid: ALuint) {
     unsafe { ::ll::alSourcePlay(sid); }
 }
 
+#[fixed_stack_segment]
 pub fn source_stop(sid: ALuint) {
     unsafe { ::ll::alSourceStop(sid); }
 }
 
+#[fixed_stack_segment]
 pub fn source_rewind(sid: ALuint) {
     unsafe { ::ll::alSourceRewind(sid); }
 }
 
+#[fixed_stack_segment]
 pub fn source_pause(sid: ALuint) {
     unsafe { ::ll::alSourcePause(sid); }
 }
 
+#[fixed_stack_segment]
 pub fn source_queue_buffers(sid: ALuint, bids: &[ALuint]) {
     unsafe { ::ll::alSourceQueueBuffers(sid, bids.len() as ALsizei, cast::transmute(&bids[0])); }
 }
 
+#[fixed_stack_segment]
 pub fn source_unqueue_buffers(sid: ALuint, bids: &[ALuint]) {
     unsafe { ::ll::alSourceUnqueueBuffers(sid, bids.len() as ALsizei, cast::transmute(&bids[0])); }
 }
 
+#[fixed_stack_segment]
 pub fn gen_buffers(buffers: &[ALuint]) {
     unsafe { ::ll::alGenBuffers(buffers.len() as ALsizei, cast::transmute(&buffers[0])); }
 }
 
+#[fixed_stack_segment]
 pub fn delete_buffers(buffers: &[ALuint]) {
     unsafe { ::ll::alDeleteBuffers(buffers.len() as ALsizei, cast::transmute(&buffers[0])); }
 }
 
+#[fixed_stack_segment]
 pub fn is_buffer(bid: ALuint) -> ALboolean {
     unsafe { ::ll::alIsBuffer(bid) }
 }
 
+#[fixed_stack_segment]
 pub fn buffer_data<T>(bid: ALuint, format: ALenum, data: &[T], freq: ALsizei) {
     unsafe {
         ::ll::alBufferData(
             bid, format,
             cast::transmute(&data[0]),
-            sys::size_of::<T>() * data.len() as ALsizei,
+            sys::size_of::<T>() as ALsizei * data.len() as ALsizei,
             freq
         );
     }
 }
 
+#[fixed_stack_segment]
 pub fn bufferf(bid: ALuint, param: ALenum, value: ALfloat) {
     unsafe { ::ll::alBufferf(bid, param, value); }
 }
 
+#[fixed_stack_segment]
 pub fn buffer3f(bid: ALuint, param: ALenum, value1: ALfloat, value2: ALfloat, value3: ALfloat) {
     unsafe { ::ll::alBuffer3f(bid, param, value1, value2, value3); }
 }
 
+// #[fixed_stack_segment]
 // pub fn Bufferfv(bid: ALuint, param: ALenum, values: *ALfloat) {
 //     unsafe { ::ll::alBufferfv(); }
 // }
 
+#[fixed_stack_segment]
 pub fn bufferi(bid: ALuint, param: ALenum, value: ALint) {
     unsafe { ::ll::alBufferi(bid, param, value); }
 }
 
+#[fixed_stack_segment]
 pub fn buffer3i(bid: ALuint, param: ALenum, value1: ALint, value2: ALint, value3: ALint) {
     unsafe { ::ll::alBuffer3i(bid, param, value1, value2, value3); }
 }
 
+// #[fixed_stack_segment]
 // pub fn Bufferiv(bid: ALuint, param: ALenum, values: *ALint) {
 //     unsafe { ::ll::alBufferiv(); }
 // }
 
+#[fixed_stack_segment]
 pub fn get_bufferf(sid: ALuint, param: ALenum) -> ALfloat {
     let mut value = 0.0;
     unsafe { ::ll::alGetBufferf(sid, param, cast::transmute(&value)); }
     value
 }
 
+#[fixed_stack_segment]
 pub fn get_buffer3f(sid: ALuint, param: ALenum) -> (ALfloat, ALfloat, ALfloat) {
-    let mut value1 = 0.0,
-            value2 = 0.0,
-            value3 = 0.0;
+    let mut value1 = 0.0;
+    let mut value2 = 0.0;
+    let mut value3 = 0.0;
     unsafe { ::ll::alGetBuffer3f(sid, param, cast::transmute(&value1),
                                            cast::transmute(&value2),
                                            cast::transmute(&value3)); }
     (value1, value2, value3)
 }
 
+// #[fixed_stack_segment]
 // pub fn GetBufferfv(bid: ALuint, param: ALenum, values: *ALfloat) {
 //     unsafe { ::ll::alGetBufferfv(); }
 // }
 
+#[fixed_stack_segment]
 pub fn get_bufferi(sid: ALuint,  param: ALenum) -> ALint {
     let mut value = 0;
     unsafe { ::ll::alGetBufferi(sid, param, cast::transmute(&value)); }
     value
 }
 
+#[fixed_stack_segment]
 pub fn get_buffer3i(sid: ALuint, param: ALenum) -> (ALint, ALint, ALint) {
-    let mut value1 = 0,
-            value2 = 0,
-            value3 = 0;
+    let mut value1 = 0;
+    let mut value2 = 0;
+    let mut value3 = 0;
     unsafe { ::ll::alGetBuffer3i(sid, param, cast::transmute(&value1),
                                            cast::transmute(&value2),
                                            cast::transmute(&value3)); }
     (value1, value2, value3)
 }
 
+// #[fixed_stack_segment]
 // pub fn GetBufferiv(bid: ALuint, param: ALenum, values: *ALint) {
 //     unsafe { ::ll::alGetBufferiv(); }
 // }
 
+#[fixed_stack_segment]
 pub fn doppler_factor(value: ALfloat) {
     unsafe { ::ll::alDopplerFactor(value); }
 }
 
+#[fixed_stack_segment]
 pub fn doppler_velocity(value: ALfloat) {
     unsafe { ::ll::alDopplerVelocity(value); }
 }
 
+#[fixed_stack_segment]
 pub fn speed_of_sound(value: ALfloat) {
     unsafe { ::ll::alSpeedOfSound(value); }
 }

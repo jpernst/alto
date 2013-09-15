@@ -3,20 +3,21 @@
  */
 
 use types::*;
+use std::libc;
 
 #[nolink]
 #[link_args="-framework OpenAL"]
 #[cfg(target_os = "macos")]
-pub extern mod linkhack {}
+extern {}
 
 #[nolink]
 #[link_args="-lopenal"]
 #[cfg(target_os = "linux")]
-pub extern mod linkhack {}
+extern {}
 
-pub extern "C" {
+extern "C" {
     pub fn alEnable(capability: ALenum);
-    pub fn alDisable(capability: ALenum); 
+    pub fn alDisable(capability: ALenum);
     pub fn alIsEnabled(capability: ALenum) -> ALboolean;
     pub fn alGetString(param: ALenum) -> *ALchar;
     pub fn alGetBooleanv(param: ALenum, data: *ALboolean);
@@ -34,7 +35,7 @@ pub extern "C" {
 
     pub fn alListenerf(param: ALenum, value: ALfloat);
     pub fn alListener3f(param: ALenum, value1: ALfloat, value2: ALfloat, value3: ALfloat);
-    pub fn alListenerfv(param: ALenum, values: *ALfloat); 
+    pub fn alListenerfv(param: ALenum, values: *ALfloat);
     pub fn alListeneri(param: ALenum, value: ALint);
     pub fn alListener3i(param: ALenum, value1: ALint, value2: ALint, value3: ALint);
     pub fn alListeneriv(param: ALenum, values: *ALint);
@@ -44,13 +45,13 @@ pub extern "C" {
     pub fn alGetListeneri(param: ALenum, value: *ALint);
     pub fn alGetListener3i(param: ALenum, value1: *ALint, value2: *ALint, value3: *ALint);
     pub fn alGetListeneriv(param: ALenum, values: *ALint);
-    pub fn alGenSources(n: ALsizei, sources: *ALuint); 
+    pub fn alGenSources(n: ALsizei, sources: *ALuint);
     pub fn alDeleteSources(n: ALsizei, sources: *ALuint);
     pub fn alIsSource(sid: ALuint) -> ALboolean;
-    pub fn alSourcef(sid: ALuint, param: ALenum, value: ALfloat); 
+    pub fn alSourcef(sid: ALuint, param: ALenum, value: ALfloat);
     pub fn alSource3f(sid: ALuint, param: ALenum, value1: ALfloat, value2: ALfloat, value3: ALfloat);
-    pub fn alSourcefv(sid: ALuint, param: ALenum, values: *ALfloat); 
-    pub fn alSourcei(sid: ALuint, param: ALenum, value: ALint); 
+    pub fn alSourcefv(sid: ALuint, param: ALenum, values: *ALfloat);
+    pub fn alSourcei(sid: ALuint, param: ALenum, value: ALint);
     pub fn alSource3i(sid: ALuint, param: ALenum, value1: ALint, value2: ALint, value3: ALint);
     pub fn alSourceiv(sid: ALuint, param: ALenum, values: *ALint);
     pub fn alGetSourcef(sid: ALuint, param: ALenum, value: *ALfloat);
@@ -88,7 +89,7 @@ pub extern "C" {
     pub fn alDopplerFactor(value: ALfloat);
     pub fn alDopplerVelocity(value: ALfloat);
     pub fn alSpeedOfSound(value: ALfloat);
-    
+
     pub fn alcCreateContext(device: *ALCdevice, attrlist: *ALCint) -> *ALCcontext;
     pub fn alcMakeContextCurrent(context: *ALCcontext) -> ALCboolean;
     pub fn alcProcessContext(context: *ALCcontext);

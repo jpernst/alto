@@ -1,6 +1,10 @@
 use types::*;
 use std::{cast, str, sys, uint};
 
+pub static FALSE                          : ALboolean = 0;
+pub static TRUE                           : ALboolean = 1;
+
+#[deriving(Eq, ToStr)]
 pub enum ALenum {
     None_NoError = 0,
     SourceRelative = 0x202,

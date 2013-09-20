@@ -1,4 +1,4 @@
-#[link(name = "openal", 
+#[link(name = "openal",
        vers = "0.1",
        uuid = "9450DF9F-7A40-4087-BF6C-0848693D15DC",
        author = "Brendan Zabarauskas",
@@ -13,8 +13,8 @@ pub mod alc;
 
 /// Core OpenAL typedefs
 pub mod types {
-    use core::libc::*;
-    
+    use std::libc::*;
+
     pub type ALboolean              = c_char;
     pub type ALchar                 = c_char;
     pub type ALbyte                 = c_char;

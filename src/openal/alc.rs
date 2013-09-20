@@ -1,6 +1,8 @@
-use types::*;
+use std::cast;
+use std::vec;
+
 use ffi;
-use std::{cast, vec};
+use types::*;
 
 // TODO: not sure what types these are meant to be...
 pub static INVALID                              : ALCboolean = 0;
@@ -73,7 +75,7 @@ pub fn get_contexts_device(context: *ALCcontext) -> *ALCdevice {
 
 #[fixed_stack_segment]
 pub fn open_device(devicename: &str) -> *ALCdevice {
-    unsafe { ffi::alcOpenDevice(devicename.with_c_str( |s| s)) }
+    unsafe { devicename.with_c_str(|c_str| ffi::alcOpenDevice(c_str)) }
 }
 
 #[fixed_stack_segment]
@@ -88,19 +90,19 @@ pub fn get_error(device: *ALCdevice) -> ALCenum {
 
 #[fixed_stack_segment]
 pub fn is_extension_present(device: *ALCdevice, extname: &str) -> ALboolean {
-    unsafe { ffi::alcIsExtensionPresent(device, extname.with_c_str( |s| s)) }
+    unsafe { extname.with_c_str(|c_str| ffi::alcIsExtensionPresent(device, c_str)) }
 }
 
 #[fixed_stack_segment]
 pub fn get_proc_address(device: *ALCdevice, funcname: ~str) -> extern "C" fn() {
     unsafe { cast::transmute(
-        ffi::alcGetProcAddress(device, funcname.with_c_str( |s| s))
+        funcname.with_c_str(|c_str| ffi::alcGetProcAddress(device, c_str))
     ) }
 }
 
 #[fixed_stack_segment]
 pub fn get_enum_value(device: *ALCdevice, enumname: &str) -> ALCenum {
-    unsafe { ffi::alcGetEnumValue(device, enumname.with_c_str( |s| s)) }
+    unsafe { enumname.with_c_str(|c_str| ffi::alcGetEnumValue(device, c_str)) }
 }
 
 // #[fixed_stack_segment]

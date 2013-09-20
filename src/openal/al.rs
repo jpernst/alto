@@ -140,19 +140,19 @@ pub fn get_error() -> ALenum {
 
 #[fixed_stack_segment]
 pub fn is_extension_present(extname: &str) -> ALboolean {
-    unsafe { ffi::alIsExtensionPresent(extname.with_c_str( |s| s)) }
+    unsafe { extname.with_c_str(|c_str| ffi::alIsExtensionPresent(c_str)) }
 }
 
 #[fixed_stack_segment]
 pub fn get_proc_address(fname: &str) -> extern "C" fn() {
     unsafe { cast::transmute(
-        ffi::alGetProcAddress( fname.with_c_str( |s| s))
+        fname.with_c_str(|c_str| ffi::alGetProcAddress(c_str))
     ) }
 }
 
 #[fixed_stack_segment]
 pub fn get_enum_value(ename: &str) -> ALenum {
-    unsafe { ffi::alGetEnumValue( ename.with_c_str( |s| s)) }
+    unsafe { ename.with_c_str(|c_str| ffi::alGetEnumValue(c_str)) }
 }
 
 

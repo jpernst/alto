@@ -1,9 +1,6 @@
-/**
- * Low-level function bindings
- */
+//! Low-level function bindings
 
 use types::*;
-use std::libc;
 
 #[nolink]
 #[link_args="-framework OpenAL"]

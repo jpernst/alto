@@ -92,7 +92,7 @@ pub fn is_extension_present(device: *ALCdevice, extname: &str) -> ALboolean {
 }
 
 #[fixed_stack_segment]
-pub fn get_proc_address(device: *ALCdevice, funcname: ~str) -> extern fn() {
+pub fn get_proc_address(device: *ALCdevice, funcname: ~str) -> extern "C" fn() {
     unsafe { cast::transmute(
         ffi::alcGetProcAddress(device, funcname.with_c_str( |s| s))
     ) }

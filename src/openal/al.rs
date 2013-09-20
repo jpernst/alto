@@ -181,8 +181,8 @@ pub fn disable(capability: ALenum) {
 }
 
 #[fixed_stack_segment]
-pub fn is_enabled(capability: ALenum) -> ALboolean {
-    unsafe { ffi::alIsEnabled(capability) }
+pub fn is_enabled(capability: ALenum) -> bool {
+    unsafe { ffi::alIsEnabled(capability) == TRUE }
 }
 
 #[fixed_stack_segment]
@@ -211,8 +211,8 @@ pub fn get_doublev(param: ALenum, data: &mut ALdouble) {
 }
 
 #[fixed_stack_segment]
-pub fn get_boolean(param: ALenum) -> ALboolean {
-    unsafe { ffi::alGetBoolean(param) }
+pub fn get_boolean(param: ALenum) -> bool {
+    unsafe { ffi::alGetBoolean(param) == TRUE }
 }
 
 #[fixed_stack_segment]
@@ -236,15 +236,13 @@ pub fn get_error() -> ALenum {
 }
 
 #[fixed_stack_segment]
-pub fn is_extension_present(extname: &str) -> ALboolean {
-    unsafe { extname.with_c_str(|c_str| ffi::alIsExtensionPresent(c_str)) }
+pub fn is_extension_present(extname: &str) -> bool {
+    unsafe { extname.with_c_str(|c_str| ffi::alIsExtensionPresent(c_str)) == TRUE }
 }
 
 #[fixed_stack_segment]
-pub fn get_proc_address(fname: &str) -> extern "C" fn() {
-    unsafe { cast::transmute(
-        fname.with_c_str(|c_str| ffi::alGetProcAddress(c_str))
-    ) }
+pub fn get_proc_address(fname: &str) -> Option<extern "C" fn()> {
+    unsafe { fname.with_c_str(|c_str| ffi::alGetProcAddress(c_str)) }
 }
 
 #[fixed_stack_segment]
@@ -343,8 +341,8 @@ pub fn delete_sources(sources: &[ALuint]) {
 }
 
 #[fixed_stack_segment]
-pub fn is_source(sid: ALuint) -> ALboolean {
-    unsafe { ffi::alIsSource(sid) }
+pub fn is_source(sid: ALuint) -> bool {
+    unsafe { ffi::alIsSource(sid) == TRUE }
 }
 
 #[fixed_stack_segment]
@@ -488,8 +486,8 @@ pub fn delete_buffers(buffers: &[ALuint]) {
 }
 
 #[fixed_stack_segment]
-pub fn is_buffer(bid: ALuint) -> ALboolean {
-    unsafe { ffi::alIsBuffer(bid) }
+pub fn is_buffer(bid: ALuint) -> bool {
+    unsafe { ffi::alIsBuffer(bid) == TRUE }
 }
 
 #[fixed_stack_segment]

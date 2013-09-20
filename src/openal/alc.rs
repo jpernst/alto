@@ -90,8 +90,8 @@ pub fn create_context(device: *ffi::ALCdevice, attrlist: &[ALCint]) -> *ffi::ALC
 }
 
 #[fixed_stack_segment]
-pub fn make_context_current(context: *ffi::ALCcontext) -> ALCboolean {
-    unsafe { ffi::alcMakeContextCurrent(context) }
+pub fn make_context_current(context: *ffi::ALCcontext) -> bool {
+    unsafe { ffi::alcMakeContextCurrent(context) == TRUE }
 }
 
 #[fixed_stack_segment]
@@ -125,8 +125,8 @@ pub fn open_device(devicename: &str) -> *ffi::ALCdevice {
 }
 
 #[fixed_stack_segment]
-pub fn close_device(device: *ffi::ALCdevice) -> ALCboolean {
-    unsafe { ffi::alcCloseDevice(device) }
+pub fn close_device(device: *ffi::ALCdevice) -> bool {
+    unsafe { ffi::alcCloseDevice(device) == TRUE }
 }
 
 #[fixed_stack_segment]
@@ -135,15 +135,13 @@ pub fn get_error(device: *ffi::ALCdevice) -> ALCenum {
 }
 
 #[fixed_stack_segment]
-pub fn is_extension_present(device: *ffi::ALCdevice, extname: &str) -> ALCboolean {
-    unsafe { extname.with_c_str(|c_str| ffi::alcIsExtensionPresent(device, c_str)) }
+pub fn is_extension_present(device: *ffi::ALCdevice, extname: &str) -> bool {
+    unsafe { extname.with_c_str(|c_str| ffi::alcIsExtensionPresent(device, c_str)) == TRUE }
 }
 
 #[fixed_stack_segment]
-pub fn get_proc_address(device: *ffi::ALCdevice, funcname: ~str) -> extern "C" fn() {
-    unsafe { cast::transmute(
-        funcname.with_c_str(|c_str| ffi::alcGetProcAddress(device, c_str))
-    ) }
+pub fn get_proc_address(device: *ffi::ALCdevice, funcname: ~str) -> Option<extern "C" fn()> {
+    unsafe { funcname.with_c_str(|c_str| ffi::alcGetProcAddress(device, c_str)) }
 }
 
 #[fixed_stack_segment]
@@ -167,8 +165,8 @@ pub fn capture_open_device(devicename: *ALCchar, frequency: ALCuint, format: ALC
 }
 
 #[fixed_stack_segment]
-pub fn capture_close_device(device: *ffi::ALCdevice) -> ALCboolean {
-    unsafe { ffi::alcCaptureCloseDevice(device) }
+pub fn capture_close_device(device: *ffi::ALCdevice) -> bool {
+    unsafe { ffi::alcCaptureCloseDevice(device) == TRUE }
 }
 
 #[fixed_stack_segment]

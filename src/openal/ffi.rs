@@ -30,7 +30,7 @@ extern "C" {
     pub fn alGetDouble(param: ALenum) -> ALdouble;
     pub fn alGetError() -> ALenum;
     pub fn alIsExtensionPresent(extname: *ALchar) -> ALboolean;
-    pub fn alGetProcAddress(fname: *ALchar) -> *libc::c_void;
+    pub fn alGetProcAddress(fname: *ALchar) -> Option<extern "C" fn()>;
     pub fn alGetEnumValue(ename: *ALchar) -> ALenum;
 
     pub fn alListenerf(param: ALenum, value: ALfloat);
@@ -101,7 +101,7 @@ extern "C" {
     pub fn alcCloseDevice(device: *ALCdevice) -> ALCboolean;
     pub fn alcGetError(device: *ALCdevice) -> ALCenum;
     pub fn alcIsExtensionPresent(device: *ALCdevice, extname: *ALCchar) -> ALCboolean;
-    pub fn alcGetProcAddress(device: *ALCdevice, funcname: *ALCchar) -> *libc::c_void;
+    pub fn alcGetProcAddress(device: *ALCdevice, funcname: *ALCchar) -> Option<extern "C" fn()>;
     pub fn alcGetEnumValue(device: *ALCdevice, enumname: *ALCchar) -> ALCenum;
     pub fn alcGetString(device: *ALCdevice, param: ALCenum) -> *ALCchar;
     pub fn alcGetIntegerv(device: *ALCdevice, param: ALCenum, size: ALCsizei, data: *ALCint);

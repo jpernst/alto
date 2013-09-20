@@ -1,4 +1,5 @@
 use types::*;
+use ffi;
 use std::{cast, vec};
 
 // TODO: not sure what types these are meant to be...
@@ -37,102 +38,102 @@ pub static CAPTURE_SAMPLES                      : ALCenum = 0x312;
 #[fixed_stack_segment]
 pub fn create_context(device: *ALCdevice, attrlist: &[ALCint]) -> *ALCcontext {
     let attrs_terminated = vec::append_one(attrlist.to_owned(), 0);  // teminate attributes with a 0
-    unsafe { ::ll::alcCreateContext(device, cast::transmute(&attrs_terminated[0])) }
+    unsafe { ffi::alcCreateContext(device, cast::transmute(&attrs_terminated[0])) }
 }
 
 #[fixed_stack_segment]
 pub fn make_context_current(context: *ALCcontext) -> ALboolean {
-    unsafe { ::ll::alcMakeContextCurrent(context) }
+    unsafe { ffi::alcMakeContextCurrent(context) }
 }
 
 #[fixed_stack_segment]
 pub fn process_context(context: *ALCcontext) {
-    unsafe { ::ll::alcProcessContext(context); }
+    unsafe { ffi::alcProcessContext(context); }
 }
 
 #[fixed_stack_segment]
 pub fn suspend_context(context: *ALCcontext) {
-    unsafe { ::ll::alcSuspendContext(context); }
+    unsafe { ffi::alcSuspendContext(context); }
 }
 
 #[fixed_stack_segment]
 pub fn destroy_context(context: *ALCcontext) {
-    unsafe { ::ll::alcDestroyContext(context); }
+    unsafe { ffi::alcDestroyContext(context); }
 }
 
 #[fixed_stack_segment]
 pub fn get_current_context() -> *ALCcontext {
-    unsafe { ::ll::alcGetCurrentContext() }
+    unsafe { ffi::alcGetCurrentContext() }
 }
 
 #[fixed_stack_segment]
 pub fn get_contexts_device(context: *ALCcontext) -> *ALCdevice {
-    unsafe { ::ll::alcGetContextsDevice(context) }
+    unsafe { ffi::alcGetContextsDevice(context) }
 }
 
 #[fixed_stack_segment]
 pub fn open_device(devicename: &str) -> *ALCdevice {
-    unsafe { ::ll::alcOpenDevice(devicename.with_c_str( |s| s)) }
+    unsafe { ffi::alcOpenDevice(devicename.with_c_str( |s| s)) }
 }
 
 #[fixed_stack_segment]
 pub fn close_device(device: *ALCdevice) -> ALboolean {
-    unsafe { ::ll::alcCloseDevice(device) }
+    unsafe { ffi::alcCloseDevice(device) }
 }
 
 #[fixed_stack_segment]
 pub fn get_error(device: *ALCdevice) -> ALCenum {
-    unsafe { ::ll::alcGetError(device) }
+    unsafe { ffi::alcGetError(device) }
 }
 
 #[fixed_stack_segment]
 pub fn is_extension_present(device: *ALCdevice, extname: &str) -> ALboolean {
-    unsafe { ::ll::alcIsExtensionPresent(device, extname.with_c_str( |s| s)) }
+    unsafe { ffi::alcIsExtensionPresent(device, extname.with_c_str( |s| s)) }
 }
 
 #[fixed_stack_segment]
 pub fn get_proc_address(device: *ALCdevice, funcname: ~str) -> extern fn() {
     unsafe { cast::transmute(
-        ::ll::alcGetProcAddress(device, funcname.with_c_str( |s| s))
+        ffi::alcGetProcAddress(device, funcname.with_c_str( |s| s))
     ) }
 }
 
 #[fixed_stack_segment]
 pub fn get_enum_value(device: *ALCdevice, enumname: &str) -> ALCenum {
-    unsafe { ::ll::alcGetEnumValue(device, enumname.with_c_str( |s| s)) }
+    unsafe { ffi::alcGetEnumValue(device, enumname.with_c_str( |s| s)) }
 }
 
 // #[fixed_stack_segment]
 // pub fn get_string(device: *ALCdevice, param: ALCenum) -> *ALCchar {
-//     unsafe { ::ll::alcGetString(device, param) }
+//     unsafe { ffi::alcGetString(device, param) }
 // }
 
 // #[fixed_stack_segment]
 // pub fn GetIntegerv(device: *ALCdevice, param: ALCenum, size: ALCsizei, data: *ALCint) {
-//     unsafe { ::ll::alcGetIntegerv(); }
+//     unsafe { ffi::alcGetIntegerv(); }
 // }
 
 #[fixed_stack_segment]
 pub fn capture_open_device(devicename: *ALCchar, frequency: ALCuint, format: ALCenum, buffersize: ALCsizei) -> *ALCdevice {
-    unsafe { ::ll::alcCaptureOpenDevice(devicename, frequency, format, buffersize) }
+    unsafe { ffi::alcCaptureOpenDevice(devicename, frequency, format, buffersize) }
 }
 
 #[fixed_stack_segment]
 pub fn capture_close_device(device: *ALCdevice) -> ALboolean {
-    unsafe { ::ll::alcCaptureCloseDevice(device) }
+    unsafe { ffi::alcCaptureCloseDevice(device) }
 }
 
 #[fixed_stack_segment]
 pub fn capture_start(device: *ALCdevice) {
-    unsafe { ::ll::alcCaptureStart(device); }
+    unsafe { ffi::alcCaptureStart(device); }
 }
 
 #[fixed_stack_segment]
 pub fn capture_stop(device: *ALCdevice) {
-    unsafe { ::ll::alcCaptureStop(device); }
+    unsafe { ffi::alcCaptureStop(device); }
 }
 
 // #[fixed_stack_segment]
 // pub fn CaptureSamples(device: *ALCdevice, buffer: *ALCvoid, samples: ALCsizei) {
-//     unsafe { ::ll::alcCaptureSamples(); }
+//     unsafe { ffi::alcCaptureSamples(); }
 // }

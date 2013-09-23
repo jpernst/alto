@@ -1,4 +1,4 @@
-use std::cast;
+use std::str;
 use std::vec;
 
 use self::types::*;
@@ -84,9 +84,9 @@ pub static CAPTURE_DEFAULT_DEVICE_SPECIFIER     : ALCenum = 0x311;
 pub static CAPTURE_SAMPLES                      : ALCenum = 0x312;
 
 #[fixed_stack_segment]
-pub fn create_context(device: *ffi::ALCdevice, attrlist: &[ALCint]) -> *ffi::ALCcontext {
-    let attrs_terminated = vec::append_one(attrlist.to_owned(), 0);  // teminate attributes with a 0
-    unsafe { ffi::alcCreateContext(device, cast::transmute(&attrs_terminated[0])) }
+pub fn create_context(device: *ffi::ALCdevice, attr_list: &[ALCint]) -> *ffi::ALCcontext {
+    let attrs_terminated = vec::append_one(attr_list.to_owned(), 0);  // teminate attributes with a 0
+    unsafe { ffi::alcCreateContext(device, vec::raw::to_ptr(attrs_terminated)) }
 }
 
 #[fixed_stack_segment]
@@ -149,10 +149,10 @@ pub fn get_enum_value(device: *ffi::ALCdevice, enumname: &str) -> ALCenum {
     unsafe { enumname.with_c_str(|c_str| ffi::alcGetEnumValue(device, c_str)) }
 }
 
-// #[fixed_stack_segment]
-// pub fn get_string(device: *ffi::ALCdevice, param: ALCenum) -> *ALCchar {
-//     unsafe { ffi::alcGetString(device, param) }
-// }
+#[fixed_stack_segment]
+pub fn get_string(device: *ffi::ALCdevice, param: ALCenum) -> ~str {
+    unsafe { str::raw::from_c_str(ffi::alcGetString(device, param)) }
+}
 
 // #[fixed_stack_segment]
 // pub fn GetIntegerv(device: *ffi::ALCdevice, param: ALCenum, size: ALCsizei, data: *ALCint) {

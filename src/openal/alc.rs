@@ -1,3 +1,18 @@
+// Copyright 2013 The openal-rs Developers. For a full listing of the authors,
+// refer to the AUTHORS file at the top-level directory of this distribution.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use std::str;
 use std::vec;
 
@@ -23,6 +38,44 @@ pub mod types {
 pub mod ffi {
     use super::types::*;
 
+    // Boolean values
+    pub static FALSE                                : ALCboolean = 0;
+    pub static TRUE                                 : ALCboolean = 1;
+
+    // Context management
+    pub static FREQUENCY                            : ALCint = 0x1007;
+    pub static REFRESH                              : ALCint = 0x1008;
+    pub static SYNC                                 : ALCint = 0x1009;
+    pub static MONO_SOURCES                         : ALCint = 0x1010;
+    pub static STEREO_SOURCES                       : ALCint = 0x1011;
+
+    // Errors
+    pub static NO_ERROR                             : ALCenum = FALSE as ALCenum;
+    pub static INVALID_DEVICE                       : ALCenum = 0xA001;
+    pub static INVALID_CONTEXT                      : ALCenum = 0xA002;
+    pub static INVALID_ENUM                         : ALCenum = 0xA003;
+    pub static INVALID_VALUE                        : ALCenum = 0xA004;
+    pub static OUT_OF_MEMORY                        : ALCenum = 0xA005;
+
+    pub static DEFAULT_DEVICE_SPECIFIER             : ALCenum = 0x1004;
+    pub static DEVICE_SPECIFIER                     : ALCenum = 0x1005;
+    pub static EXTENSIONS                           : ALCenum = 0x1006;
+
+    pub static MAJOR_VERSION                        : ALCenum = 0x1000;
+    pub static MINOR_VERSION                        : ALCenum = 0x1001;
+
+    pub static ATTRIBUTES_SIZE                      : ALCenum = 0x1002;
+    pub static ALL_ATTRIBUTES                       : ALCenum = 0x1003;
+
+    // ALC_ENUMERATE_ALL_EXT enums
+    pub static DEFAULT_ALL_DEVICES_SPECIFIER        : ALCenum = 0x1012;
+    pub static ALL_DEVICES_SPECIFIER                : ALCenum = 0x1013;
+
+    // Capture extension
+    pub static CAPTURE_DEVICE_SPECIFIER             : ALCenum = 0x310;
+    pub static CAPTURE_DEFAULT_DEVICE_SPECIFIER     : ALCenum = 0x311;
+    pub static CAPTURE_SAMPLES                      : ALCenum = 0x312;
+
     pub struct ALCdevice;
     pub struct ALCcontext;
 
@@ -34,6 +87,7 @@ pub mod ffi {
         pub fn alcDestroyContext(context: *ALCcontext);
         pub fn alcGetCurrentContext() -> *ALCcontext;
         pub fn alcGetContextsDevice(context: *ALCcontext) -> *ALCdevice;
+
         pub fn alcOpenDevice(devicename: *ALCchar) -> *ALCdevice;
         pub fn alcCloseDevice(device: *ALCdevice) -> ALCboolean;
         pub fn alcGetError(device: *ALCdevice) -> ALCenum;
@@ -50,136 +104,106 @@ pub mod ffi {
     }
 }
 
-// TODO: not sure what types these are meant to be...
-pub static INVALID                              : ALCboolean = 0;
-pub static VERSION_0_1                          : ALCboolean = 1;
-
-pub static FALSE                                : ALCboolean = 0;
-pub static TRUE                                 : ALCboolean = 1;
-
-pub static FREQUENCY                            : ALCint = 0x1007;
-pub static REFRESH                              : ALCint = 0x1008;
-pub static SYNC                                 : ALCint = 0x1009;
-pub static MONO_SOURCES                         : ALCint = 0x1010;
-pub static STEREO_SOURCES                       : ALCint = 0x1011;
-
-pub static NO_ERROR                             : ALCenum = FALSE as ALCenum;
-pub static INVALID_DEVICE                       : ALCenum = 0xA001;
-pub static INVALID_CONTEXT                      : ALCenum = 0xA002;
-pub static INVALID_ENUM                         : ALCenum = 0xA003;
-pub static INVALID_VALUE                        : ALCenum = 0xA004;
-pub static OUT_OF_MEMORY                        : ALCenum = 0xA005;
-
-pub static DEFAULT_DEVICE_SPECIFIER             : ALCenum = 0x1004;
-pub static DEVICE_SPECIFIER                     : ALCenum = 0x1005;
-pub static EXTENSIONS                           : ALCenum = 0x1006;
-pub static MAJOR_VERSION                        : ALCenum = 0x1000;
-pub static MINOR_VERSION                        : ALCenum = 0x1001;
-pub static ATTRIBUTES_SIZE                      : ALCenum = 0x1002;
-pub static ALL_ATTRIBUTES                       : ALCenum = 0x1003;
-pub static DEFAULT_ALL_DEVICES_SPECIFIER        : ALCenum = 0x1012;
-pub static ALL_DEVICES_SPECIFIER                : ALCenum = 0x1013;
-pub static CAPTURE_DEVICE_SPECIFIER             : ALCenum = 0x310;
-pub static CAPTURE_DEFAULT_DEVICE_SPECIFIER     : ALCenum = 0x311;
-pub static CAPTURE_SAMPLES                      : ALCenum = 0x312;
-
-#[fixed_stack_segment]
-pub fn create_context(device: *ffi::ALCdevice, attr_list: &[ALCint]) -> *ffi::ALCcontext {
-    let attrs_terminated = vec::append_one(attr_list.to_owned(), 0);  // teminate attributes with a 0
-    unsafe { ffi::alcCreateContext(device, vec::raw::to_ptr(attrs_terminated)) }
+pub struct Context {
+    ptr: *ffi::ALCcontext,
 }
 
 #[fixed_stack_segment]
-pub fn make_context_current(context: *ffi::ALCcontext) -> bool {
-    unsafe { ffi::alcMakeContextCurrent(context) == TRUE }
+pub fn get_current_context() -> Context {
+    Context { ptr: unsafe { ffi::alcGetCurrentContext() } }
 }
 
-#[fixed_stack_segment]
-pub fn process_context(context: *ffi::ALCcontext) {
-    unsafe { ffi::alcProcessContext(context); }
+impl Context {
+    #[fixed_stack_segment]
+    pub fn make_current(&self) -> bool {
+        unsafe { ffi::alcMakeContextCurrent(self.ptr) == ffi::TRUE }
+    }
+
+    #[fixed_stack_segment]
+    pub fn process(&self) {
+        unsafe { ffi::alcProcessContext(self.ptr); }
+    }
+
+    #[fixed_stack_segment]
+    pub fn suspend(&self) {
+        unsafe { ffi::alcSuspendContext(self.ptr); }
+    }
+
+    #[fixed_stack_segment]
+    pub fn destroy(&self) {
+        unsafe { ffi::alcDestroyContext(self.ptr); }
+    }
+
+    #[fixed_stack_segment]
+    pub fn get_device(&self) -> Device {
+        Device { ptr: unsafe { ffi::alcGetContextsDevice(self.ptr) } }
+    }
 }
 
-#[fixed_stack_segment]
-pub fn suspend_context(context: *ffi::ALCcontext) {
-    unsafe { ffi::alcSuspendContext(context); }
+pub struct Device {
+    ptr: *ffi::ALCdevice,
 }
 
-#[fixed_stack_segment]
-pub fn destroy_context(context: *ffi::ALCcontext) {
-    unsafe { ffi::alcDestroyContext(context); }
+impl Device {
+    #[fixed_stack_segment]
+    pub fn open(devicename: &str) -> Device {
+        Device { ptr: unsafe { devicename.with_c_str(|c_str| ffi::alcOpenDevice(c_str)) } }
+    }
+
+    #[fixed_stack_segment]
+    pub fn close(&self) -> bool {
+        unsafe { ffi::alcCloseDevice(self.ptr) == ffi::TRUE }
+    }
+
+    #[fixed_stack_segment]
+    pub fn get_error(&self) -> ALCenum {
+        unsafe { ffi::alcGetError(self.ptr) }
+    }
+
+    #[fixed_stack_segment]
+    pub fn get_string(&self, param: ALCenum) -> ~str {
+        unsafe { str::raw::from_c_str(ffi::alcGetString(self.ptr, param)) }
+    }
+
+    // #[fixed_stack_segment]
+    // pub fn GetIntegerv(&self, param: ALCenum, size: ALCsizei, data: *ALCint) {
+    //     unsafe { ffi::alcGetIntegerv(); }
+    // }
+
+    #[fixed_stack_segment]
+    pub fn create_context(&self, attr_list: &[ALCint]) -> Context {
+        let attrs_terminated = vec::append_one(attr_list.to_owned(), 0);  // teminate attributes with a 0
+        Context { ptr: unsafe { ffi::alcCreateContext(self.ptr, vec::raw::to_ptr(attrs_terminated)) } }
+    }
 }
 
-#[fixed_stack_segment]
-pub fn get_current_context() -> *ffi::ALCcontext {
-    unsafe { ffi::alcGetCurrentContext() }
+pub struct CaptureDevice {
+    ptr: *ffi::ALCdevice,
 }
 
-#[fixed_stack_segment]
-pub fn get_contexts_device(context: *ffi::ALCcontext) -> *ffi::ALCdevice {
-    unsafe { ffi::alcGetContextsDevice(context) }
+impl CaptureDevice {
+    #[fixed_stack_segment]
+    pub fn open_device(devicename: &str, frequency: ALCuint, format: ALCenum, buffersize: ALCsizei) -> CaptureDevice {
+        CaptureDevice { ptr: unsafe { devicename.with_c_str(|c_str| ffi::alcCaptureOpenDevice(c_str, frequency, format, buffersize)) } }
+    }
+
+    #[fixed_stack_segment]
+    pub fn close_device(&self) -> bool {
+        unsafe { ffi::alcCaptureCloseDevice(self.ptr) == ffi::TRUE }
+    }
+
+    #[fixed_stack_segment]
+    pub fn start(&self) {
+        unsafe { ffi::alcCaptureStart(self.ptr); }
+    }
+
+    #[fixed_stack_segment]
+    pub fn stop(&self) {
+        unsafe { ffi::alcCaptureStop(self.ptr); }
+    }
+
+    // #[fixed_stack_segment]
+    // pub fn CaptureSamples(&self, buffer: *ALCvoid, samples: ALCsizei) {
+    //     unsafe { ffi::alcCaptureSamples(); }
+    // }
 }
-
-#[fixed_stack_segment]
-pub fn open_device(devicename: &str) -> *ffi::ALCdevice {
-    unsafe { devicename.with_c_str(|c_str| ffi::alcOpenDevice(c_str)) }
-}
-
-#[fixed_stack_segment]
-pub fn close_device(device: *ffi::ALCdevice) -> bool {
-    unsafe { ffi::alcCloseDevice(device) == TRUE }
-}
-
-#[fixed_stack_segment]
-pub fn get_error(device: *ffi::ALCdevice) -> ALCenum {
-    unsafe { ffi::alcGetError(device) }
-}
-
-#[fixed_stack_segment]
-pub fn is_extension_present(device: *ffi::ALCdevice, extname: &str) -> bool {
-    unsafe { extname.with_c_str(|c_str| ffi::alcIsExtensionPresent(device, c_str)) == TRUE }
-}
-
-#[fixed_stack_segment]
-pub fn get_proc_address(device: *ffi::ALCdevice, funcname: ~str) -> Option<extern "C" fn()> {
-    unsafe { funcname.with_c_str(|c_str| ffi::alcGetProcAddress(device, c_str)) }
-}
-
-#[fixed_stack_segment]
-pub fn get_enum_value(device: *ffi::ALCdevice, enumname: &str) -> ALCenum {
-    unsafe { enumname.with_c_str(|c_str| ffi::alcGetEnumValue(device, c_str)) }
-}
-
-#[fixed_stack_segment]
-pub fn get_string(device: *ffi::ALCdevice, param: ALCenum) -> ~str {
-    unsafe { str::raw::from_c_str(ffi::alcGetString(device, param)) }
-}
-
-// #[fixed_stack_segment]
-// pub fn GetIntegerv(device: *ffi::ALCdevice, param: ALCenum, size: ALCsizei, data: *ALCint) {
-//     unsafe { ffi::alcGetIntegerv(); }
-// }
-
-#[fixed_stack_segment]
-pub fn capture_open_device(devicename: *ALCchar, frequency: ALCuint, format: ALCenum, buffersize: ALCsizei) -> *ffi::ALCdevice {
-    unsafe { ffi::alcCaptureOpenDevice(devicename, frequency, format, buffersize) }
-}
-
-#[fixed_stack_segment]
-pub fn capture_close_device(device: *ffi::ALCdevice) -> bool {
-    unsafe { ffi::alcCaptureCloseDevice(device) == TRUE }
-}
-
-#[fixed_stack_segment]
-pub fn capture_start(device: *ffi::ALCdevice) {
-    unsafe { ffi::alcCaptureStart(device); }
-}
-
-#[fixed_stack_segment]
-pub fn capture_stop(device: *ffi::ALCdevice) {
-    unsafe { ffi::alcCaptureStop(device); }
-}
-
-// #[fixed_stack_segment]
-// pub fn CaptureSamples(device: *ffi::ALCdevice, buffer: *ALCvoid, samples: ALCsizei) {
-//     unsafe { ffi::alcCaptureSamples(); }
-// }

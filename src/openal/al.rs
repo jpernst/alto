@@ -15,7 +15,6 @@
 
 use std::cast;
 use std::fmt;
-use std::ptr::to_unsafe_ptr;
 use std::str;
 use std::sys;
 use std::vec;
@@ -140,10 +139,10 @@ pub mod ffi {
         pub fn alDisable(capability: ALenum);
         pub fn alIsEnabled(capability: ALenum) -> ALboolean;
         pub fn alGetString(param: ALenum) -> *ALchar;
-        pub fn alGetBooleanv(param: ALenum, data: *ALboolean);
-        pub fn alGetIntegerv(param: ALenum, data: *ALint);
-        pub fn alGetFloatv(param: ALenum, data: *ALfloat);
-        pub fn alGetDoublev(param: ALenum, data: *ALdouble);
+        pub fn alGetBooleanv(param: ALenum, data: *mut ALboolean);
+        pub fn alGetIntegerv(param: ALenum, data: *mut ALint);
+        pub fn alGetFloatv(param: ALenum, data: *mut ALfloat);
+        pub fn alGetDoublev(param: ALenum, data: *mut ALdouble);
         pub fn alGetBoolean(param: ALenum) -> ALboolean;
         pub fn alGetInteger(param: ALenum) -> ALint;
         pub fn alGetFloat(param: ALenum) -> ALfloat;
@@ -159,13 +158,13 @@ pub mod ffi {
         pub fn alListeneri(param: ALenum, value: ALint);
         pub fn alListener3i(param: ALenum, value1: ALint, value2: ALint, value3: ALint);
         pub fn alListeneriv(param: ALenum, values: *ALint);
-        pub fn alGetListenerf(param: ALenum, value: *ALfloat);
-        pub fn alGetListener3f(param: ALenum, value1: *ALfloat, value2: *ALfloat, value3: *ALfloat);
-        pub fn alGetListenerfv(param: ALenum, values: *ALfloat);
-        pub fn alGetListeneri(param: ALenum, value: *ALint);
-        pub fn alGetListener3i(param: ALenum, value1: *ALint, value2: *ALint, value3: *ALint);
-        pub fn alGetListeneriv(param: ALenum, values: *ALint);
-        pub fn alGenSources(n: ALsizei, sources: *ALuint);
+        pub fn alGetListenerf(param: ALenum, value: *mut ALfloat);
+        pub fn alGetListener3f(param: ALenum, value1: *mut ALfloat, value2: *mut ALfloat, value3: *mut ALfloat);
+        pub fn alGetListenerfv(param: ALenum, values: *mut ALfloat);
+        pub fn alGetListeneri(param: ALenum, value: *mut ALint);
+        pub fn alGetListener3i(param: ALenum, value1: *mut ALint, value2: *mut ALint, value3: *mut ALint);
+        pub fn alGetListeneriv(param: ALenum, values: *mut ALint);
+        pub fn alGenSources(n: ALsizei, sources: *mut ALuint);
         pub fn alDeleteSources(n: ALsizei, sources: *ALuint);
         pub fn alIsSource(sid: ALuint) -> ALboolean;
         pub fn alSourcef(sid: ALuint, param: ALenum, value: ALfloat);
@@ -174,12 +173,12 @@ pub mod ffi {
         pub fn alSourcei(sid: ALuint, param: ALenum, value: ALint);
         pub fn alSource3i(sid: ALuint, param: ALenum, value1: ALint, value2: ALint, value3: ALint);
         pub fn alSourceiv(sid: ALuint, param: ALenum, values: *ALint);
-        pub fn alGetSourcef(sid: ALuint, param: ALenum, value: *ALfloat);
-        pub fn alGetSource3f(sid: ALuint, param: ALenum, value1: *ALfloat, value2: *ALfloat, value3: *ALfloat);
-        pub fn alGetSourcefv(sid: ALuint, param: ALenum, values: *ALfloat);
-        pub fn alGetSourcei(sid: ALuint,  param: ALenum, value: *ALint);
-        pub fn alGetSource3i(sid: ALuint, param: ALenum, value1: *ALint, value2: *ALint, value3: *ALint);
-        pub fn alGetSourceiv(sid: ALuint,  param: ALenum, values: *ALint);
+        pub fn alGetSourcef(sid: ALuint, param: ALenum, value: *mut ALfloat);
+        pub fn alGetSource3f(sid: ALuint, param: ALenum, value1: *mut ALfloat, value2: *mut ALfloat, value3: *mut ALfloat);
+        pub fn alGetSourcefv(sid: ALuint, param: ALenum, values: *mut ALfloat);
+        pub fn alGetSourcei(sid: ALuint,  param: ALenum, value: *mut ALint);
+        pub fn alGetSource3i(sid: ALuint, param: ALenum, value1: *mut ALint, value2: *mut ALint, value3: *mut ALint);
+        pub fn alGetSourceiv(sid: ALuint,  param: ALenum, values: *mut ALint);
         pub fn alSourcePlayv(ns: ALsizei, sids: *ALuint);
         pub fn alSourceStopv(ns: ALsizei, sids: *ALuint);
         pub fn alSourceRewindv(ns: ALsizei, sids: *ALuint);
@@ -190,7 +189,7 @@ pub mod ffi {
         pub fn alSourcePause(sid: ALuint);
         pub fn alSourceQueueBuffers(sid: ALuint, numEntries: ALsizei, bids: *ALuint);
         pub fn alSourceUnqueueBuffers(sid: ALuint, numEntries: ALsizei, bids: *ALuint);
-        pub fn alGenBuffers(n: ALsizei, buffers: *ALuint);
+        pub fn alGenBuffers(n: ALsizei, buffers: *mut ALuint);
         pub fn alDeleteBuffers(n: ALsizei, buffers: *ALuint);
         pub fn alIsBuffer(bid: ALuint) -> ALboolean;
         pub fn alBufferData(bid: ALuint, format: ALenum, data: *ALvoid, size: ALsizei, freq: ALsizei);
@@ -200,22 +199,17 @@ pub mod ffi {
         pub fn alBufferi(bid: ALuint, param: ALenum, value: ALint);
         pub fn alBuffer3i(bid: ALuint, param: ALenum, value1: ALint, value2: ALint, value3: ALint);
         pub fn alBufferiv(bid: ALuint, param: ALenum, values: *ALint);
-        pub fn alGetBufferf(bid: ALuint, param: ALenum, value: *ALfloat);
-        pub fn alGetBuffer3f(bid: ALuint, param: ALenum, value1: *ALfloat, value2: *ALfloat, value3: *ALfloat);
-        pub fn alGetBufferfv(bid: ALuint, param: ALenum, values: *ALfloat);
-        pub fn alGetBufferi(bid: ALuint, param: ALenum, value: *ALint);
-        pub fn alGetBuffer3i(bid: ALuint, param: ALenum, value1: *ALint, value2: *ALint, value3: *ALint);
-        pub fn alGetBufferiv(bid: ALuint, param: ALenum, values: *ALint);
+        pub fn alGetBufferf(bid: ALuint, param: ALenum, value: *mut ALfloat);
+        pub fn alGetBuffer3f(bid: ALuint, param: ALenum, value1: *mut ALfloat, value2: *mut ALfloat, value3: *mut ALfloat);
+        pub fn alGetBufferfv(bid: ALuint, param: ALenum, values: *mut ALfloat);
+        pub fn alGetBufferi(bid: ALuint, param: ALenum, value: *mut ALint);
+        pub fn alGetBuffer3i(bid: ALuint, param: ALenum, value1: *mut ALint, value2: *mut ALint, value3: *mut ALint);
+        pub fn alGetBufferiv(bid: ALuint, param: ALenum, values: *mut ALint);
         pub fn alDopplerFactor(value: ALfloat);
         pub fn alDopplerVelocity(value: ALfloat);
         pub fn alSpeedOfSound(value: ALfloat);
         pub fn alDistanceModel(value: ALenum);
     }
-}
-
-#[inline]
-unsafe fn vec_to_ptr<T, U>(v: &[T]) -> *U {
-    cast::transmute(vec::raw::to_ptr(v))
 }
 
 #[fixed_stack_segment]
@@ -340,7 +334,7 @@ impl fmt::Default for Error {
 /// Functions for setting and retrieving the properties of the listener. One
 /// listener is implied for each context.
 pub mod listener {
-    use std::ptr::to_unsafe_ptr;
+    use std::cast;
     use super::ffi;
     use super::types::*;
 
@@ -348,8 +342,8 @@ pub mod listener {
     #[fixed_stack_segment]
     pub fn get_gain() -> ALfloat {
         unsafe {
-            let value = 0.0;
-            ffi::alGetListenerf(ffi::GAIN, to_unsafe_ptr(&value));
+            let mut value = 0.0;
+            ffi::alGetListenerf(ffi::GAIN, &mut value);
             value
         }
     }
@@ -364,8 +358,8 @@ pub mod listener {
     #[fixed_stack_segment]
     pub fn get_position() -> [ALfloat, ..3] {
         unsafe {
-            let values = [0.0, ..3];
-            ffi::alGetListenerfv(ffi::GAIN, to_unsafe_ptr(&values[0]));
+            let mut values = [0.0, ..3];
+            ffi::alGetListenerfv(ffi::GAIN, &mut values[0]);
             values
         }
     }
@@ -373,15 +367,15 @@ pub mod listener {
     /// Set the position of the listener.
     #[fixed_stack_segment]
     pub fn set_position(values: [ALfloat, ..3]) {
-        unsafe { ffi::alListenerfv(ffi::POSITION, to_unsafe_ptr(&values[0])); }
+        unsafe { ffi::alListenerfv(ffi::POSITION, &values[0]); }
     }
 
     // The velocity vector.
     #[fixed_stack_segment]
     pub fn get_velocity() -> [ALfloat, ..3] {
         unsafe {
-            let values = [0.0, ..3];
-            ffi::alGetListenerfv(ffi::VELOCITY, to_unsafe_ptr(&values[0]));
+            let mut values = [0.0, ..3];
+            ffi::alGetListenerfv(ffi::VELOCITY, &mut values[0]);
             values
         }
     }
@@ -389,15 +383,15 @@ pub mod listener {
     /// Set the velocity vector.
     #[fixed_stack_segment]
     pub fn set_velocity(values: [ALfloat, ..3]) {
-        unsafe { ffi::alListenerfv(ffi::VELOCITY, to_unsafe_ptr(&values[0])); }
+        unsafe { ffi::alListenerfv(ffi::VELOCITY, &values[0]); }
     }
 
     // The orientation of the listener, expressed as 'at' and 'up' vectors.
     #[fixed_stack_segment]
     pub fn get_orientation() -> ([ALfloat, ..3], [ALfloat, ..3]) {
         unsafe {
-            let values = ([0.0, ..3], [0.0, ..3]);
-            ffi::alGetListenerfv(ffi::ORIENTATION, to_unsafe_ptr(&values.first_ref()[0]));
+            let mut values = ([0.0, ..3], [0.0, ..3]);
+            ffi::alGetListenerfv(ffi::ORIENTATION, cast::transmute(&mut values));
             values
         }
     }
@@ -407,7 +401,7 @@ pub mod listener {
     pub fn set_orientation(at: [ALfloat, ..3], up: [ALfloat, ..3]) {
         unsafe {
             let values = (at, up);
-            ffi::alListenerfv(ffi::ORIENTATION, to_unsafe_ptr(&values.first_ref()[0]));
+            ffi::alListenerfv(ffi::ORIENTATION, cast::transmute(&values));
         }
     }
 }
@@ -422,15 +416,15 @@ pub struct Source {
 #[fixed_stack_segment]
 pub fn gen_sources(n: uint) -> ~[Source] {
     unsafe {
-        let sources = vec::from_elem(n, Source::null());
-        ffi::alGenSources(n as ALsizei, vec_to_ptr(sources));
+        let mut sources = vec::from_elem(n, Source::null());
+        ffi::alGenSources(n as ALsizei, &mut sources[0].id);
         sources
     }
 }
 
 #[fixed_stack_segment]
 pub fn delete_sources(sources: &[Source]) {
-    unsafe { ffi::alDeleteSources(sources.len() as ALsizei, vec_to_ptr(sources)); }
+    unsafe { ffi::alDeleteSources(sources.len() as ALsizei, &sources[0].id); }
 }
 
 #[deriving(Eq)]
@@ -442,18 +436,18 @@ pub enum SourceType {
 
 macro_rules! get_source(
     (fv, $param:expr, $n:expr) => ({
-        let values = [0.0, ..$n];
-        ffi::alGetSourcef(self.id, $param, to_unsafe_ptr(&values[0]));
+        let mut values = [0.0, ..$n];
+        ffi::alGetSourcef(self.id, $param, &mut values[0]);
         values
     });
     (f, $param:expr) => ({
-        let value = 0.0;
-        ffi::alGetSourcef(self.id, $param, to_unsafe_ptr(&value));
+        let mut value = 0.0;
+        ffi::alGetSourcef(self.id, $param, &mut value);
         value
     });
     (i, $param:expr) => ({
-        let value = 0;
-        ffi::alGetSourcei(self.id, $param, to_unsafe_ptr(&value));
+        let mut value = 0;
+        ffi::alGetSourcei(self.id, $param, &mut value);
         value
     });
 )
@@ -470,8 +464,8 @@ impl Source {
     #[fixed_stack_segment]
     pub fn gen() -> Source {
         unsafe {
-            let source = Source::null();
-            ffi::alGenSources(1, to_unsafe_ptr(&source.id));
+            let mut source = Source::null();
+            ffi::alGenSources(1, &mut source.id);
             source
         }
     }
@@ -479,7 +473,7 @@ impl Source {
     /// Delete the source.
     #[fixed_stack_segment]
     pub fn delete(&self) {
-        unsafe { ffi::alDeleteSources(1, to_unsafe_ptr(&self.id)); }
+        unsafe { ffi::alDeleteSources(1, &self.id); }
     }
 
     /// Play the buffers attached to the source.
@@ -533,25 +527,25 @@ impl Source {
     /// Queue a single buffer on the source.
     #[fixed_stack_segment]
     pub fn queue_buffer(&self, buffer: &Buffer) {
-        unsafe { ffi::alSourceQueueBuffers(self.id, 1, to_unsafe_ptr(&buffer.id)); }
+        unsafe { ffi::alSourceQueueBuffers(self.id, 1, &buffer.id); }
     }
 
     /// Queue the buffers on the source to be played in sequence.
     #[fixed_stack_segment]
     pub fn queue_buffers(&self, buffers: &[Buffer]) {
-        unsafe { ffi::alSourceQueueBuffers(self.id, buffers.len() as ALsizei, vec_to_ptr(buffers)); }
+        unsafe { ffi::alSourceQueueBuffers(self.id, buffers.len() as ALsizei, &buffers[0].id); }
     }
 
     /// Remove a single buffer from the queue.
     #[fixed_stack_segment]
     pub fn unqueue_buffer(&self, buffer: &Buffer) {
-        unsafe { ffi::alSourceUnqueueBuffers(self.id, 1, to_unsafe_ptr(&buffer.id)); }
+        unsafe { ffi::alSourceUnqueueBuffers(self.id, 1, &buffer.id); }
     }
 
     /// Remove a set of buffers from the queue.
     #[fixed_stack_segment]
     pub fn unqueue_buffers(&self, buffers: &[Buffer]) {
-        unsafe { ffi::alSourceUnqueueBuffers(self.id, buffers.len() as ALsizei, vec_to_ptr(buffers)); }
+        unsafe { ffi::alSourceUnqueueBuffers(self.id, buffers.len() as ALsizei, &buffers[0].id); }
     }
 
     // The number of buffers queued on this source.
@@ -697,7 +691,7 @@ impl Source {
     /// Set the position of the source.
     #[fixed_stack_segment]
     pub fn set_position(&self, values: [ALfloat, ..3]) {
-        unsafe { ffi::alSourcefv(self.id, ffi::POSITION, to_unsafe_ptr(&values[0])); }
+        unsafe { ffi::alSourcefv(self.id, ffi::POSITION, &values[0]); }
     }
 
     // The velocity vector of the source.
@@ -709,7 +703,7 @@ impl Source {
     /// Set the velocity vector of the source.
     #[fixed_stack_segment]
     pub fn set_velocity(&self, values: [ALfloat, ..3]) {
-        unsafe { ffi::alSourcefv(self.id, ffi::VELOCITY, to_unsafe_ptr(&values[0])); }
+        unsafe { ffi::alSourcefv(self.id, ffi::VELOCITY, &values[0]); }
     }
 
     // The direction vector of the source.
@@ -721,7 +715,7 @@ impl Source {
     /// Set the direction vector of the source.
     #[fixed_stack_segment]
     pub fn set_direction(&self, values: [ALfloat, ..3]) {
-        unsafe { ffi::alSourcefv(self.id, ffi::DIRECTION, to_unsafe_ptr(&values[0])); }
+        unsafe { ffi::alSourcefv(self.id, ffi::DIRECTION, &values[0]); }
     }
 
     // Returns `true` if the positions are relative to the listener.
@@ -811,22 +805,22 @@ impl Source {
 
 #[fixed_stack_segment]
 pub fn play_sources(sources: &[Source]) {
-    unsafe { ffi::alSourcePlayv(sources.len() as ALsizei, vec_to_ptr(sources)); }
+    unsafe { ffi::alSourcePlayv(sources.len() as ALsizei, &sources[0].id); }
 }
 
 #[fixed_stack_segment]
 pub fn stop_sources(sources: &[Source]) {
-    unsafe { ffi::alSourceStopv(sources.len() as ALsizei, vec_to_ptr(sources)); }
+    unsafe { ffi::alSourceStopv(sources.len() as ALsizei, &sources[0].id); }
 }
 
 #[fixed_stack_segment]
 pub fn rewind_sources(sources: &[Source]) {
-    unsafe { ffi::alSourceRewindv(sources.len() as ALsizei, vec_to_ptr(sources)); }
+    unsafe { ffi::alSourceRewindv(sources.len() as ALsizei, &sources[0].id); }
 }
 
 #[fixed_stack_segment]
 pub fn pause_sources(sources: &[Source]) {
-    unsafe { ffi::alSourcePausev(sources.len() as ALsizei, vec_to_ptr(sources)); }
+    unsafe { ffi::alSourcePausev(sources.len() as ALsizei, &sources[0].id); }
 }
 
 /// A reference to a buffer object
@@ -839,8 +833,8 @@ pub struct Buffer {
 #[fixed_stack_segment]
 pub fn gen_buffers(n: uint) -> ~[Buffer] {
     unsafe {
-        let buffers = vec::from_elem(n, Buffer::null());
-        ffi::alGenBuffers(n as ALsizei, vec_to_ptr(buffers));
+        let mut buffers = vec::from_elem(n, Buffer::null());
+        ffi::alGenBuffers(n as ALsizei, &mut buffers[0].id);
         buffers
     }
 }
@@ -849,7 +843,7 @@ pub fn gen_buffers(n: uint) -> ~[Buffer] {
 /// currently in use by a source cannot be deleted.
 #[fixed_stack_segment]
 pub fn delete_buffers(buffers: &[Buffer]) {
-    unsafe { ffi::alDeleteBuffers(buffers.len() as ALsizei, vec_to_ptr(buffers)); }
+    unsafe { ffi::alDeleteBuffers(buffers.len() as ALsizei, &buffers[0].id); }
 }
 
 #[deriving(Eq)]
@@ -872,8 +866,8 @@ impl Buffer {
     #[fixed_stack_segment]
     pub fn gen() -> Buffer {
         unsafe {
-            let buffer = Buffer::null();
-            ffi::alGenBuffers(1, to_unsafe_ptr(&buffer.id));
+            let mut buffer = Buffer::null();
+            ffi::alGenBuffers(1, &mut buffer.id);
             buffer
         }
     }
@@ -882,14 +876,14 @@ impl Buffer {
     /// currently in use by a source cannot be deleted.
     #[fixed_stack_segment]
     pub fn delete(&self) {
-        unsafe { ffi::alDeleteBuffers(1, to_unsafe_ptr(&self.id)); }
+        unsafe { ffi::alDeleteBuffers(1, &self.id); }
     }
 
     /// Fill the buffer with PCM audio data.
     #[fixed_stack_segment]
     pub unsafe fn buffer_data<T>(&self, format: Format, data: &[T], freq: ALsizei) {
         ffi::alBufferData(
-            self.id, format as ALenum, vec_to_ptr(data),
+            self.id, format as ALenum, cast::transmute(&data[0]),
             (sys::size_of::<T>() * data.len()) as ALsizei,
             freq
         );
@@ -899,8 +893,8 @@ impl Buffer {
     #[fixed_stack_segment]
     pub fn get_frequency(&self) -> ALint {
         unsafe {
-            let value = 0;
-            ffi::alGetBufferi(self.id, ffi::FREQUENCY, to_unsafe_ptr(&value));
+            let mut value = 0;
+            ffi::alGetBufferi(self.id, ffi::FREQUENCY, &mut value);
             value
         }
     }
@@ -909,8 +903,8 @@ impl Buffer {
     #[fixed_stack_segment]
     pub fn get_bits(&self) -> ALint {
         unsafe {
-            let value = 0;
-            ffi::alGetBufferi(self.id, ffi::BITS, to_unsafe_ptr(&value));
+            let mut value = 0;
+            ffi::alGetBufferi(self.id, ffi::BITS, &mut value);
             value
         }
     }
@@ -919,8 +913,8 @@ impl Buffer {
     #[fixed_stack_segment]
     pub fn get_channels(&self) -> ALint {
         unsafe {
-            let value = 0;
-            ffi::alGetBufferi(self.id, ffi::CHANNELS, to_unsafe_ptr(&value));
+            let mut value = 0;
+            ffi::alGetBufferi(self.id, ffi::CHANNELS, &mut value);
             value
         }
     }
@@ -929,8 +923,8 @@ impl Buffer {
     #[fixed_stack_segment]
     pub fn get_size(&self) -> ALint {
         unsafe {
-            let value = 0;
-            ffi::alGetBufferi(self.id, ffi::SIZE, to_unsafe_ptr(&value));
+            let mut value = 0;
+            ffi::alGetBufferi(self.id, ffi::SIZE, &mut value);
             value
         }
     }

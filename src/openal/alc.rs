@@ -95,7 +95,7 @@ pub mod ffi {
         pub fn alcGetProcAddress(device: *ALCdevice, funcname: *ALCchar) -> Option<extern "C" fn()>;
         pub fn alcGetEnumValue(device: *ALCdevice, enumname: *ALCchar) -> ALCenum;
         pub fn alcGetString(device: *ALCdevice, param: ALCenum) -> *ALCchar;
-        pub fn alcGetIntegerv(device: *ALCdevice, param: ALCenum, size: ALCsizei, data: *ALCint);
+        pub fn alcGetIntegerv(device: *ALCdevice, param: ALCenum, size: ALCsizei, data: *mut ALCint);
         pub fn alcCaptureOpenDevice(devicename: *ALCchar, frequency: ALCuint, format: ALCenum, buffersize: ALCsizei) -> *ALCdevice;
         pub fn alcCaptureCloseDevice(device: *ALCdevice) -> ALCboolean;
         pub fn alcCaptureStart(device: *ALCdevice);

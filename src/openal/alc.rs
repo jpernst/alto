@@ -105,13 +105,13 @@ pub mod ffi {
 }
 
 pub struct Context {
-    ptr: *ffi::ALCcontext,
+    priv ptr: *ffi::ALCcontext,
 }
 
-#[fixed_stack_segment]
-pub fn get_current_context() -> Context {
-    Context { ptr: unsafe { ffi::alcGetCurrentContext() } }
-}
+// #[fixed_stack_segment]
+// pub fn get_current_context() -> Context {
+//     Context { ptr: unsafe { ffi::alcGetCurrentContext() } }
+// }
 
 impl Context {
     #[fixed_stack_segment]
@@ -130,29 +130,46 @@ impl Context {
     }
 
     #[fixed_stack_segment]
-    pub fn destroy(&self) {
-        unsafe { ffi::alcDestroyContext(self.ptr); }
-    }
+    pub fn destroy(self) {}
+
+    // #[fixed_stack_segment]
+    // pub fn get_device(&self) -> Device {
+    //     Device { ptr: unsafe { ffi::alcGetContextsDevice(self.ptr) } }
+    // }
 
     #[fixed_stack_segment]
-    pub fn get_device(&self) -> Device {
-        Device { ptr: unsafe { ffi::alcGetContextsDevice(self.ptr) } }
+    pub fn is_current(&self) -> bool {
+        unsafe { ffi::alcGetCurrentContext() == self.ptr }
+    }
+}
+
+impl Drop for Context {
+    #[fixed_stack_segment]
+    fn drop(&mut self) {
+        unsafe { ffi::alcDestroyContext(self.ptr); }
     }
 }
 
 pub struct Device {
-    ptr: *ffi::ALCdevice,
+    priv ptr: *ffi::ALCdevice,
 }
 
 impl Device {
     #[fixed_stack_segment]
-    pub fn open(devicename: &str) -> Device {
-        Device { ptr: unsafe { devicename.with_c_str(|c_str| ffi::alcOpenDevice(c_str)) } }
+    pub fn open(devicename: &str) -> Option<Device> {
+        let ptr = unsafe { devicename.with_c_str(|c_str| ffi::alcOpenDevice(c_str)) };
+        if ptr.is_null() { None }
+        else { Some(Device { ptr: ptr  }) }
     }
 
+    /// Closes the device.
+    ///
+    /// The device will not be closed if it contains any contexts or buffers.
+    /// If this is the case, the device will be returned again, wrapped in `Err`.
     #[fixed_stack_segment]
-    pub fn close(&self) -> bool {
-        unsafe { ffi::alcCloseDevice(self.ptr) == ffi::TRUE }
+    pub fn close(self) -> Result<(), Device> {
+        if unsafe { ffi::alcCloseDevice(self.ptr) == ffi::TRUE } { Ok(()) }
+        else { Err(self) }
     }
 
     #[fixed_stack_segment]
@@ -171,25 +188,33 @@ impl Device {
     // }
 
     #[fixed_stack_segment]
-    pub fn create_context(&self, attr_list: &[ALCint]) -> Context {
+    pub fn create_context(&self, attr_list: &[ALCint]) -> Option<Context> {
         let attrs_terminated = vec::append_one(attr_list.to_owned(), 0);  // teminate attributes with a 0
-        Context { ptr: unsafe { ffi::alcCreateContext(self.ptr, vec::raw::to_ptr(attrs_terminated)) } }
+        let ptr = unsafe { ffi::alcCreateContext(self.ptr, vec::raw::to_ptr(attrs_terminated)) };
+        if ptr.is_null() { None }
+        else { Some(Context { ptr: ptr  }) }
     }
 }
 
 pub struct CaptureDevice {
-    ptr: *ffi::ALCdevice,
+    priv ptr: *ffi::ALCdevice,
 }
 
 impl CaptureDevice {
     #[fixed_stack_segment]
-    pub fn open_device(devicename: &str, frequency: ALCuint, format: ALCenum, buffersize: ALCsizei) -> CaptureDevice {
-        CaptureDevice { ptr: unsafe { devicename.with_c_str(|c_str| ffi::alcCaptureOpenDevice(c_str, frequency, format, buffersize)) } }
+    pub fn open(devicename: &str, frequency: ALCuint, format: ALCenum, buffersize: ALCsizei) -> Option<CaptureDevice> {
+        let ptr = unsafe { devicename.with_c_str(|c_str| ffi::alcCaptureOpenDevice(c_str, frequency, format, buffersize)) };
+        if ptr.is_null() { None }
+        else { Some(CaptureDevice { ptr: ptr  }) }
     }
 
+    /// Closes the capture device.
+    ///
+    /// If an error occurs, the device will be returned again, wrapped in `Err`.
     #[fixed_stack_segment]
-    pub fn close_device(&self) -> bool {
-        unsafe { ffi::alcCaptureCloseDevice(self.ptr) == ffi::TRUE }
+    pub fn close(self) -> Result<(), CaptureDevice> {
+        if unsafe { ffi::alcCaptureCloseDevice(self.ptr) == ffi::TRUE } { Ok(()) }
+        else { Err(self) }
     }
 
     #[fixed_stack_segment]

@@ -407,7 +407,6 @@ pub mod listener {
 }
 
 /// A reference to a source object
-#[deriving(Clone, Eq)]
 pub struct Source {
     id: ALuint,
 }
@@ -416,15 +415,23 @@ pub struct Source {
 #[fixed_stack_segment]
 pub fn gen_sources(n: uint) -> ~[Source] {
     unsafe {
-        let mut sources = vec::from_elem(n, Source::null());
-        ffi::alGenSources(n as ALsizei, &mut sources[0].id);
+        let mut sources = ~[];
+        sources.reserve(n);
+        ffi::alGenSources(n as ALsizei, cast::transmute(vec::raw::to_mut_ptr(sources)));
+        vec::raw::set_len(&mut sources, n);
         sources
     }
 }
 
+/// Delete the sources.
+///
+/// If an error occurs, the sources will not be deleted. The error can be
+/// detected using `get_error`. An individual source may be deleted if it is
+/// currently playing. In this case it will be stopped, then destroyed.
 #[fixed_stack_segment]
-pub fn delete_sources(sources: &[Source]) {
-    unsafe { ffi::alDeleteSources(sources.len() as ALsizei, &sources[0].id); }
+pub fn delete_sources(sources: ~[Source]) {
+    let _ = sources;
+    // unsafe { ffi::alDeleteSources(sources.len() as ALsizei, &sources[0].id); }
 }
 
 #[deriving(Eq)]
@@ -453,28 +460,22 @@ macro_rules! get_source(
 )
 
 impl Source {
-    /// An uninitialised source object. Any operation performed on this
-    /// object will generate an error.
-    #[inline]
-    fn null() -> Source {
-        Source { id: 0 }
-    }
-
     /// Generate a single source object.
     #[fixed_stack_segment]
     pub fn gen() -> Source {
         unsafe {
-            let mut source = Source::null();
-            ffi::alGenSources(1, &mut source.id);
-            source
+            let mut id = 0;
+            ffi::alGenSources(1, &mut id);
+            Source { id: id }
         }
     }
 
     /// Delete the source.
-    #[fixed_stack_segment]
-    pub fn delete(&self) {
-        unsafe { ffi::alDeleteSources(1, &self.id); }
-    }
+    ///
+    /// If an error occurs, the source will not be deleted. The error can be
+    /// detected using `get_error`. The source may be deleted if it is
+    /// currently playing. In this case it will be stopped, then destroyed.
+    pub fn delete(self) {}
 
     /// Play the buffers attached to the source.
     #[fixed_stack_segment]
@@ -803,28 +804,39 @@ impl Source {
     }
 }
 
+impl Drop for Source {
+    /// Delete the source.
+    ///
+    /// If an error occurs, the source will not be deleted. The error can be
+    /// detected using `get_error`. The source may be deleted if it is
+    /// currently playing. In this case it will be stopped, then destroyed.
+    #[fixed_stack_segment]
+    fn drop(&mut self) {
+        unsafe { ffi::alDeleteSources(1, &self.id); }
+    }
+}
+
 #[fixed_stack_segment]
 pub fn play_sources(sources: &[Source]) {
-    unsafe { ffi::alSourcePlayv(sources.len() as ALsizei, &sources[0].id); }
+    unsafe { ffi::alSourcePlayv(sources.len() as ALsizei, vec::raw::to_ptr(sources) as *ALuint); }
 }
 
 #[fixed_stack_segment]
 pub fn stop_sources(sources: &[Source]) {
-    unsafe { ffi::alSourceStopv(sources.len() as ALsizei, &sources[0].id); }
+    unsafe { ffi::alSourceStopv(sources.len() as ALsizei, vec::raw::to_ptr(sources) as *ALuint); }
 }
 
 #[fixed_stack_segment]
 pub fn rewind_sources(sources: &[Source]) {
-    unsafe { ffi::alSourceRewindv(sources.len() as ALsizei, &sources[0].id); }
+    unsafe { ffi::alSourceRewindv(sources.len() as ALsizei, vec::raw::to_ptr(sources) as *ALuint); }
 }
 
 #[fixed_stack_segment]
 pub fn pause_sources(sources: &[Source]) {
-    unsafe { ffi::alSourcePausev(sources.len() as ALsizei, &sources[0].id); }
+    unsafe { ffi::alSourcePausev(sources.len() as ALsizei, vec::raw::to_ptr(sources) as *ALuint); }
 }
 
 /// A reference to a buffer object
-#[deriving(Clone, Eq)]
 pub struct Buffer {
     id: ALuint,
 }
@@ -833,8 +845,10 @@ pub struct Buffer {
 #[fixed_stack_segment]
 pub fn gen_buffers(n: uint) -> ~[Buffer] {
     unsafe {
-        let mut buffers = vec::from_elem(n, Buffer::null());
-        ffi::alGenBuffers(n as ALsizei, &mut buffers[0].id);
+        let mut buffers = ~[];
+        buffers.reserve(n);
+        ffi::alGenBuffers(n as ALsizei, cast::transmute(vec::raw::to_mut_ptr(buffers)));
+        vec::raw::set_len(&mut buffers, n);
         buffers
     }
 }
@@ -842,8 +856,9 @@ pub fn gen_buffers(n: uint) -> ~[Buffer] {
 /// Delete the buffers and free the resources they use. Buffers that are
 /// currently in use by a source cannot be deleted.
 #[fixed_stack_segment]
-pub fn delete_buffers(buffers: &[Buffer]) {
-    unsafe { ffi::alDeleteBuffers(buffers.len() as ALsizei, &buffers[0].id); }
+pub fn delete_buffers(buffers: ~[Buffer]) {
+    let _ = buffers;
+    // unsafe { ffi::alDeleteBuffers(buffers.len() as ALsizei, &buffers[0].id); }
 }
 
 #[deriving(Eq)]
@@ -855,35 +870,26 @@ pub enum Format {
 }
 
 impl Buffer {
-    /// An uninitialised buffer object. Any operation performed on this
-    /// object will generate an error.
-    #[inline]
-    fn null() -> Buffer {
-        Buffer { id: 0 }
-    }
-
     /// Generate a single buffer object.
     #[fixed_stack_segment]
     pub fn gen() -> Buffer {
         unsafe {
-            let mut buffer = Buffer::null();
-            ffi::alGenBuffers(1, &mut buffer.id);
-            buffer
+            let mut id = 0;
+            ffi::alGenBuffers(1, &mut id);
+            Buffer { id: id }
         }
     }
 
     /// Delete the buffer and free the resources it uses. Buffers that are
     /// currently in use by a source cannot be deleted.
     #[fixed_stack_segment]
-    pub fn delete(&self) {
-        unsafe { ffi::alDeleteBuffers(1, &self.id); }
-    }
+    pub fn delete(self) {}
 
     /// Fill the buffer with PCM audio data.
     #[fixed_stack_segment]
     pub unsafe fn buffer_data<T>(&self, format: Format, data: &[T], freq: ALsizei) {
         ffi::alBufferData(
-            self.id, format as ALenum, cast::transmute(&data[0]),
+            self.id, format as ALenum, vec::raw::to_ptr(data) as *ALvoid,
             (sys::size_of::<T>() * data.len()) as ALsizei,
             freq
         );
@@ -927,5 +933,14 @@ impl Buffer {
             ffi::alGetBufferi(self.id, ffi::SIZE, &mut value);
             value
         }
+    }
+}
+
+impl Drop for Buffer {
+    /// Delete the buffer and free the resources it uses. Buffers that are
+    /// currently in use by a source cannot be deleted.
+    #[fixed_stack_segment]
+    fn drop(&mut self) {
+        unsafe { ffi::alDeleteBuffers(1, &self.id); }
     }
 }

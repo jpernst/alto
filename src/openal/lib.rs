@@ -7,6 +7,9 @@
 #[comment = "OpenAL 1.1 bindings for Rust."];
 #[crate_type = "lib"];
 
+#[feature(macro_rules)];
+#[feature(globs)];
+
 pub mod al;
 pub mod alc;
 

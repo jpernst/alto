@@ -15,8 +15,8 @@
 
 use std::cast;
 use std::fmt;
+use std::mem;
 use std::str;
-use std::sys;
 use std::vec;
 
 pub use self::types::*;
@@ -890,7 +890,7 @@ impl Buffer {
     pub unsafe fn buffer_data<T>(&self, format: Format, data: &[T], freq: ALsizei) {
         ffi::alBufferData(
             self.id, format as ALenum, vec::raw::to_ptr(data) as *ALvoid,
-            (sys::size_of::<T>() * data.len()) as ALsizei,
+            (mem::size_of::<T>() * data.len()) as ALsizei,
             freq
         );
     }

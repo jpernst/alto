@@ -1,0 +1,10 @@
+[package]
+name = "openal-rs"
+version = "0.0.1"
+authors = [ "" ]
+
+[[lib]]
+name = "openal"
+
+[[bin]]
+name = "sin"

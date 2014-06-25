@@ -13,16 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::cast;
 use std::fmt;
 use std::mem;
 use std::str;
-use std::vec;
 
 pub use self::types::*;
 
 pub mod types {
-    use std::libc::*;
+    use libc::*;
     pub type ALboolean              = c_char;
     pub type ALchar                 = c_char;
     pub type ALbyte                 = c_char;
@@ -212,76 +210,65 @@ pub mod ffi {
     }
 }
 
-#[fixed_stack_segment]
-pub fn get_vendor() -> ~str {
+pub fn get_vendor() -> String {
     unsafe { str::raw::from_c_str(ffi::alGetString(ffi::VENDOR)) }
 }
 
-#[fixed_stack_segment]
-pub fn get_version() -> ~str {
+pub fn get_version() -> String {
     unsafe { str::raw::from_c_str(ffi::alGetString(ffi::VERSION)) }
 }
 
-#[fixed_stack_segment]
-pub fn get_renderer() -> ~str {
+pub fn get_renderer() -> String {
     unsafe { str::raw::from_c_str(ffi::alGetString(ffi::RENDERER)) }
 }
 
-#[fixed_stack_segment]
-pub fn get_extensions() -> ~str {
+pub fn get_extensions() -> String {
     unsafe { str::raw::from_c_str(ffi::alGetString(ffi::EXTENSIONS)) }
 }
 
-#[fixed_stack_segment]
 pub fn get_doppler_factor() -> ALfloat {
     unsafe { ffi::alGetFloat(ffi::DOPPLER_FACTOR) }
 }
 
-#[fixed_stack_segment]
 pub fn set_doppler_factor(value: ALfloat) {
     unsafe { ffi::alDopplerFactor(value); }
 }
 
-#[fixed_stack_segment]
 pub fn get_doppler_velocity() -> ALfloat {
     unsafe { ffi::alGetFloat(ffi::DOPPLER_VELOCITY) }
 }
 
-#[fixed_stack_segment]
 pub fn set_doppler_velocity(value: ALfloat) {
     unsafe { ffi::alDopplerVelocity(value); }
 }
 
-#[fixed_stack_segment]
 pub fn get_speed_of_sound() -> ALfloat {
     unsafe { ffi::alGetFloat(ffi::SPEED_OF_SOUND) }
 }
 
-#[fixed_stack_segment]
 pub fn set_speed_of_sound(value: ALfloat) {
     unsafe { ffi::alSpeedOfSound(value); }
 }
 
+#[repr(int)]
 pub enum DistanceModel {
-    InverseDistance             = ffi::INVERSE_DISTANCE             as int,
-    InverseDistanceClamped      = ffi::INVERSE_DISTANCE_CLAMPED     as int,
-    LinearDistance              = ffi::LINEAR_DISTANCE              as int,
-    LinearDistanceClamped       = ffi::LINEAR_DISTANCE_CLAMPED      as int,
-    ExponentDistance            = ffi::EXPONENT_DISTANCE            as int,
-    ExponentDistanceClamped     = ffi::EXPONENT_DISTANCE_CLAMPED    as int,
+    InverseDistance             = ffi::INVERSE_DISTANCE,
+    InverseDistanceClamped      = ffi::INVERSE_DISTANCE_CLAMPED,
+    LinearDistance              = ffi::LINEAR_DISTANCE,
+    LinearDistanceClamped       = ffi::LINEAR_DISTANCE_CLAMPED,
+    ExponentDistance            = ffi::EXPONENT_DISTANCE,
+    ExponentDistanceClamped     = ffi::EXPONENT_DISTANCE_CLAMPED,
 }
 
-#[fixed_stack_segment]
 pub fn get_distance_model() -> Option<DistanceModel> {
     unsafe {
         match ffi::alGetInteger(ffi::DISTANCE_MODEL) {
             ffi::NONE => None,
-            model => Some(cast::transmute(model as int)),
+            model => Some(mem::transmute(model as int)),
         }
     }
 }
 
-#[fixed_stack_segment]
 pub fn set_distance_model(value: Option<DistanceModel>) {
     unsafe {
         match value {
@@ -292,7 +279,7 @@ pub fn set_distance_model(value: Option<DistanceModel>) {
 }
 
 /// An OpenAL error code
-#[deriving(Eq, ToStr)]
+#[deriving(PartialEq)]
 pub enum Error {
     /// A bad name (ID) was passed to an OpenAL function.
     InvalidName,
@@ -307,26 +294,25 @@ pub enum Error {
 }
 
 /// Returns the current error state then clears it.
-#[fixed_stack_segment]
-pub fn get_error() -> Option<&'static Error> {
+pub fn get_error() -> Option<Error> {
     match unsafe { ffi::alGetError() } {
-        ffi::INVALID_NAME       => Some(&InvalidName),
-        ffi::INVALID_ENUM       => Some(&InvalidEnum),
-        ffi::INVALID_VALUE      => Some(&InvalidValue),
-        ffi::INVALID_OPERATION  => Some(&InvalidOperation),
-        ffi::OUT_OF_MEMORY      => Some(&OutOfMemory),
+        ffi::INVALID_NAME       => Some(InvalidName),
+        ffi::INVALID_ENUM       => Some(InvalidEnum),
+        ffi::INVALID_VALUE      => Some(InvalidValue),
+        ffi::INVALID_OPERATION  => Some(InvalidOperation),
+        ffi::OUT_OF_MEMORY      => Some(OutOfMemory),
         _                       => None,
     }
 }
 
-impl fmt::Default for Error {
-    fn fmt(&err: &Error, f: &mut fmt::Formatter) {
-        match err {
-            InvalidName         => write!(f.buf, "InvalidName: A bad name (ID) was passed to an OpenAL function."),
-            InvalidEnum         => write!(f.buf, "InvalidEnum: An invalid enum value was passed to an OpenAL function."),
-            InvalidValue        => write!(f.buf, "InvalidValue: An invalid value was passed to an OpenAL function."),
-            InvalidOperation    => write!(f.buf, "InvalidOperation: The requested operation is not valid."),
-            OutOfMemory         => write!(f.buf, "OutOfMemory: The requested operation resulted in OpenAL running out of memory."),
+impl fmt::Show for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            InvalidName         => write!(f, "InvalidName: A bad name (ID) was passed to an OpenAL function."),
+            InvalidEnum         => write!(f, "InvalidEnum: An invalid enum value was passed to an OpenAL function."),
+            InvalidValue        => write!(f, "InvalidValue: An invalid value was passed to an OpenAL function."),
+            InvalidOperation    => write!(f, "InvalidOperation: The requested operation is not valid."),
+            OutOfMemory         => write!(f, "OutOfMemory: The requested operation resulted in OpenAL running out of memory."),
         }
     }
 }
@@ -334,12 +320,11 @@ impl fmt::Default for Error {
 /// Functions for setting and retrieving the properties of the listener. One
 /// listener is implied for each context.
 pub mod listener {
-    use std::cast;
+    use std::mem;
     use super::ffi;
     use super::types::*;
 
     // The master gain.
-    #[fixed_stack_segment]
     pub fn get_gain() -> ALfloat {
         unsafe {
             let mut value = 0.0;
@@ -349,13 +334,11 @@ pub mod listener {
     }
 
     /// Set the master gain (should be positive).
-    #[fixed_stack_segment]
     pub fn set_gain(value: ALfloat) {
         unsafe { ffi::alListenerf(ffi::GAIN, value); }
     }
 
     // The position of the listener.
-    #[fixed_stack_segment]
     pub fn get_position() -> [ALfloat, ..3] {
         unsafe {
             let mut values = [0.0, ..3];
@@ -365,13 +348,11 @@ pub mod listener {
     }
 
     /// Set the position of the listener.
-    #[fixed_stack_segment]
     pub fn set_position(values: [ALfloat, ..3]) {
         unsafe { ffi::alListenerfv(ffi::POSITION, &values[0]); }
     }
 
     // The velocity vector.
-    #[fixed_stack_segment]
     pub fn get_velocity() -> [ALfloat, ..3] {
         unsafe {
             let mut values = [0.0, ..3];
@@ -381,27 +362,24 @@ pub mod listener {
     }
 
     /// Set the velocity vector.
-    #[fixed_stack_segment]
     pub fn set_velocity(values: [ALfloat, ..3]) {
         unsafe { ffi::alListenerfv(ffi::VELOCITY, &values[0]); }
     }
 
     // The orientation of the listener, expressed as 'at' and 'up' vectors.
-    #[fixed_stack_segment]
     pub fn get_orientation() -> ([ALfloat, ..3], [ALfloat, ..3]) {
         unsafe {
             let mut values = ([0.0, ..3], [0.0, ..3]);
-            ffi::alGetListenerfv(ffi::ORIENTATION, cast::transmute(&mut values));
+            ffi::alGetListenerfv(ffi::ORIENTATION, mem::transmute(&mut values));
             values
         }
     }
 
     /// Set the orientation of the listener.
-    #[fixed_stack_segment]
     pub fn set_orientation(at: [ALfloat, ..3], up: [ALfloat, ..3]) {
         unsafe {
             let values = (at, up);
-            ffi::alListenerfv(ffi::ORIENTATION, cast::transmute(&values));
+            ffi::alListenerfv(ffi::ORIENTATION, mem::transmute(&values));
         }
     }
 }
@@ -412,13 +390,12 @@ pub struct Source {
 }
 
 /// Generate a one or more source objects.
-#[fixed_stack_segment]
-pub fn gen_sources(n: uint) -> ~[Source] {
+pub fn gen_sources(n: uint) -> Vec<Source> {
     unsafe {
-        let mut sources = ~[];
+        let mut sources = Vec::new();
         sources.reserve(n);
-        ffi::alGenSources(n as ALsizei, cast::transmute(vec::raw::to_mut_ptr(sources)));
-        vec::raw::set_len(&mut sources, n);
+        ffi::alGenSources(n as ALsizei, mem::transmute(sources.as_mut_ptr()));
+        sources.set_len(n);
         sources
     }
 }
@@ -428,17 +405,17 @@ pub fn gen_sources(n: uint) -> ~[Source] {
 /// If an error occurs, the sources will not be deleted. The error can be
 /// detected using `get_error`. An individual source may be deleted if it is
 /// currently playing. In this case it will be stopped, then destroyed.
-#[fixed_stack_segment]
-pub fn delete_sources(sources: ~[Source]) {
+pub fn delete_sources(sources: Vec<Source>) {
     let _ = sources;
     // unsafe { ffi::alDeleteSources(sources.len() as ALsizei, &sources[0].id); }
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
+#[repr(int)]
 pub enum SourceType {
-    Static          = ffi::STATIC       as int,
-    Streaming       = ffi::STREAMING    as int,
-    Undetermined    = ffi::UNDETERMINED as int,
+    Static          = ffi::STATIC,
+    Streaming       = ffi::STREAMING,
+    Undetermined    = ffi::UNDETERMINED,
 }
 
 macro_rules! get_source(
@@ -461,7 +438,6 @@ macro_rules! get_source(
 
 impl Source {
     /// Generate a single source object.
-    #[fixed_stack_segment]
     pub fn gen() -> Source {
         unsafe {
             let mut id = 0;
@@ -478,327 +454,273 @@ impl Source {
     pub fn delete(self) {}
 
     /// Play the buffers attached to the source.
-    #[fixed_stack_segment]
     pub fn play(&self) {
         unsafe { ffi::alSourcePlay(self.id); }
     }
 
     // Returns `true` if the source is playing.
-    #[fixed_stack_segment]
     pub fn is_playing(&self) -> bool {
         unsafe { (get_source!(i, ffi::SOURCE_STATE)) as ALenum == ffi::PLAYING }
     }
 
     /// Pause the source.
-    #[fixed_stack_segment]
     pub fn pause(&self) {
         unsafe { ffi::alSourcePause(self.id); }
     }
 
     // Returns `true` if the source is paused.
-    #[fixed_stack_segment]
     pub fn is_paused(&self) -> bool {
         unsafe { (get_source!(i, ffi::SOURCE_STATE)) as ALenum == ffi::PAUSED }
     }
 
     /// Stop the source
-    #[fixed_stack_segment]
     pub fn stop(&self) {
         unsafe { ffi::alSourceStop(self.id); }
     }
 
     // Returns `true` if the source is stopped.
-    #[fixed_stack_segment]
     pub fn is_stopped(&self) -> bool {
         unsafe { (get_source!(i, ffi::SOURCE_STATE)) as ALenum == ffi::STOPPED }
     }
 
     /// Rewind the source to the initial state.
-    #[fixed_stack_segment]
     pub fn rewind(&self) {
         unsafe { ffi::alSourceRewind(self.id); }
     }
 
     // Returns `true` if the source is at the initial state.
-    #[fixed_stack_segment]
     pub fn is_initial(&self) -> bool {
         unsafe { (get_source!(i, ffi::SOURCE_STATE)) as ALenum == ffi::INITIAL }
     }
 
     /// Queue a single buffer on the source.
-    #[fixed_stack_segment]
     pub fn queue_buffer(&self, buffer: &Buffer) {
         unsafe { ffi::alSourceQueueBuffers(self.id, 1, &buffer.id); }
     }
 
     /// Queue the buffers on the source to be played in sequence.
-    #[fixed_stack_segment]
     pub fn queue_buffers(&self, buffers: &[Buffer]) {
         unsafe { ffi::alSourceQueueBuffers(self.id, buffers.len() as ALsizei, &buffers[0].id); }
     }
 
     /// Remove a single buffer from the queue.
-    #[fixed_stack_segment]
     pub fn unqueue_buffer(&self, buffer: &Buffer) {
         unsafe { ffi::alSourceUnqueueBuffers(self.id, 1, &buffer.id); }
     }
 
     /// Remove a set of buffers from the queue.
-    #[fixed_stack_segment]
     pub fn unqueue_buffers(&self, buffers: &[Buffer]) {
         unsafe { ffi::alSourceUnqueueBuffers(self.id, buffers.len() as ALsizei, &buffers[0].id); }
     }
 
     // The number of buffers queued on this source.
-    #[fixed_stack_segment]
     pub fn get_buffers_queued(&self) -> uint {
         unsafe { (get_source!(i, ffi::BUFFERS_QUEUED)) as uint }
     }
 
     // the number of buffers in the queue that have been processed.
-    #[fixed_stack_segment]
     pub fn get_buffers_processed(&self) -> uint {
         unsafe { (get_source!(i, ffi::BUFFERS_PROCESSED)) as uint }
     }
 
     // The pitch multiplier.
-    #[fixed_stack_segment]
     pub fn get_pitch(&self) -> ALfloat {
         unsafe { get_source!(f, ffi::PITCH) }
     }
 
     /// Set the pitch multiplier (should be positive).
-    #[fixed_stack_segment]
     pub fn set_pitch(&self, value: ALfloat) {
         unsafe { ffi::alSourcef(self.id, ffi::PITCH, value); }
     }
 
     // The source gain.
-    #[fixed_stack_segment]
     pub fn get_gain(&self) -> ALfloat {
         unsafe { get_source!(f, ffi::GAIN) }
     }
 
     /// Set the source gain (should be positive).
-    #[fixed_stack_segment]
     pub fn set_gain(&self, value: ALfloat) {
         unsafe { ffi::alSourcef(self.id, ffi::GAIN, value); }
     }
 
     /// Used with the Inverse Clamped Distance Model to set the distance where
     /// there will no longer be any attenuation of the source.
-    #[fixed_stack_segment]
     pub fn get_max_distance(&self) -> ALfloat {
         unsafe { get_source!(f, ffi::MAX_DISTANCE) }
     }
 
     /// Set the max distance for the source.
-    #[fixed_stack_segment]
     pub fn set_max_distance(&self, value: ALfloat) {
         unsafe { ffi::alSourcef(self.id, ffi::MAX_DISTANCE, value); }
     }
 
     // The rolloff factor for the source.
-    #[fixed_stack_segment]
     pub fn get_rolloff_factor(&self) -> ALfloat {
         unsafe { get_source!(f, ffi::ROLLOFF_FACTOR) }
     }
 
     /// Set the rolloff factor for the source (default is `1.0`).
-    #[fixed_stack_segment]
     pub fn set_rolloff_factor(&self, value: ALfloat) {
         unsafe { ffi::alSourcef(self.id, ffi::ROLLOFF_FACTOR, value); }
     }
 
     /// The distance under which the volume for the source would normally drop
     /// by half (before being influenced by rolloff factor or max distance).
-    #[fixed_stack_segment]
     pub fn get_reference_distance(&self) -> ALfloat {
         unsafe { get_source!(f, ffi::REFERENCE_DISTANCE) }
     }
 
     /// Set the reference distance.
-    #[fixed_stack_segment]
     pub fn set_reference_distance(&self, value: ALfloat) {
         unsafe { ffi::alSourcef(self.id, ffi::REFERENCE_DISTANCE, value); }
     }
 
     // The minimum gain for the source.
-    #[fixed_stack_segment]
     pub fn get_min_gain(&self) -> ALfloat {
         unsafe { get_source!(f, ffi::MIN_GAIN) }
     }
 
     /// Set the minimum gain for the source.
-    #[fixed_stack_segment]
     pub fn set_min_gain(&self, value: ALfloat) {
         unsafe { ffi::alSourcef(self.id, ffi::MIN_GAIN, value); }
     }
 
     // The maximum gain for the source.
-    #[fixed_stack_segment]
     pub fn get_max_gain(&self) -> ALfloat {
         unsafe { get_source!(f, ffi::MAX_GAIN) }
     }
 
     /// Set the maximum gain for the source.
-    #[fixed_stack_segment]
     pub fn set_max_gain(&self, value: ALfloat) {
         unsafe { ffi::alSourcef(self.id, ffi::MAX_GAIN, value); }
     }
 
     // The gain when outside the oriented cone.
-    #[fixed_stack_segment]
     pub fn get_cone_outer_gain(&self) -> ALfloat {
         unsafe { get_source!(f, ffi::CONE_OUTER_GAIN) }
     }
 
     /// Set the gain when outside the oriented cone.
-    #[fixed_stack_segment]
     pub fn set_cone_outer_gain(&self, value: ALfloat) {
         unsafe { ffi::alSourcef(self.id, ffi::CONE_OUTER_GAIN, value); }
     }
 
     // The gain when inside the oriented cone.
-    #[fixed_stack_segment]
     pub fn get_cone_inner_angle(&self) -> ALfloat {
         unsafe { get_source!(f, ffi::CONE_INNER_ANGLE) }
     }
 
     /// Set the gain when inside the oriented cone.
-    #[fixed_stack_segment]
     pub fn set_cone_inner_angle(&self, value: ALfloat) {
         unsafe { ffi::alSourcef(self.id, ffi::CONE_INNER_ANGLE, value); }
     }
 
     // The outer angle of the sound cone, in degrees.
-    #[fixed_stack_segment]
     pub fn get_cone_outer_angle(&self) -> ALfloat {
         unsafe { get_source!(f, ffi::CONE_OUTER_ANGLE) }
     }
 
     /// Set the outer angle of the sound cone, in degrees. (default is `360.0`)
-    #[fixed_stack_segment]
     pub fn set_cone_outer_angle(&self, value: ALfloat) {
         unsafe { ffi::alSourcef(self.id, ffi::CONE_OUTER_ANGLE, value); }
     }
 
     // The position of the source.
-    #[fixed_stack_segment]
     pub fn get_position(&self) -> [ALfloat, ..3] {
         unsafe { get_source!(fv, ffi::POSITION, 3) }
     }
 
     /// Set the position of the source.
-    #[fixed_stack_segment]
     pub fn set_position(&self, values: [ALfloat, ..3]) {
         unsafe { ffi::alSourcefv(self.id, ffi::POSITION, &values[0]); }
     }
 
     // The velocity vector of the source.
-    #[fixed_stack_segment]
     pub fn get_velocity(&self) -> [ALfloat, ..3] {
         unsafe { get_source!(fv, ffi::VELOCITY, 3) }
     }
 
     /// Set the velocity vector of the source.
-    #[fixed_stack_segment]
     pub fn set_velocity(&self, values: [ALfloat, ..3]) {
         unsafe { ffi::alSourcefv(self.id, ffi::VELOCITY, &values[0]); }
     }
 
     // The direction vector of the source.
-    #[fixed_stack_segment]
     pub fn get_direction(&self) -> [ALfloat, ..3] {
         unsafe { get_source!(fv, ffi::DIRECTION, 3) }
     }
 
     /// Set the direction vector of the source.
-    #[fixed_stack_segment]
     pub fn set_direction(&self, values: [ALfloat, ..3]) {
         unsafe { ffi::alSourcefv(self.id, ffi::DIRECTION, &values[0]); }
     }
 
     // Returns `true` if the positions are relative to the listener.
-    #[fixed_stack_segment]
     pub fn is_relative(&self) -> bool {
         unsafe { (get_source!(i, ffi::SOURCE_RELATIVE)) as ALboolean == ffi::TRUE }
     }
 
     /// Set whether the positions are relative to the listener. (default is `false`)
-    #[fixed_stack_segment]
     pub fn set_relative(&self, value: bool) {
         unsafe { ffi::alSourcei(self.id, ffi::SOURCE_RELATIVE, value as ALint); }
     }
 
     // The source type.
-    #[fixed_stack_segment]
     pub fn get_type(&self) -> SourceType {
-        unsafe { cast::transmute(get_source!(i, ffi::SOURCE_TYPE) as int) }
+        unsafe { mem::transmute(get_source!(i, ffi::SOURCE_TYPE) as int) }
     }
 
     /// Set the source type.
-    #[fixed_stack_segment]
     pub fn set_type(&self, value: SourceType) {
         unsafe { ffi::alSourcei(self.id, ffi::SOURCE_TYPE, value as ALint); }
     }
 
     // Returns `true` looping is turned on for this source.
-    #[fixed_stack_segment]
     pub fn is_looping(&self) -> bool {
         unsafe { (get_source!(i, ffi::LOOPING)) as ALboolean == ffi::TRUE }
     }
 
     /// Set looping on/off for this source.
-    #[fixed_stack_segment]
     pub fn set_looping(&self, value: bool) {
         unsafe { ffi::alSourcei(self.id, ffi::LOOPING, value as ALint); }
     }
 
     // The attached buffer.
-    #[fixed_stack_segment]
     pub fn get_buffer(&self) -> Buffer {
         unsafe { Buffer { id: get_source!(i, ffi::BUFFER) as ALuint } }
     }
 
     /// Set the attached buffer.
-    #[fixed_stack_segment]
     pub fn set_buffer(&self, buffer: Buffer) {
         unsafe { ffi::alSourcei(self.id, ffi::BUFFER, buffer.id as ALint); }
     }
 
     // The playback position, expressed in seconds.
-    #[fixed_stack_segment]
     pub fn get_sec_offset(&self) -> ALfloat {
         unsafe { get_source!(f, ffi::SEC_OFFSET) }
     }
 
     /// Set the playback position, expressed in seconds.
-    #[fixed_stack_segment]
     pub fn set_sec_offset(&self, value: ALfloat) {
         unsafe { ffi::alSourcef(self.id, ffi::SEC_OFFSET, value); }
     }
 
     // The playback position, expressed in samples.
-    #[fixed_stack_segment]
     pub fn get_sample_offset(&self) -> ALfloat {
         unsafe { get_source!(f, ffi::SAMPLE_OFFSET) }
     }
 
     /// Set the playback position, expressed in samples.
-    #[fixed_stack_segment]
     pub fn set_sample_offset(&self, value: ALfloat) {
         unsafe { ffi::alSourcef(self.id, ffi::SAMPLE_OFFSET, value); }
     }
 
     // The playback position, expressed in bytes.
-    #[fixed_stack_segment]
     pub fn get_byte_offset(&self) -> ALfloat {
         unsafe { get_source!(f, ffi::BYTE_OFFSET) }
     }
 
     /// Set the playback position, expressed in bytes.
-    #[fixed_stack_segment]
     pub fn set_byte_offset(&self, value: ALfloat) {
         unsafe { ffi::alSourcef(self.id, ffi::BYTE_OFFSET, value); }
     }
@@ -810,30 +732,25 @@ impl Drop for Source {
     /// If an error occurs, the source will not be deleted. The error can be
     /// detected using `get_error`. The source may be deleted if it is
     /// currently playing. In this case it will be stopped, then destroyed.
-    #[fixed_stack_segment]
     fn drop(&mut self) {
         unsafe { ffi::alDeleteSources(1, &self.id); }
     }
 }
 
-#[fixed_stack_segment]
 pub fn play_sources(sources: &[Source]) {
-    unsafe { ffi::alSourcePlayv(sources.len() as ALsizei, vec::raw::to_ptr(sources) as *ALuint); }
+    unsafe { ffi::alSourcePlayv(sources.len() as ALsizei, sources.as_ptr() as *ALuint); }
 }
 
-#[fixed_stack_segment]
 pub fn stop_sources(sources: &[Source]) {
-    unsafe { ffi::alSourceStopv(sources.len() as ALsizei, vec::raw::to_ptr(sources) as *ALuint); }
+    unsafe { ffi::alSourceStopv(sources.len() as ALsizei, sources.as_ptr() as *ALuint); }
 }
 
-#[fixed_stack_segment]
 pub fn rewind_sources(sources: &[Source]) {
-    unsafe { ffi::alSourceRewindv(sources.len() as ALsizei, vec::raw::to_ptr(sources) as *ALuint); }
+    unsafe { ffi::alSourceRewindv(sources.len() as ALsizei, sources.as_ptr() as *ALuint); }
 }
 
-#[fixed_stack_segment]
 pub fn pause_sources(sources: &[Source]) {
-    unsafe { ffi::alSourcePausev(sources.len() as ALsizei, vec::raw::to_ptr(sources) as *ALuint); }
+    unsafe { ffi::alSourcePausev(sources.len() as ALsizei, sources.as_ptr() as *ALuint); }
 }
 
 /// A reference to a buffer object
@@ -842,26 +759,24 @@ pub struct Buffer {
 }
 
 /// Generate a one or more buffer objects.
-#[fixed_stack_segment]
-pub fn gen_buffers(n: uint) -> ~[Buffer] {
+pub fn gen_buffers(n: uint) -> Vec<Buffer> {
     unsafe {
-        let mut buffers = ~[];
+        let mut buffers = Vec::new();
         buffers.reserve(n);
-        ffi::alGenBuffers(n as ALsizei, cast::transmute(vec::raw::to_mut_ptr(buffers)));
-        vec::raw::set_len(&mut buffers, n);
+        ffi::alGenBuffers(n as ALsizei, mem::transmute(buffers.as_mut_ptr()));
+        buffers.set_len(n);
         buffers
     }
 }
 
 /// Delete the buffers and free the resources they use. Buffers that are
 /// currently in use by a source cannot be deleted.
-#[fixed_stack_segment]
-pub fn delete_buffers(buffers: ~[Buffer]) {
+pub fn delete_buffers(buffers: Vec<Buffer>) {
     let _ = buffers;
     // unsafe { ffi::alDeleteBuffers(buffers.len() as ALsizei, &buffers[0].id); }
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum Format {
     FormatMono8         = ffi::FORMAT_MONO8     as int,
     FormatMono16        = ffi::FORMAT_MONO16    as int,
@@ -871,7 +786,6 @@ pub enum Format {
 
 impl Buffer {
     /// Generate a single buffer object.
-    #[fixed_stack_segment]
     pub fn gen() -> Buffer {
         unsafe {
             let mut id = 0;
@@ -882,21 +796,18 @@ impl Buffer {
 
     /// Delete the buffer and free the resources it uses. Buffers that are
     /// currently in use by a source cannot be deleted.
-    #[fixed_stack_segment]
     pub fn delete(self) {}
 
     /// Fill the buffer with PCM audio data.
-    #[fixed_stack_segment]
     pub unsafe fn buffer_data<T>(&self, format: Format, data: &[T], freq: ALsizei) {
         ffi::alBufferData(
-            self.id, format as ALenum, vec::raw::to_ptr(data) as *ALvoid,
+            self.id, format as ALenum, data.as_ptr() as *ALvoid,
             (mem::size_of::<T>() * data.len()) as ALsizei,
             freq
         );
     }
 
     /// The frequency of the buffer in Hz.
-    #[fixed_stack_segment]
     pub fn get_frequency(&self) -> ALint {
         unsafe {
             let mut value = 0;
@@ -906,7 +817,6 @@ impl Buffer {
     }
 
     /// The bit depth of the buffer.
-    #[fixed_stack_segment]
     pub fn get_bits(&self) -> ALint {
         unsafe {
             let mut value = 0;
@@ -916,7 +826,6 @@ impl Buffer {
     }
 
     /// The number of channels in the buffer.
-    #[fixed_stack_segment]
     pub fn get_channels(&self) -> ALint {
         unsafe {
             let mut value = 0;
@@ -926,7 +835,6 @@ impl Buffer {
     }
 
     /// The size of the buffer in bytes.
-    #[fixed_stack_segment]
     pub fn get_size(&self) -> ALint {
         unsafe {
             let mut value = 0;
@@ -939,7 +847,6 @@ impl Buffer {
 impl Drop for Buffer {
     /// Delete the buffer and free the resources it uses. Buffers that are
     /// currently in use by a source cannot be deleted.
-    #[fixed_stack_segment]
     fn drop(&mut self) {
         unsafe { ffi::alDeleteBuffers(1, &self.id); }
     }

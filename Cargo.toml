@@ -1,0 +1,7 @@
+[package]
+name = "openal"
+version = "0.0.1"
+authors = [ "" ]
+
+[[lib]]
+name = "openal"

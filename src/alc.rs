@@ -14,6 +14,7 @@
 // limitations under the License.
 
 use std::str;
+use std::ptr;
 
 use self::types::*;
 
@@ -146,8 +147,13 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn open(devicename: &str) -> Option<Device> {
-        let ptr = unsafe { devicename.with_c_str(|c_str| ffi::alcOpenDevice(c_str)) };
+    pub fn open(devicename: Option<&str>) -> Option<Device> {
+        let ptr = unsafe {
+          match devicename {
+            Some(devicename) => devicename.with_c_str(|c_str| ffi::alcOpenDevice(c_str)),
+            None => ffi::alcOpenDevice(ptr::null())
+          }
+        };
         if ptr.is_null() { None }
         else { Some(Device { ptr: ptr  }) }
     }

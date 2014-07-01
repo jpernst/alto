@@ -80,32 +80,32 @@ pub mod ffi {
     pub struct ALCcontext;
 
     extern "C" {
-        pub fn alcCreateContext(device: *ALCdevice, attrlist: *ALCint) -> *ALCcontext;
-        pub fn alcMakeContextCurrent(context: *ALCcontext) -> ALCboolean;
-        pub fn alcProcessContext(context: *ALCcontext);
-        pub fn alcSuspendContext(context: *ALCcontext);
-        pub fn alcDestroyContext(context: *ALCcontext);
-        pub fn alcGetCurrentContext() -> *ALCcontext;
-        pub fn alcGetContextsDevice(context: *ALCcontext) -> *ALCdevice;
+        pub fn alcCreateContext(device: *const ALCdevice, attrlist: *const ALCint) -> *const ALCcontext;
+        pub fn alcMakeContextCurrent(context: *const ALCcontext) -> ALCboolean;
+        pub fn alcProcessContext(context: *const ALCcontext);
+        pub fn alcSuspendContext(context: *const ALCcontext);
+        pub fn alcDestroyContext(context: *const ALCcontext);
+        pub fn alcGetCurrentContext() -> *const ALCcontext;
+        pub fn alcGetContextsDevice(context: *const ALCcontext) -> *const ALCdevice;
 
-        pub fn alcOpenDevice(devicename: *ALCchar) -> *ALCdevice;
-        pub fn alcCloseDevice(device: *ALCdevice) -> ALCboolean;
-        pub fn alcGetError(device: *ALCdevice) -> ALCenum;
-        pub fn alcIsExtensionPresent(device: *ALCdevice, extname: *ALCchar) -> ALCboolean;
-        pub fn alcGetProcAddress(device: *ALCdevice, funcname: *ALCchar) -> Option<extern "C" fn()>;
-        pub fn alcGetEnumValue(device: *ALCdevice, enumname: *ALCchar) -> ALCenum;
-        pub fn alcGetString(device: *ALCdevice, param: ALCenum) -> *ALCchar;
-        pub fn alcGetIntegerv(device: *ALCdevice, param: ALCenum, size: ALCsizei, data: *mut ALCint);
-        pub fn alcCaptureOpenDevice(devicename: *ALCchar, frequency: ALCuint, format: ALCenum, buffersize: ALCsizei) -> *ALCdevice;
-        pub fn alcCaptureCloseDevice(device: *ALCdevice) -> ALCboolean;
-        pub fn alcCaptureStart(device: *ALCdevice);
-        pub fn alcCaptureStop(device: *ALCdevice);
-        pub fn alcCaptureSamples(device: *ALCdevice, buffer: *ALCvoid, samples: ALCsizei);
+        pub fn alcOpenDevice(devicename: *const ALCchar) -> *const ALCdevice;
+        pub fn alcCloseDevice(device: *const ALCdevice) -> ALCboolean;
+        pub fn alcGetError(device: *const ALCdevice) -> ALCenum;
+        pub fn alcIsExtensionPresent(device: *const ALCdevice, extname: *const ALCchar) -> ALCboolean;
+        pub fn alcGetProcAddress(device: *const ALCdevice, funcname: *const ALCchar) -> Option<extern "C" fn()>;
+        pub fn alcGetEnumValue(device: *const ALCdevice, enumname: *const ALCchar) -> ALCenum;
+        pub fn alcGetString(device: *const ALCdevice, param: ALCenum) -> *const ALCchar;
+        pub fn alcGetIntegerv(device: *const ALCdevice, param: ALCenum, size: ALCsizei, data: *mut ALCint);
+        pub fn alcCaptureOpenDevice(devicename: *const ALCchar, frequency: ALCuint, format: ALCenum, buffersize: ALCsizei) -> *const ALCdevice;
+        pub fn alcCaptureCloseDevice(device: *const ALCdevice) -> ALCboolean;
+        pub fn alcCaptureStart(device: *const ALCdevice);
+        pub fn alcCaptureStop(device: *const ALCdevice);
+        pub fn alcCaptureSamples(device: *const ALCdevice, buffer: *const ALCvoid, samples: ALCsizei);
     }
 }
 
 pub struct Context {
-    ptr: *ffi::ALCcontext,
+    ptr: *const ffi::ALCcontext,
 }
 
 // pub fn get_current_context() -> Context {
@@ -143,7 +143,7 @@ impl Drop for Context {
 }
 
 pub struct Device {
-    ptr: *ffi::ALCdevice,
+    ptr: *const ffi::ALCdevice,
 }
 
 impl Device {
@@ -175,7 +175,7 @@ impl Device {
         unsafe { str::raw::from_c_str(ffi::alcGetString(self.ptr, param)) }
     }
 
-    // pub fn GetIntegerv(&self, param: ALCenum, size: ALCsizei, data: *ALCint) {
+    // pub fn GetIntegerv(&self, param: ALCenum, size: ALCsizei, data: *const ALCint) {
     //     unsafe { ffi::alcGetIntegerv(); }
     // }
 
@@ -188,7 +188,7 @@ impl Device {
 }
 
 pub struct CaptureDevice {
-    ptr: *ffi::ALCdevice,
+    ptr: *const ffi::ALCdevice,
 }
 
 impl CaptureDevice {
@@ -214,7 +214,7 @@ impl CaptureDevice {
         unsafe { ffi::alcCaptureStop(self.ptr); }
     }
 
-    // pub fn CaptureSamples(&self, buffer: *ALCvoid, samples: ALCsizei) {
+    // pub fn CaptureSamples(&self, buffer: *const ALCvoid, samples: ALCsizei) {
     //     unsafe { ffi::alcCaptureSamples(); }
     // }
 }

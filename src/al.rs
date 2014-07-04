@@ -136,7 +136,7 @@ pub mod ffi {
         pub fn alEnable(capability: ALenum);
         pub fn alDisable(capability: ALenum);
         pub fn alIsEnabled(capability: ALenum) -> ALboolean;
-        pub fn alGetString(param: ALenum) -> *ALchar;
+        pub fn alGetString(param: ALenum) -> *const ALchar;
         pub fn alGetBooleanv(param: ALenum, data: *mut ALboolean);
         pub fn alGetIntegerv(param: ALenum, data: *mut ALint);
         pub fn alGetFloatv(param: ALenum, data: *mut ALfloat);
@@ -146,16 +146,16 @@ pub mod ffi {
         pub fn alGetFloat(param: ALenum) -> ALfloat;
         pub fn alGetDouble(param: ALenum) -> ALdouble;
         pub fn alGetError() -> ALenum;
-        pub fn alIsExtensionPresent(extname: *ALchar) -> ALboolean;
-        pub fn alGetProcAddress(fname: *ALchar) -> Option<extern "C" fn()>;
-        pub fn alGetEnumValue(ename: *ALchar) -> ALenum;
+        pub fn alIsExtensionPresent(extname: *const ALchar) -> ALboolean;
+        pub fn alGetProcAddress(fname: *const ALchar) -> Option<extern "C" fn()>;
+        pub fn alGetEnumValue(ename: *const ALchar) -> ALenum;
 
         pub fn alListenerf(param: ALenum, value: ALfloat);
         pub fn alListener3f(param: ALenum, value1: ALfloat, value2: ALfloat, value3: ALfloat);
-        pub fn alListenerfv(param: ALenum, values: *ALfloat);
+        pub fn alListenerfv(param: ALenum, values: *const ALfloat);
         pub fn alListeneri(param: ALenum, value: ALint);
         pub fn alListener3i(param: ALenum, value1: ALint, value2: ALint, value3: ALint);
-        pub fn alListeneriv(param: ALenum, values: *ALint);
+        pub fn alListeneriv(param: ALenum, values: *const ALint);
         pub fn alGetListenerf(param: ALenum, value: *mut ALfloat);
         pub fn alGetListener3f(param: ALenum, value1: *mut ALfloat, value2: *mut ALfloat, value3: *mut ALfloat);
         pub fn alGetListenerfv(param: ALenum, values: *mut ALfloat);
@@ -163,40 +163,40 @@ pub mod ffi {
         pub fn alGetListener3i(param: ALenum, value1: *mut ALint, value2: *mut ALint, value3: *mut ALint);
         pub fn alGetListeneriv(param: ALenum, values: *mut ALint);
         pub fn alGenSources(n: ALsizei, sources: *mut ALuint);
-        pub fn alDeleteSources(n: ALsizei, sources: *ALuint);
+        pub fn alDeleteSources(n: ALsizei, sources: *const ALuint);
         pub fn alIsSource(sid: ALuint) -> ALboolean;
         pub fn alSourcef(sid: ALuint, param: ALenum, value: ALfloat);
         pub fn alSource3f(sid: ALuint, param: ALenum, value1: ALfloat, value2: ALfloat, value3: ALfloat);
-        pub fn alSourcefv(sid: ALuint, param: ALenum, values: *ALfloat);
+        pub fn alSourcefv(sid: ALuint, param: ALenum, values: *const ALfloat);
         pub fn alSourcei(sid: ALuint, param: ALenum, value: ALint);
         pub fn alSource3i(sid: ALuint, param: ALenum, value1: ALint, value2: ALint, value3: ALint);
-        pub fn alSourceiv(sid: ALuint, param: ALenum, values: *ALint);
+        pub fn alSourceiv(sid: ALuint, param: ALenum, values: *const ALint);
         pub fn alGetSourcef(sid: ALuint, param: ALenum, value: *mut ALfloat);
         pub fn alGetSource3f(sid: ALuint, param: ALenum, value1: *mut ALfloat, value2: *mut ALfloat, value3: *mut ALfloat);
         pub fn alGetSourcefv(sid: ALuint, param: ALenum, values: *mut ALfloat);
         pub fn alGetSourcei(sid: ALuint,  param: ALenum, value: *mut ALint);
         pub fn alGetSource3i(sid: ALuint, param: ALenum, value1: *mut ALint, value2: *mut ALint, value3: *mut ALint);
         pub fn alGetSourceiv(sid: ALuint,  param: ALenum, values: *mut ALint);
-        pub fn alSourcePlayv(ns: ALsizei, sids: *ALuint);
-        pub fn alSourceStopv(ns: ALsizei, sids: *ALuint);
-        pub fn alSourceRewindv(ns: ALsizei, sids: *ALuint);
-        pub fn alSourcePausev(ns: ALsizei, sids: *ALuint);
+        pub fn alSourcePlayv(ns: ALsizei, sids: *const ALuint);
+        pub fn alSourceStopv(ns: ALsizei, sids: *const ALuint);
+        pub fn alSourceRewindv(ns: ALsizei, sids: *const ALuint);
+        pub fn alSourcePausev(ns: ALsizei, sids: *const ALuint);
         pub fn alSourcePlay(sid: ALuint);
         pub fn alSourceStop(sid: ALuint);
         pub fn alSourceRewind(sid: ALuint);
         pub fn alSourcePause(sid: ALuint);
-        pub fn alSourceQueueBuffers(sid: ALuint, numEntries: ALsizei, bids: *ALuint);
-        pub fn alSourceUnqueueBuffers(sid: ALuint, numEntries: ALsizei, bids: *ALuint);
+        pub fn alSourceQueueBuffers(sid: ALuint, numEntries: ALsizei, bids: *const ALuint);
+        pub fn alSourceUnqueueBuffers(sid: ALuint, numEntries: ALsizei, bids: *mut ALuint);
         pub fn alGenBuffers(n: ALsizei, buffers: *mut ALuint);
-        pub fn alDeleteBuffers(n: ALsizei, buffers: *ALuint);
+        pub fn alDeleteBuffers(n: ALsizei, buffers: *const ALuint);
         pub fn alIsBuffer(bid: ALuint) -> ALboolean;
-        pub fn alBufferData(bid: ALuint, format: ALenum, data: *ALvoid, size: ALsizei, freq: ALsizei);
+        pub fn alBufferData(bid: ALuint, format: ALenum, data: *const ALvoid, size: ALsizei, freq: ALsizei);
         pub fn alBufferf(bid: ALuint, param: ALenum, value: ALfloat);
         pub fn alBuffer3f(bid: ALuint, param: ALenum, value1: ALfloat, value2: ALfloat, value3: ALfloat);
-        pub fn alBufferfv(bid: ALuint, param: ALenum, values: *ALfloat);
+        pub fn alBufferfv(bid: ALuint, param: ALenum, values: *const ALfloat);
         pub fn alBufferi(bid: ALuint, param: ALenum, value: ALint);
         pub fn alBuffer3i(bid: ALuint, param: ALenum, value1: ALint, value2: ALint, value3: ALint);
-        pub fn alBufferiv(bid: ALuint, param: ALenum, values: *ALint);
+        pub fn alBufferiv(bid: ALuint, param: ALenum, values: *const ALint);
         pub fn alGetBufferf(bid: ALuint, param: ALenum, value: *mut ALfloat);
         pub fn alGetBuffer3f(bid: ALuint, param: ALenum, value1: *mut ALfloat, value2: *mut ALfloat, value3: *mut ALfloat);
         pub fn alGetBufferfv(bid: ALuint, param: ALenum, values: *mut ALfloat);
@@ -250,21 +250,21 @@ pub fn set_speed_of_sound(value: ALfloat) {
     unsafe { ffi::alSpeedOfSound(value); }
 }
 
-#[repr(int)]
+#[repr(i32)]
 pub enum DistanceModel {
     InverseDistance             = ffi::INVERSE_DISTANCE,
     InverseDistanceClamped      = ffi::INVERSE_DISTANCE_CLAMPED,
     LinearDistance              = ffi::LINEAR_DISTANCE,
     LinearDistanceClamped       = ffi::LINEAR_DISTANCE_CLAMPED,
     ExponentDistance            = ffi::EXPONENT_DISTANCE,
-    ExponentDistanceClamped     = ffi::EXPONENT_DISTANCE_CLAMPED,
+    ExponentDistanceClamped     = ffi::EXPONENT_DISTANCE_CLAMPED
 }
 
 pub fn get_distance_model() -> Option<DistanceModel> {
     unsafe {
         match ffi::alGetInteger(ffi::DISTANCE_MODEL) {
             ffi::NONE => None,
-            model => Some(mem::transmute(model as int)),
+            model => Some(mem::transmute(model)),
         }
     }
 }
@@ -411,7 +411,7 @@ pub fn delete_sources(sources: Vec<Source>) {
 }
 
 #[deriving(PartialEq)]
-#[repr(int)]
+#[repr(i32)]
 pub enum SourceType {
     Static          = ffi::STATIC,
     Streaming       = ffi::STREAMING,
@@ -504,13 +504,13 @@ impl Source {
     }
 
     /// Remove a single buffer from the queue.
-    pub fn unqueue_buffer(&self, buffer: &Buffer) {
-        unsafe { ffi::alSourceUnqueueBuffers(self.id, 1, &buffer.id); }
+    pub fn unqueue_buffer(&self, buffer: &mut Buffer) {
+        unsafe { ffi::alSourceUnqueueBuffers(self.id, 1, &mut buffer.id); }
     }
 
     /// Remove a set of buffers from the queue.
-    pub fn unqueue_buffers(&self, buffers: &[Buffer]) {
-        unsafe { ffi::alSourceUnqueueBuffers(self.id, buffers.len() as ALsizei, &buffers[0].id); }
+    pub fn unqueue_buffers(&self, buffers: &mut [Buffer]) {
+        unsafe { ffi::alSourceUnqueueBuffers(self.id, buffers.len() as ALsizei, &mut buffers[0].id); }
     }
 
     // The number of buffers queued on this source.
@@ -667,7 +667,7 @@ impl Source {
 
     // The source type.
     pub fn get_type(&self) -> SourceType {
-        unsafe { mem::transmute(get_source!(i, ffi::SOURCE_TYPE) as int) }
+        unsafe { mem::transmute(get_source!(i, ffi::SOURCE_TYPE) as i32) }
     }
 
     /// Set the source type.
@@ -738,19 +738,19 @@ impl Drop for Source {
 }
 
 pub fn play_sources(sources: &[Source]) {
-    unsafe { ffi::alSourcePlayv(sources.len() as ALsizei, sources.as_ptr() as *ALuint); }
+    unsafe { ffi::alSourcePlayv(sources.len() as ALsizei, sources.as_ptr() as *const ALuint); }
 }
 
 pub fn stop_sources(sources: &[Source]) {
-    unsafe { ffi::alSourceStopv(sources.len() as ALsizei, sources.as_ptr() as *ALuint); }
+    unsafe { ffi::alSourceStopv(sources.len() as ALsizei, sources.as_ptr() as *const ALuint); }
 }
 
 pub fn rewind_sources(sources: &[Source]) {
-    unsafe { ffi::alSourceRewindv(sources.len() as ALsizei, sources.as_ptr() as *ALuint); }
+    unsafe { ffi::alSourceRewindv(sources.len() as ALsizei, sources.as_ptr() as *const ALuint); }
 }
 
 pub fn pause_sources(sources: &[Source]) {
-    unsafe { ffi::alSourcePausev(sources.len() as ALsizei, sources.as_ptr() as *ALuint); }
+    unsafe { ffi::alSourcePausev(sources.len() as ALsizei, sources.as_ptr() as *const ALuint); }
 }
 
 /// A reference to a buffer object
@@ -801,7 +801,7 @@ impl Buffer {
     /// Fill the buffer with PCM audio data.
     pub unsafe fn buffer_data<T>(&self, format: Format, data: &[T], freq: ALsizei) {
         ffi::alBufferData(
-            self.id, format as ALenum, data.as_ptr() as *ALvoid,
+            self.id, format as ALenum, data.as_ptr() as *const ALvoid,
             (mem::size_of::<T>() * data.len()) as ALsizei,
             freq
         );

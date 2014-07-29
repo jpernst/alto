@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::str;
+use std::string;
 use std::ptr;
 
 use self::types::*;
@@ -172,7 +172,7 @@ impl Device {
     }
 
     pub fn get_string(&self, param: ALCenum) -> String {
-        unsafe { str::raw::from_c_str(ffi::alcGetString(self.ptr, param)) }
+        unsafe { string::raw::from_buf(ffi::alcGetString(self.ptr, param) as *const u8) }
     }
 
     // pub fn GetIntegerv(&self, param: ALCenum, size: ALCsizei, data: *const ALCint) {
@@ -180,7 +180,7 @@ impl Device {
     // }
 
     pub fn create_context(&self, attr_list: &[ALCint]) -> Option<Context> {
-        let attrs_terminated = attr_list.to_owned().append_one(0);  // teminate attributes with a 0
+        let attrs_terminated = attr_list.to_vec().append_one(0);  // teminate attributes with a 0
         let ptr = unsafe { ffi::alcCreateContext(self.ptr, attrs_terminated.as_ptr()) };
         if ptr.is_null() { None }
         else { Some(Context { ptr: ptr  }) }

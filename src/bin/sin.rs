@@ -3,6 +3,7 @@ extern crate openal;
 use std::i16;
 use std::f64::consts::PI;
 use std::io::timer::sleep;
+use std::time::duration::Duration;
 use openal::al;
 use openal::alc;
 
@@ -29,7 +30,7 @@ fn main() {
   source.queue_buffer(&buffer);
   source.play();
 
-  sleep((duration * 1000.0) as u64);
+  sleep(Duration::milliseconds((duration * 1000.0) as i32));
 
   ctx.destroy();
   device.close().ok().expect("Unable to close device");

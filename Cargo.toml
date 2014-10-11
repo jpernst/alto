@@ -3,7 +3,7 @@ name = "openal-rs"
 version = "0.0.1"
 authors = [ "" ]
 
-[[lib]]
+[lib]
 name = "openal"
 
 [[bin]]

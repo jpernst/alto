@@ -5,6 +5,3 @@ authors = [ "" ]
 
 [lib]
 name = "openal"
-
-[[bin]]
-name = "sin"

@@ -30,7 +30,7 @@ fn main() {
   source.queue_buffer(&buffer);
   source.play();
 
-  sleep(Duration::milliseconds((duration * 1000.0) as i32));
+  sleep(Duration::milliseconds((duration * 1000.0) as i64));
 
   ctx.destroy();
   device.close().ok().expect("Unable to close device");

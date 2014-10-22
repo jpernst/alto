@@ -40,97 +40,97 @@ pub mod ffi {
     use super::types::*;
 
     // "no distance model" or "no buffer"
-    pub static NONE                           : ALenum = 0;
+    pub const NONE                           : ALenum = 0;
 
     // Boolean values
-    pub static FALSE                          : ALboolean = 0;
-    pub static TRUE                           : ALboolean = 1;
+    pub const FALSE                          : ALboolean = 0;
+    pub const TRUE                           : ALboolean = 1;
 
     // General properties
-    pub static SOURCE_RELATIVE                : ALenum = 0x202;
-    pub static CONE_INNER_ANGLE               : ALenum = 0x1001;
-    pub static CONE_OUTER_ANGLE               : ALenum = 0x1002;
-    pub static PITCH                          : ALenum = 0x1003;
-    pub static POSITION                       : ALenum = 0x1004;
-    pub static DIRECTION                      : ALenum = 0x1005;
-    pub static VELOCITY                       : ALenum = 0x1006;
-    pub static LOOPING                        : ALenum = 0x1007;
-    pub static BUFFER                         : ALenum = 0x1009;
-    pub static GAIN                           : ALenum = 0x100A;
-    pub static MIN_GAIN                       : ALenum = 0x100D;
-    pub static MAX_GAIN                       : ALenum = 0x100E;
-    pub static ORIENTATION                    : ALenum = 0x100F;
-    pub static REFERENCE_DISTANCE             : ALenum = 0x1020;
-    pub static ROLLOFF_FACTOR                 : ALenum = 0x1021;
-    pub static CONE_OUTER_GAIN                : ALenum = 0x1022;
-    pub static MAX_DISTANCE                   : ALenum = 0x1023;
+    pub const SOURCE_RELATIVE                : ALenum = 0x202;
+    pub const CONE_INNER_ANGLE               : ALenum = 0x1001;
+    pub const CONE_OUTER_ANGLE               : ALenum = 0x1002;
+    pub const PITCH                          : ALenum = 0x1003;
+    pub const POSITION                       : ALenum = 0x1004;
+    pub const DIRECTION                      : ALenum = 0x1005;
+    pub const VELOCITY                       : ALenum = 0x1006;
+    pub const LOOPING                        : ALenum = 0x1007;
+    pub const BUFFER                         : ALenum = 0x1009;
+    pub const GAIN                           : ALenum = 0x100A;
+    pub const MIN_GAIN                       : ALenum = 0x100D;
+    pub const MAX_GAIN                       : ALenum = 0x100E;
+    pub const ORIENTATION                    : ALenum = 0x100F;
+    pub const REFERENCE_DISTANCE             : ALenum = 0x1020;
+    pub const ROLLOFF_FACTOR                 : ALenum = 0x1021;
+    pub const CONE_OUTER_GAIN                : ALenum = 0x1022;
+    pub const MAX_DISTANCE                   : ALenum = 0x1023;
 
     // Source state
-    pub static SOURCE_STATE                   : ALenum = 0x1010;
-    pub static INITIAL                        : ALenum = 0x1011;
-    pub static PLAYING                        : ALenum = 0x1012;
-    pub static PAUSED                         : ALenum = 0x1013;
-    pub static STOPPED                        : ALenum = 0x1014;
+    pub const SOURCE_STATE                   : ALenum = 0x1010;
+    pub const INITIAL                        : ALenum = 0x1011;
+    pub const PLAYING                        : ALenum = 0x1012;
+    pub const PAUSED                         : ALenum = 0x1013;
+    pub const STOPPED                        : ALenum = 0x1014;
 
     // Buffer Queue params
-    pub static BUFFERS_QUEUED                 : ALenum = 0x1015;
-    pub static BUFFERS_PROCESSED              : ALenum = 0x1016;
+    pub const BUFFERS_QUEUED                 : ALenum = 0x1015;
+    pub const BUFFERS_PROCESSED              : ALenum = 0x1016;
 
     // Source buffer position information
-    pub static SEC_OFFSET                     : ALenum = 0x1024;
-    pub static SAMPLE_OFFSET                  : ALenum = 0x1025;
-    pub static BYTE_OFFSET                    : ALenum = 0x1026;
+    pub const SEC_OFFSET                     : ALenum = 0x1024;
+    pub const SAMPLE_OFFSET                  : ALenum = 0x1025;
+    pub const BYTE_OFFSET                    : ALenum = 0x1026;
 
     // Source type
-    pub static SOURCE_TYPE                    : ALenum = 0x1027;
-    pub static STATIC                         : ALenum = 0x1028;
-    pub static STREAMING                      : ALenum = 0x1029;
-    pub static UNDETERMINED                   : ALenum = 0x1030;
+    pub const SOURCE_TYPE                    : ALenum = 0x1027;
+    pub const STATIC                         : ALenum = 0x1028;
+    pub const STREAMING                      : ALenum = 0x1029;
+    pub const UNDETERMINED                   : ALenum = 0x1030;
 
     // Buffer format
-    pub static FORMAT_MONO8                   : ALenum = 0x1100;
-    pub static FORMAT_MONO16                  : ALenum = 0x1101;
-    pub static FORMAT_STEREO8                 : ALenum = 0x1102;
-    pub static FORMAT_STEREO16                : ALenum = 0x1103;
+    pub const FORMAT_MONO8                   : ALenum = 0x1100;
+    pub const FORMAT_MONO16                  : ALenum = 0x1101;
+    pub const FORMAT_STEREO8                 : ALenum = 0x1102;
+    pub const FORMAT_STEREO16                : ALenum = 0x1103;
 
     // Buffer properties
-    pub static FREQUENCY                      : ALenum = 0x2001;
-    pub static BITS                           : ALenum = 0x2002;
-    pub static CHANNELS                       : ALenum = 0x2003;
-    pub static SIZE                           : ALenum = 0x2004;
+    pub const FREQUENCY                      : ALenum = 0x2001;
+    pub const BITS                           : ALenum = 0x2002;
+    pub const CHANNELS                       : ALenum = 0x2003;
+    pub const SIZE                           : ALenum = 0x2004;
 
     // Buffer state
-    pub static UNUSED                         : ALenum = 0x2010;
-    pub static PENDING                        : ALenum = 0x2011;
-    pub static PROCESSED                      : ALenum = 0x2012;
+    pub const UNUSED                         : ALenum = 0x2010;
+    pub const PENDING                        : ALenum = 0x2011;
+    pub const PROCESSED                      : ALenum = 0x2012;
 
     // Error codes
-    pub static NO_ERROR                       : ALenum = FALSE as ALenum;
-    pub static INVALID_NAME                   : ALenum = 0xA001;
-    pub static INVALID_ENUM                   : ALenum = 0xA002;
-    pub static INVALID_VALUE                  : ALenum = 0xA003;
-    pub static INVALID_OPERATION              : ALenum = 0xA004;
-    pub static OUT_OF_MEMORY                  : ALenum = 0xA005;
+    pub const NO_ERROR                       : ALenum = FALSE as ALenum;
+    pub const INVALID_NAME                   : ALenum = 0xA001;
+    pub const INVALID_ENUM                   : ALenum = 0xA002;
+    pub const INVALID_VALUE                  : ALenum = 0xA003;
+    pub const INVALID_OPERATION              : ALenum = 0xA004;
+    pub const OUT_OF_MEMORY                  : ALenum = 0xA005;
 
     // String tokens
-    pub static VENDOR                         : ALenum = 0xB001;
-    pub static VERSION                        : ALenum = 0xB002;
-    pub static RENDERER                       : ALenum = 0xB003;
-    pub static EXTENSIONS                     : ALenum = 0xB004;
+    pub const VENDOR                         : ALenum = 0xB001;
+    pub const VERSION                        : ALenum = 0xB002;
+    pub const RENDERER                       : ALenum = 0xB003;
+    pub const EXTENSIONS                     : ALenum = 0xB004;
 
     // Global tweakage
-    pub static DOPPLER_FACTOR                 : ALenum = 0xC000;
-    pub static DOPPLER_VELOCITY               : ALenum = 0xC001;
-    pub static SPEED_OF_SOUND                 : ALenum = 0xC003;
+    pub const DOPPLER_FACTOR                 : ALenum = 0xC000;
+    pub const DOPPLER_VELOCITY               : ALenum = 0xC001;
+    pub const SPEED_OF_SOUND                 : ALenum = 0xC003;
 
     // Distance models
-    pub static DISTANCE_MODEL                 : ALenum = 0xD000;
-    pub static INVERSE_DISTANCE               : ALenum = 0xD001;
-    pub static INVERSE_DISTANCE_CLAMPED       : ALenum = 0xD002;
-    pub static LINEAR_DISTANCE                : ALenum = 0xD003;
-    pub static LINEAR_DISTANCE_CLAMPED        : ALenum = 0xD004;
-    pub static EXPONENT_DISTANCE              : ALenum = 0xD005;
-    pub static EXPONENT_DISTANCE_CLAMPED      : ALenum = 0xD006;
+    pub const DISTANCE_MODEL                 : ALenum = 0xD000;
+    pub const INVERSE_DISTANCE               : ALenum = 0xD001;
+    pub const INVERSE_DISTANCE_CLAMPED       : ALenum = 0xD002;
+    pub const LINEAR_DISTANCE                : ALenum = 0xD003;
+    pub const LINEAR_DISTANCE_CLAMPED        : ALenum = 0xD004;
+    pub const EXPONENT_DISTANCE              : ALenum = 0xD005;
+    pub const EXPONENT_DISTANCE_CLAMPED      : ALenum = 0xD006;
 
     extern "C" {
         pub fn alEnable(capability: ALenum);

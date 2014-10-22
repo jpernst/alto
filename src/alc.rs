@@ -39,42 +39,42 @@ pub mod ffi {
     use super::types::*;
 
     // Boolean values
-    pub static FALSE                                : ALCboolean = 0;
-    pub static TRUE                                 : ALCboolean = 1;
+    pub const FALSE                                : ALCboolean = 0;
+    pub const TRUE                                 : ALCboolean = 1;
 
     // Context management
-    pub static FREQUENCY                            : ALCint = 0x1007;
-    pub static REFRESH                              : ALCint = 0x1008;
-    pub static SYNC                                 : ALCint = 0x1009;
-    pub static MONO_SOURCES                         : ALCint = 0x1010;
-    pub static STEREO_SOURCES                       : ALCint = 0x1011;
+    pub const FREQUENCY                            : ALCint = 0x1007;
+    pub const REFRESH                              : ALCint = 0x1008;
+    pub const SYNC                                 : ALCint = 0x1009;
+    pub const MONO_SOURCES                         : ALCint = 0x1010;
+    pub const STEREO_SOURCES                       : ALCint = 0x1011;
 
     // Errors
-    pub static NO_ERROR                             : ALCenum = FALSE as ALCenum;
-    pub static INVALID_DEVICE                       : ALCenum = 0xA001;
-    pub static INVALID_CONTEXT                      : ALCenum = 0xA002;
-    pub static INVALID_ENUM                         : ALCenum = 0xA003;
-    pub static INVALID_VALUE                        : ALCenum = 0xA004;
-    pub static OUT_OF_MEMORY                        : ALCenum = 0xA005;
+    pub const NO_ERROR                             : ALCenum = FALSE as ALCenum;
+    pub const INVALID_DEVICE                       : ALCenum = 0xA001;
+    pub const INVALID_CONTEXT                      : ALCenum = 0xA002;
+    pub const INVALID_ENUM                         : ALCenum = 0xA003;
+    pub const INVALID_VALUE                        : ALCenum = 0xA004;
+    pub const OUT_OF_MEMORY                        : ALCenum = 0xA005;
 
-    pub static DEFAULT_DEVICE_SPECIFIER             : ALCenum = 0x1004;
-    pub static DEVICE_SPECIFIER                     : ALCenum = 0x1005;
-    pub static EXTENSIONS                           : ALCenum = 0x1006;
+    pub const DEFAULT_DEVICE_SPECIFIER             : ALCenum = 0x1004;
+    pub const DEVICE_SPECIFIER                     : ALCenum = 0x1005;
+    pub const EXTENSIONS                           : ALCenum = 0x1006;
 
-    pub static MAJOR_VERSION                        : ALCenum = 0x1000;
-    pub static MINOR_VERSION                        : ALCenum = 0x1001;
+    pub const MAJOR_VERSION                        : ALCenum = 0x1000;
+    pub const MINOR_VERSION                        : ALCenum = 0x1001;
 
-    pub static ATTRIBUTES_SIZE                      : ALCenum = 0x1002;
-    pub static ALL_ATTRIBUTES                       : ALCenum = 0x1003;
+    pub const ATTRIBUTES_SIZE                      : ALCenum = 0x1002;
+    pub const ALL_ATTRIBUTES                       : ALCenum = 0x1003;
 
     // ALC_ENUMERATE_ALL_EXT enums
-    pub static DEFAULT_ALL_DEVICES_SPECIFIER        : ALCenum = 0x1012;
-    pub static ALL_DEVICES_SPECIFIER                : ALCenum = 0x1013;
+    pub const DEFAULT_ALL_DEVICES_SPECIFIER        : ALCenum = 0x1012;
+    pub const ALL_DEVICES_SPECIFIER                : ALCenum = 0x1013;
 
     // Capture extension
-    pub static CAPTURE_DEVICE_SPECIFIER             : ALCenum = 0x310;
-    pub static CAPTURE_DEFAULT_DEVICE_SPECIFIER     : ALCenum = 0x311;
-    pub static CAPTURE_SAMPLES                      : ALCenum = 0x312;
+    pub const CAPTURE_DEVICE_SPECIFIER             : ALCenum = 0x310;
+    pub const CAPTURE_DEFAULT_DEVICE_SPECIFIER     : ALCenum = 0x311;
+    pub const CAPTURE_SAMPLES                      : ALCenum = 0x312;
 
     pub struct ALCdevice;
     pub struct ALCcontext;

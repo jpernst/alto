@@ -76,7 +76,9 @@ pub mod ffi {
     pub const CAPTURE_DEFAULT_DEVICE_SPECIFIER     : ALCenum = 0x311;
     pub const CAPTURE_SAMPLES                      : ALCenum = 0x312;
 
+    #[repr(C)]
     pub struct ALCdevice;
+    #[repr(C)]
     pub struct ALCcontext;
 
     extern "C" {
@@ -180,7 +182,7 @@ impl Device {
     // }
 
     pub fn create_context(&self, attr_list: &[ALCint]) -> Option<Context> {
-        let attrs_terminated = attr_list.to_vec().append_one(0);  // teminate attributes with a 0
+        let attrs_terminated = { let mut v = attr_list.to_vec(); v.push(0); v }; // teminate attributes with a 0
         let ptr = unsafe { ffi::alcCreateContext(self.ptr, attrs_terminated.as_ptr()) };
         if ptr.is_null() { None }
         else { Some(Context { ptr: ptr  }) }

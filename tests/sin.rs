@@ -7,7 +7,8 @@ use std::time::duration::Duration;
 use openal::al;
 use openal::alc;
 
-fn main() {
+#[test]
+fn play_sin() {
   let device = alc::Device::open(None).expect("Could not open device");
   let ctx = device.create_context([]).expect("Could not create context");
   ctx.make_current();

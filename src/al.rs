@@ -296,11 +296,11 @@ pub enum Error {
 /// Returns the current error state then clears it.
 pub fn get_error() -> Option<Error> {
     match unsafe { ffi::alGetError() } {
-        ffi::INVALID_NAME       => Some(InvalidName),
-        ffi::INVALID_ENUM       => Some(InvalidEnum),
-        ffi::INVALID_VALUE      => Some(InvalidValue),
-        ffi::INVALID_OPERATION  => Some(InvalidOperation),
-        ffi::OUT_OF_MEMORY      => Some(OutOfMemory),
+        ffi::INVALID_NAME       => Some(Error::InvalidName),
+        ffi::INVALID_ENUM       => Some(Error::InvalidEnum),
+        ffi::INVALID_VALUE      => Some(Error::InvalidValue),
+        ffi::INVALID_OPERATION  => Some(Error::InvalidOperation),
+        ffi::OUT_OF_MEMORY      => Some(Error::OutOfMemory),
         _                       => None,
     }
 }
@@ -308,11 +308,11 @@ pub fn get_error() -> Option<Error> {
 impl fmt::Show for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            InvalidName         => write!(f, "InvalidName: A bad name (ID) was passed to an OpenAL function."),
-            InvalidEnum         => write!(f, "InvalidEnum: An invalid enum value was passed to an OpenAL function."),
-            InvalidValue        => write!(f, "InvalidValue: An invalid value was passed to an OpenAL function."),
-            InvalidOperation    => write!(f, "InvalidOperation: The requested operation is not valid."),
-            OutOfMemory         => write!(f, "OutOfMemory: The requested operation resulted in OpenAL running out of memory."),
+            Error::InvalidName         => write!(f, "InvalidName: A bad name (ID) was passed to an OpenAL function."),
+            Error::InvalidEnum         => write!(f, "InvalidEnum: An invalid enum value was passed to an OpenAL function."),
+            Error::InvalidValue        => write!(f, "InvalidValue: An invalid value was passed to an OpenAL function."),
+            Error::InvalidOperation    => write!(f, "InvalidOperation: The requested operation is not valid."),
+            Error::OutOfMemory         => write!(f, "OutOfMemory: The requested operation resulted in OpenAL running out of memory."),
         }
     }
 }

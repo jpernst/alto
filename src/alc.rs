@@ -13,7 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::string;
 use std::ptr;
 
 use self::types::*;
@@ -76,8 +75,10 @@ pub mod ffi {
     pub const CAPTURE_DEFAULT_DEVICE_SPECIFIER     : ALCenum = 0x311;
     pub const CAPTURE_SAMPLES                      : ALCenum = 0x312;
 
+    #[allow(missing_copy_implementations)]
     #[repr(C)]
     pub struct ALCdevice;
+    #[allow(missing_copy_implementations)]
     #[repr(C)]
     pub struct ALCcontext;
 
@@ -144,6 +145,7 @@ impl Drop for Context {
     }
 }
 
+#[allow(missing_copy_implementations)]
 pub struct Device {
     ptr: *const ffi::ALCdevice,
 }
@@ -174,7 +176,7 @@ impl Device {
     }
 
     pub fn get_string(&self, param: ALCenum) -> String {
-        unsafe { string::raw::from_buf(ffi::alcGetString(self.ptr, param) as *const u8) }
+        unsafe { String::from_raw_buf(ffi::alcGetString(self.ptr, param) as *const u8) }
     }
 
     // pub fn GetIntegerv(&self, param: ALCenum, size: ALCsizei, data: *const ALCint) {
@@ -189,6 +191,7 @@ impl Device {
     }
 }
 
+#[allow(missing_copy_implementations)]
 pub struct CaptureDevice {
     ptr: *const ffi::ALCdevice,
 }

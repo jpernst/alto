@@ -4,7 +4,6 @@
        author = "Brendan Zabarauskas",
        url = "https://github.com/bjz/openal-rs")]
 
-#![comment = "OpenAL 1.1 bindings for Rust."]
 #![crate_type = "lib"]
 
 #![feature(macro_rules)]

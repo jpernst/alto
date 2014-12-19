@@ -15,7 +15,6 @@
 
 use std::fmt;
 use std::mem;
-use std::string;
 
 pub use self::types::*;
 
@@ -211,19 +210,19 @@ pub mod ffi {
 }
 
 pub fn get_vendor() -> String {
-    unsafe { string::raw::from_buf(ffi::alGetString(ffi::VENDOR) as *const u8) }
+    unsafe { String::from_raw_buf(ffi::alGetString(ffi::VENDOR) as *const u8) }
 }
 
 pub fn get_version() -> String {
-    unsafe { string::raw::from_buf(ffi::alGetString(ffi::VERSION) as *const u8) }
+    unsafe { String::from_raw_buf(ffi::alGetString(ffi::VERSION) as *const u8) }
 }
 
 pub fn get_renderer() -> String {
-    unsafe { string::raw::from_buf(ffi::alGetString(ffi::RENDERER) as *const u8) }
+    unsafe { String::from_raw_buf(ffi::alGetString(ffi::RENDERER) as *const u8) }
 }
 
 pub fn get_extensions() -> String {
-    unsafe { string::raw::from_buf(ffi::alGetString(ffi::EXTENSIONS) as *const u8) }
+    unsafe { String::from_raw_buf(ffi::alGetString(ffi::EXTENSIONS) as *const u8) }
 }
 
 pub fn get_doppler_factor() -> ALfloat {
@@ -250,6 +249,7 @@ pub fn set_speed_of_sound(value: ALfloat) {
     unsafe { ffi::alSpeedOfSound(value); }
 }
 
+#[deriving(Copy, Clone, PartialEq, Eq)]
 #[repr(i32)]
 pub enum DistanceModel {
     InverseDistance             = ffi::INVERSE_DISTANCE,
@@ -279,7 +279,7 @@ pub fn set_distance_model(value: Option<DistanceModel>) {
 }
 
 /// An OpenAL error code
-#[deriving(PartialEq)]
+#[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum Error {
     /// A bad name (ID) was passed to an OpenAL function.
     InvalidName,
@@ -410,7 +410,7 @@ pub fn delete_sources(sources: Vec<Source>) {
     // unsafe { ffi::alDeleteSources(sources.len() as ALsizei, &sources[0].id); }
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, Clone, PartialEq, Eq)]
 #[repr(i32)]
 pub enum SourceType {
     Static          = ffi::STATIC,
@@ -418,7 +418,7 @@ pub enum SourceType {
     Undetermined    = ffi::UNDETERMINED,
 }
 
-macro_rules! get_source(
+macro_rules! get_source{
     ($self_:ident, fv, $param:expr, $n:expr) => ({
         let mut values = [0.0, ..$n];
         ffi::alGetSourcef($self_.id, $param, &mut values[0]);
@@ -434,7 +434,7 @@ macro_rules! get_source(
         ffi::alGetSourcei($self_.id, $param, &mut value);
         value
     });
-)
+}
 
 impl Source {
     /// Generate a single source object.
@@ -776,7 +776,7 @@ pub fn delete_buffers(buffers: Vec<Buffer>) {
     // unsafe { ffi::alDeleteBuffers(buffers.len() as ALsizei, &buffers[0].id); }
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum Format {
     FormatMono8         = ffi::FORMAT_MONO8     as int,
     FormatMono16        = ffi::FORMAT_MONO16    as int,

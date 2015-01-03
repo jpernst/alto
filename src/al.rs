@@ -249,7 +249,7 @@ pub fn set_speed_of_sound(value: ALfloat) {
     unsafe { ffi::alSpeedOfSound(value); }
 }
 
-#[deriving(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(i32)]
 pub enum DistanceModel {
     InverseDistance             = ffi::INVERSE_DISTANCE,
@@ -279,7 +279,7 @@ pub fn set_distance_model(value: Option<DistanceModel>) {
 }
 
 /// An OpenAL error code
-#[deriving(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Error {
     /// A bad name (ID) was passed to an OpenAL function.
     InvalidName,
@@ -339,44 +339,44 @@ pub mod listener {
     }
 
     // The position of the listener.
-    pub fn get_position() -> [ALfloat, ..3] {
+    pub fn get_position() -> [ALfloat; 3] {
         unsafe {
-            let mut values = [0.0, ..3];
+            let mut values = [0.0; 3];
             ffi::alGetListenerfv(ffi::GAIN, &mut values[0]);
             values
         }
     }
 
     /// Set the position of the listener.
-    pub fn set_position(values: [ALfloat, ..3]) {
+    pub fn set_position(values: [ALfloat; 3]) {
         unsafe { ffi::alListenerfv(ffi::POSITION, &values[0]); }
     }
 
     // The velocity vector.
-    pub fn get_velocity() -> [ALfloat, ..3] {
+    pub fn get_velocity() -> [ALfloat; 3] {
         unsafe {
-            let mut values = [0.0, ..3];
+            let mut values = [0.0; 3];
             ffi::alGetListenerfv(ffi::VELOCITY, &mut values[0]);
             values
         }
     }
 
     /// Set the velocity vector.
-    pub fn set_velocity(values: [ALfloat, ..3]) {
+    pub fn set_velocity(values: [ALfloat; 3]) {
         unsafe { ffi::alListenerfv(ffi::VELOCITY, &values[0]); }
     }
 
     // The orientation of the listener, expressed as 'at' and 'up' vectors.
-    pub fn get_orientation() -> ([ALfloat, ..3], [ALfloat, ..3]) {
+    pub fn get_orientation() -> ([ALfloat; 3], [ALfloat; 3]) {
         unsafe {
-            let mut values = ([0.0, ..3], [0.0, ..3]);
+            let mut values = ([0.0; 3], [0.0; 3]);
             ffi::alGetListenerfv(ffi::ORIENTATION, mem::transmute(&mut values));
             values
         }
     }
 
     /// Set the orientation of the listener.
-    pub fn set_orientation(at: [ALfloat, ..3], up: [ALfloat, ..3]) {
+    pub fn set_orientation(at: [ALfloat; 3], up: [ALfloat; 3]) {
         unsafe {
             let values = (at, up);
             ffi::alListenerfv(ffi::ORIENTATION, mem::transmute(&values));
@@ -410,7 +410,7 @@ pub fn delete_sources(sources: Vec<Source>) {
     // unsafe { ffi::alDeleteSources(sources.len() as ALsizei, &sources[0].id); }
 }
 
-#[deriving(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(i32)]
 pub enum SourceType {
     Static          = ffi::STATIC,
@@ -420,7 +420,7 @@ pub enum SourceType {
 
 macro_rules! get_source{
     ($self_:ident, fv, $param:expr, $n:expr) => ({
-        let mut values = [0.0, ..$n];
+        let mut values = [0.0; $n];
         ffi::alGetSourcef($self_.id, $param, &mut values[0]);
         values
     });
@@ -626,32 +626,32 @@ impl Source {
     }
 
     // The position of the source.
-    pub fn get_position(&self) -> [ALfloat, ..3] {
+    pub fn get_position(&self) -> [ALfloat; 3] {
         unsafe { get_source!(self, fv, ffi::POSITION, 3) }
     }
 
     /// Set the position of the source.
-    pub fn set_position(&self, values: [ALfloat, ..3]) {
+    pub fn set_position(&self, values: [ALfloat; 3]) {
         unsafe { ffi::alSourcefv(self.id, ffi::POSITION, &values[0]); }
     }
 
     // The velocity vector of the source.
-    pub fn get_velocity(&self) -> [ALfloat, ..3] {
+    pub fn get_velocity(&self) -> [ALfloat; 3] {
         unsafe { get_source!(self, fv, ffi::VELOCITY, 3) }
     }
 
     /// Set the velocity vector of the source.
-    pub fn set_velocity(&self, values: [ALfloat, ..3]) {
+    pub fn set_velocity(&self, values: [ALfloat; 3]) {
         unsafe { ffi::alSourcefv(self.id, ffi::VELOCITY, &values[0]); }
     }
 
     // The direction vector of the source.
-    pub fn get_direction(&self) -> [ALfloat, ..3] {
+    pub fn get_direction(&self) -> [ALfloat; 3] {
         unsafe { get_source!(self, fv, ffi::DIRECTION, 3) }
     }
 
     /// Set the direction vector of the source.
-    pub fn set_direction(&self, values: [ALfloat, ..3]) {
+    pub fn set_direction(&self, values: [ALfloat; 3]) {
         unsafe { ffi::alSourcefv(self.id, ffi::DIRECTION, &values[0]); }
     }
 
@@ -776,7 +776,7 @@ pub fn delete_buffers(buffers: Vec<Buffer>) {
     // unsafe { ffi::alDeleteBuffers(buffers.len() as ALsizei, &buffers[0].id); }
 }
 
-#[deriving(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Format {
     FormatMono8         = ffi::FORMAT_MONO8     as int,
     FormatMono16        = ffi::FORMAT_MONO16    as int,

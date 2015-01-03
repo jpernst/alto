@@ -14,6 +14,7 @@
 // limitations under the License.
 
 use std::ptr;
+use std::c_str::ToCStr;
 
 use self::types::*;
 

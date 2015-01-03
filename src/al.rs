@@ -252,12 +252,12 @@ pub fn set_speed_of_sound(value: ALfloat) {
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(i32)]
 pub enum DistanceModel {
-    InverseDistance             = ffi::INVERSE_DISTANCE,
-    InverseDistanceClamped      = ffi::INVERSE_DISTANCE_CLAMPED,
-    LinearDistance              = ffi::LINEAR_DISTANCE,
-    LinearDistanceClamped       = ffi::LINEAR_DISTANCE_CLAMPED,
-    ExponentDistance            = ffi::EXPONENT_DISTANCE,
-    ExponentDistanceClamped     = ffi::EXPONENT_DISTANCE_CLAMPED
+    Inverse             = ffi::INVERSE_DISTANCE,
+    InverseClamped      = ffi::INVERSE_DISTANCE_CLAMPED,
+    Linear              = ffi::LINEAR_DISTANCE,
+    LinearClamped       = ffi::LINEAR_DISTANCE_CLAMPED,
+    Exponent            = ffi::EXPONENT_DISTANCE,
+    ExponentClamped     = ffi::EXPONENT_DISTANCE_CLAMPED
 }
 
 pub fn get_distance_model() -> Option<DistanceModel> {
@@ -778,10 +778,10 @@ pub fn delete_buffers(buffers: Vec<Buffer>) {
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Format {
-    FormatMono8         = ffi::FORMAT_MONO8     as int,
-    FormatMono16        = ffi::FORMAT_MONO16    as int,
-    FormatStereo8       = ffi::FORMAT_STEREO8   as int,
-    FormatStereo16      = ffi::FORMAT_STEREO16  as int,
+    Mono8         = ffi::FORMAT_MONO8     as int,
+    Mono16        = ffi::FORMAT_MONO16    as int,
+    Stereo8       = ffi::FORMAT_STEREO8   as int,
+    Stereo16      = ffi::FORMAT_STEREO16  as int,
 }
 
 impl Buffer {

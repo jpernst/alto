@@ -179,7 +179,7 @@ impl Device {
     }
 
     pub fn get_string(&self, param: ALCenum) -> String {
-        unsafe { str::from_utf8(c_str_to_bytes(&(ffi::alcGetString(self.ptr, param) as *const libc::c_char))).to_string() }
+        unsafe { String::from_str(str::from_utf8(c_str_to_bytes(&(ffi::alcGetString(self.ptr, param) as *const libc::c_char))).unwrap()) }
     }
 
     // pub fn GetIntegerv(&self, param: ALCenum, size: ALCsizei, data: *const ALCint) {

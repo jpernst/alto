@@ -213,19 +213,19 @@ pub mod ffi {
 }
 
 pub fn get_vendor() -> String {
-    unsafe { str::from_utf8(c_str_to_bytes(&(ffi::alGetString(ffi::VENDOR) as *const libc::c_char))).to_string() }
+    unsafe { String::from_str(str::from_utf8(c_str_to_bytes(&(ffi::alGetString(ffi::VENDOR) as *const libc::c_char))).unwrap()) }
 }
 
 pub fn get_version() -> String {
-    unsafe { str::from_utf8(c_str_to_bytes(&(ffi::alGetString(ffi::VERSION) as *const libc::c_char))).to_string() }
+    unsafe { String::from_str(str::from_utf8(c_str_to_bytes(&(ffi::alGetString(ffi::VERSION) as *const libc::c_char))).unwrap()) }
 }
 
 pub fn get_renderer() -> String {
-    unsafe { str::from_utf8(c_str_to_bytes(&(ffi::alGetString(ffi::RENDERER) as *const libc::c_char))).to_string() }
+    unsafe { String::from_str(str::from_utf8(c_str_to_bytes(&(ffi::alGetString(ffi::RENDERER) as *const libc::c_char))).unwrap()) }
 }
 
 pub fn get_extensions() -> String {
-    unsafe { str::from_utf8(c_str_to_bytes(&(ffi::alGetString(ffi::EXTENSIONS) as *const libc::c_char))).to_string() }
+    unsafe { String::from_str(str::from_utf8(c_str_to_bytes(&(ffi::alGetString(ffi::EXTENSIONS) as *const libc::c_char))).unwrap()) }
 }
 
 pub fn get_doppler_factor() -> ALfloat {

@@ -6,9 +6,6 @@
 
 #![crate_type = "lib"]
 
-#![feature(macro_rules)]
-#![feature(globs)]
-
 extern crate libc;
 
 pub mod al;

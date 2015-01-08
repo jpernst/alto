@@ -2,7 +2,7 @@ extern crate openal;
 
 use std::i16;
 use std::f64::consts::PI;
-use std::num::FloatMath;
+use std::num::Float;
 use std::io::timer::sleep;
 use std::time::duration::Duration;
 use std::iter;

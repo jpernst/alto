@@ -15,6 +15,9 @@
 
 use std::fmt;
 use std::mem;
+use std::str;
+use std::ffi::c_str_to_bytes;
+use libc;
 
 pub use self::types::*;
 
@@ -210,19 +213,19 @@ pub mod ffi {
 }
 
 pub fn get_vendor() -> String {
-    unsafe { String::from_raw_buf(ffi::alGetString(ffi::VENDOR) as *const u8) }
+    unsafe { String::from_str(str::from_utf8(c_str_to_bytes(&(ffi::alGetString(ffi::VENDOR) as *const libc::c_char))).unwrap()) }
 }
 
 pub fn get_version() -> String {
-    unsafe { String::from_raw_buf(ffi::alGetString(ffi::VERSION) as *const u8) }
+    unsafe { String::from_str(str::from_utf8(c_str_to_bytes(&(ffi::alGetString(ffi::VERSION) as *const libc::c_char))).unwrap()) }
 }
 
 pub fn get_renderer() -> String {
-    unsafe { String::from_raw_buf(ffi::alGetString(ffi::RENDERER) as *const u8) }
+    unsafe { String::from_str(str::from_utf8(c_str_to_bytes(&(ffi::alGetString(ffi::RENDERER) as *const libc::c_char))).unwrap()) }
 }
 
 pub fn get_extensions() -> String {
-    unsafe { String::from_raw_buf(ffi::alGetString(ffi::EXTENSIONS) as *const u8) }
+    unsafe { String::from_str(str::from_utf8(c_str_to_bytes(&(ffi::alGetString(ffi::EXTENSIONS) as *const libc::c_char))).unwrap()) }
 }
 
 pub fn get_doppler_factor() -> ALfloat {

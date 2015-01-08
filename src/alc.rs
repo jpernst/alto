@@ -14,7 +14,9 @@
 // limitations under the License.
 
 use std::ptr;
-use std::c_str::ToCStr;
+use std::str;
+use std::ffi::{c_str_to_bytes, CString};
+use libc;
 
 use self::types::*;
 
@@ -155,7 +157,7 @@ impl Device {
     pub fn open(devicename: Option<&str>) -> Option<Device> {
         let ptr = unsafe {
           match devicename {
-            Some(devicename) => devicename.with_c_str(|c_str| ffi::alcOpenDevice(c_str)),
+            Some(devicename) => ffi::alcOpenDevice(CString::from_slice(devicename.as_bytes()).as_ptr()),
             None => ffi::alcOpenDevice(ptr::null())
           }
         };
@@ -177,7 +179,7 @@ impl Device {
     }
 
     pub fn get_string(&self, param: ALCenum) -> String {
-        unsafe { String::from_raw_buf(ffi::alcGetString(self.ptr, param) as *const u8) }
+        unsafe { String::from_str(str::from_utf8(c_str_to_bytes(&(ffi::alcGetString(self.ptr, param) as *const libc::c_char))).unwrap()) }
     }
 
     // pub fn GetIntegerv(&self, param: ALCenum, size: ALCsizei, data: *const ALCint) {
@@ -199,7 +201,7 @@ pub struct CaptureDevice {
 
 impl CaptureDevice {
     pub fn open(devicename: &str, frequency: ALCuint, format: ALCenum, buffersize: ALCsizei) -> Option<CaptureDevice> {
-        let ptr = unsafe { devicename.with_c_str(|c_str| ffi::alcCaptureOpenDevice(c_str, frequency, format, buffersize)) };
+        let ptr = unsafe { ffi::alcCaptureOpenDevice(CString::from_slice(devicename.as_bytes()).as_ptr(), frequency, format, buffersize) };
         if ptr.is_null() { None }
         else { Some(CaptureDevice { ptr: ptr  }) }
     }

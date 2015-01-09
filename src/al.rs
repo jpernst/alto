@@ -393,7 +393,7 @@ pub struct Source {
 }
 
 /// Generate a one or more source objects.
-pub fn gen_sources(n: uint) -> Vec<Source> {
+pub fn gen_sources(n: usize) -> Vec<Source> {
     unsafe {
         let mut sources = Vec::new();
         sources.reserve(n);
@@ -517,13 +517,13 @@ impl Source {
     }
 
     // The number of buffers queued on this source.
-    pub fn get_buffers_queued(&self) -> uint {
-        unsafe { (get_source!(self, i, ffi::BUFFERS_QUEUED)) as uint }
+    pub fn get_buffers_queued(&self) -> usize {
+        unsafe { (get_source!(self, i, ffi::BUFFERS_QUEUED)) as usize }
     }
 
     // the number of buffers in the queue that have been processed.
-    pub fn get_buffers_processed(&self) -> uint {
-        unsafe { (get_source!(self, i, ffi::BUFFERS_PROCESSED)) as uint }
+    pub fn get_buffers_processed(&self) -> usize {
+        unsafe { (get_source!(self, i, ffi::BUFFERS_PROCESSED)) as usize }
     }
 
     // The pitch multiplier.
@@ -762,7 +762,7 @@ pub struct Buffer {
 }
 
 /// Generate a one or more buffer objects.
-pub fn gen_buffers(n: uint) -> Vec<Buffer> {
+pub fn gen_buffers(n: usize) -> Vec<Buffer> {
     unsafe {
         let mut buffers = Vec::new();
         buffers.reserve(n);
@@ -781,10 +781,10 @@ pub fn delete_buffers(buffers: Vec<Buffer>) {
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Format {
-    Mono8         = ffi::FORMAT_MONO8     as int,
-    Mono16        = ffi::FORMAT_MONO16    as int,
-    Stereo8       = ffi::FORMAT_STEREO8   as int,
-    Stereo16      = ffi::FORMAT_STEREO16  as int,
+    Mono8         = ffi::FORMAT_MONO8     as isize,
+    Mono16        = ffi::FORMAT_MONO16    as isize,
+    Stereo8       = ffi::FORMAT_STEREO8   as isize,
+    Stereo16      = ffi::FORMAT_STEREO16  as isize,
 }
 
 impl Buffer {

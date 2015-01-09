@@ -21,7 +21,7 @@ fn play_sin() {
   let sample_freq = 44100.0;
   let tone_freq = 440.0;
   let duration = 3.0;
-  let num_samples = (sample_freq * duration) as uint;
+  let num_samples = (sample_freq * duration) as usize;
 
   let samples: Vec<i16> = iter::range(0, num_samples).map(|x| {
     let t = x as f64;

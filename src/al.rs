@@ -308,7 +308,7 @@ pub fn get_error() -> Option<Error> {
     }
 }
 
-impl fmt::Show for Error {
+impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Error::InvalidName         => write!(f, "InvalidName: A bad name (ID) was passed to an OpenAL function."),

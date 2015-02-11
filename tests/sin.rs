@@ -1,11 +1,12 @@
+#![feature(std_misc)]
+
 extern crate openal;
 
 use std::i16;
 use std::f64::consts::PI;
 use std::num::Float;
-use std::io::timer::sleep;
+use std::old_io::timer::sleep;
 use std::time::duration::Duration;
-use std::iter;
 use openal::al;
 use openal::alc;
 
@@ -23,12 +24,12 @@ fn play_sin() {
   let duration = 3.0;
   let num_samples = (sample_freq * duration) as usize;
 
-  let samples: Vec<i16> = iter::range(0, num_samples).map(|x| {
+  let samples: Vec<i16> = (0..num_samples).map(|x| {
     let t = x as f64;
     ((tone_freq * t * 2.0 * PI / sample_freq).sin() * (i16::MAX - 1) as f64) as i16
   }).collect();
 
-  unsafe { buffer.buffer_data(al::Format::Mono16, samples.as_slice(), sample_freq as al::ALsizei) };
+  unsafe { buffer.buffer_data(al::Format::Mono16, &samples, sample_freq as al::ALsizei) };
 
   source.queue_buffer(&buffer);
   source.play();

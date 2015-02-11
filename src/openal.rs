@@ -6,6 +6,8 @@
 
 #![crate_type = "lib"]
 
+#![feature(libc, collections, std_misc)]
+
 extern crate libc;
 
 pub mod al;

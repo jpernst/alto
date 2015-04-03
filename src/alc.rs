@@ -13,9 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::borrow::ToOwned;
 use std::ptr;
 use std::str;
-use std::ffi::{c_str_to_bytes, CString};
+use std::ffi::{CString, CStr};
 use libc;
 
 use self::types::*;
@@ -157,7 +158,11 @@ impl Device {
     pub fn open(devicename: Option<&str>) -> Option<Device> {
         let ptr = unsafe {
           match devicename {
-            Some(devicename) => ffi::alcOpenDevice(CString::from_slice(devicename.as_bytes()).as_ptr()),
+            Some(devicename) => {
+                if let Ok(devicename) = CString::new(devicename.as_bytes()) {
+                    ffi::alcOpenDevice(devicename.as_ptr())
+                } else { ptr::null() }
+            },
             None => ffi::alcOpenDevice(ptr::null())
           }
         };
@@ -179,7 +184,7 @@ impl Device {
     }
 
     pub fn get_string(&self, param: ALCenum) -> String {
-        unsafe { String::from_str(str::from_utf8(c_str_to_bytes(&(ffi::alcGetString(self.ptr, param) as *const libc::c_char))).unwrap()) }
+        unsafe { str::from_utf8(CStr::from_ptr(ffi::alcGetString(self.ptr, param) as *const libc::c_char).to_bytes()).unwrap().to_owned() }
     }
 
     // pub fn GetIntegerv(&self, param: ALCenum, size: ALCsizei, data: *const ALCint) {
@@ -201,9 +206,11 @@ pub struct CaptureDevice {
 
 impl CaptureDevice {
     pub fn open(devicename: &str, frequency: ALCuint, format: ALCenum, buffersize: ALCsizei) -> Option<CaptureDevice> {
-        let ptr = unsafe { ffi::alcCaptureOpenDevice(CString::from_slice(devicename.as_bytes()).as_ptr(), frequency, format, buffersize) };
-        if ptr.is_null() { None }
-        else { Some(CaptureDevice { ptr: ptr  }) }
+        if let Ok(devicename) = CString::new(devicename.as_bytes()) {
+            let ptr = unsafe { ffi::alcCaptureOpenDevice(devicename.as_ptr(), frequency, format, buffersize) };
+            if ptr.is_null() { None }
+            else { Some(CaptureDevice { ptr: ptr  }) }
+        } else { None }
     }
 
     /// Closes the capture device.

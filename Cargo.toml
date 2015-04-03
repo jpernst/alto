@@ -5,3 +5,6 @@ authors = [ "" ]
 
 [lib]
 name = "openal"
+
+[dependencies]
+libc = "*"

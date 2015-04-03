@@ -1,12 +1,9 @@
-#![feature(std_misc)]
 
 extern crate openal;
 
 use std::i16;
 use std::f64::consts::PI;
-use std::num::Float;
-use std::old_io::timer::sleep;
-use std::time::duration::Duration;
+use std::thread::sleep_ms;
 use openal::al;
 use openal::alc;
 
@@ -34,7 +31,7 @@ fn play_sin() {
   source.queue_buffer(&buffer);
   source.play();
 
-  sleep(Duration::milliseconds((duration * 1000.0) as i64));
+  sleep_ms((duration * 1000.0) as u32);
 
   ctx.destroy();
   device.close().ok().expect("Unable to close device");

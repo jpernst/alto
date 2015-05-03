@@ -1,8 +1,19 @@
 language: rust
 before_install:
-  - sudo apt-get update
+- sudo apt-get update
 install:
-  - sudo apt-get install libopenal1 libopenal-dev
+- sudo apt-get install libopenal1 libopenal-dev
 script:
-  - cargo test
-  - cargo doc
+- cargo test
+- cargo doc
+after_success: |
+  [ $TRAVIS_BRANCH = master ] &&
+  [ $TRAVIS_PULL_REQUEST = false ] &&
+  cargo doc &&
+  echo "<meta http-equiv=refresh content=0;url=`echo $TRAVIS_REPO_SLUG | cut -d '/' -f 2`/index.html>" > target/doc/index.html &&
+  sudo pip install ghp-import &&
+  ghp-import -n target/doc &&
+  git push -fq https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
+env:
+  global:
+    secure: AP1RscSAX0NwCzKnm7Q+5pJ9zrnYnYi6QCfUH9E7YX4O9Thi3iCfJ4rD7tGSyHS6ygLCuoMMwSQN5PCWnNe8QPLvlfulDm1OAVv53NvhrpRElDAe47+LcUEr5ws5D2RGDfc0/vN80tDzrbS6DXBiOEwDUUX+IrfNe94uKeqbHm0=

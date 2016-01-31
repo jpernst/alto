@@ -346,7 +346,7 @@ pub mod listener {
     pub fn get_position() -> [ALfloat; 3] {
         unsafe {
             let mut values = [0.0; 3];
-            ffi::alGetListenerfv(ffi::GAIN, &mut values[0]);
+            ffi::alGetListenerfv(ffi::POSITION, &mut values[0]);
             values
         }
     }

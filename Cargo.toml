@@ -1,7 +1,7 @@
 [package]
 name = "openal-rs"
 description = "Rust bindings for OpenAL 1.1"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["bjz", "samyatchmenoff", "jpernst"]
 license = "Apache-2.0"
 repository = "https://github.com/jpernst/openal-rs.git"
@@ -12,4 +12,5 @@ keywords = ["openal", "sound", "audio"]
 name = "openal"
 
 [dependencies]
-libc = "*"
+libc = "0.2.6"
+

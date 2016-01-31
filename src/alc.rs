@@ -80,11 +80,9 @@ pub mod ffi {
     pub const CAPTURE_SAMPLES                      : ALCenum = 0x312;
 
     #[allow(missing_copy_implementations)]
-    #[repr(C)]
-    pub struct ALCdevice;
+    pub enum ALCdevice { }
     #[allow(missing_copy_implementations)]
-    #[repr(C)]
-    pub struct ALCcontext;
+    pub enum ALCcontext { }
 
     extern "C" {
         pub fn alcCreateContext(device: *const ALCdevice, attrlist: *const ALCint) -> *const ALCcontext;

@@ -79,9 +79,7 @@ pub mod ffi {
     pub const CAPTURE_DEFAULT_DEVICE_SPECIFIER     : ALCenum = 0x311;
     pub const CAPTURE_SAMPLES                      : ALCenum = 0x312;
 
-    #[allow(missing_copy_implementations)]
     pub enum ALCdevice { }
-    #[allow(missing_copy_implementations)]
     pub enum ALCcontext { }
 
     extern "C" {

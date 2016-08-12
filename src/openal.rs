@@ -19,6 +19,6 @@ extern {}
 #[cfg(target_os = "linux")]
 extern {}
 
-#[link(name = "openal32")]
+#[link(name = "OpenAL32")]
 #[cfg(target_os = "windows")]
 extern {}

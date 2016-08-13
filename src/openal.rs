@@ -11,14 +11,18 @@ extern crate libc;
 pub mod al;
 pub mod alc;
 
-#[link(name = "OpenAL", kind = "framework")]
 #[cfg(target_os = "macos")]
+#[link(name = "OpenAL", kind = "framework")]
 extern {}
 
-#[link(name = "openal")]
 #[cfg(target_os = "linux")]
+#[link(name = "openal")]
 extern {}
 
+#[cfg(all(target_os = "windows", target_env = "msvc"))]
 #[link(name = "OpenAL32")]
-#[cfg(target_os = "windows")]
+extern {}
+
+#[cfg(all(target_os = "windows", target_env = "gnu"))]
+#[link(name = "openal")]
 extern {}

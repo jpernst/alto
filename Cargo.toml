@@ -1,6 +1,8 @@
 [package]
 name = "openal-rs"
-description = "Rust bindings for OpenAL 1.1"
+description = """
+UNMAINTAINED - If you're interested in maintaining this crate, contact me
+Rust bindings for OpenAL 1.1"""
 version = "0.2.0"
 authors = ["bjz", "samyatchmenoff", "jpernst"]
 license = "Apache-2.0"

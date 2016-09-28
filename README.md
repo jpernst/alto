@@ -1,3 +1,5 @@
+UNMAINTAINED - If you're interested in maintaining this crate, contact me
+
 # [OpenAL 1.1](http://connect.creativelabs.com/openal/) bindings for Rust.
 
 [![Build Status](https://travis-ci.org/jpernst/openal-rs.svg?branch=master)](https://travis-ci.org/jpernst/openal-rs)  

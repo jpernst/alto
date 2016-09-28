@@ -13,14 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::borrow::ToOwned;
-use std::ptr;
-use std::str;
-use std::ffi::{CString, CStr};
-use libc;
-
-use self::types::*;
-
 pub mod types {
     use libc::*;
     pub type ALCboolean             = c_char;
@@ -83,149 +75,27 @@ pub mod ffi {
     pub enum ALCcontext { }
 
     extern "C" {
-        pub fn alcCreateContext(device: *const ALCdevice, attrlist: *const ALCint) -> *const ALCcontext;
-        pub fn alcMakeContextCurrent(context: *const ALCcontext) -> ALCboolean;
-        pub fn alcProcessContext(context: *const ALCcontext);
-        pub fn alcSuspendContext(context: *const ALCcontext);
-        pub fn alcDestroyContext(context: *const ALCcontext);
-        pub fn alcGetCurrentContext() -> *const ALCcontext;
-        pub fn alcGetContextsDevice(context: *const ALCcontext) -> *const ALCdevice;
+        pub fn alcCreateContext(device: *mut ALCdevice, attrlist: *mut ALCint) -> *mut ALCcontext;
+        pub fn alcMakeContextCurrent(context: *mut ALCcontext) -> ALCboolean;
+        pub fn alcProcessContext(context: *mut ALCcontext);
+        pub fn alcSuspendContext(context: *mut ALCcontext);
+        pub fn alcDestroyContext(context: *mut ALCcontext);
+        pub fn alcGetCurrentContext() -> *mut ALCcontext;
+        pub fn alcGetContextsDevice(context: *mut ALCcontext) -> *mut ALCdevice;
 
-        pub fn alcOpenDevice(devicename: *const ALCchar) -> *const ALCdevice;
-        pub fn alcCloseDevice(device: *const ALCdevice) -> ALCboolean;
-        pub fn alcGetError(device: *const ALCdevice) -> ALCenum;
-        pub fn alcIsExtensionPresent(device: *const ALCdevice, extname: *const ALCchar) -> ALCboolean;
-        pub fn alcGetProcAddress(device: *const ALCdevice, funcname: *const ALCchar) -> Option<extern "C" fn()>;
-        pub fn alcGetEnumValue(device: *const ALCdevice, enumname: *const ALCchar) -> ALCenum;
-        pub fn alcGetString(device: *const ALCdevice, param: ALCenum) -> *const ALCchar;
-        pub fn alcGetIntegerv(device: *const ALCdevice, param: ALCenum, size: ALCsizei, data: *mut ALCint);
-        pub fn alcCaptureOpenDevice(devicename: *const ALCchar, frequency: ALCuint, format: ALCenum, buffersize: ALCsizei) -> *const ALCdevice;
-        pub fn alcCaptureCloseDevice(device: *const ALCdevice) -> ALCboolean;
-        pub fn alcCaptureStart(device: *const ALCdevice);
-        pub fn alcCaptureStop(device: *const ALCdevice);
-        pub fn alcCaptureSamples(device: *const ALCdevice, buffer: *const ALCvoid, samples: ALCsizei);
+        pub fn alcOpenDevice(devicename: *const ALCchar) -> *mut ALCdevice;
+        pub fn alcCloseDevice(device: *mut ALCdevice) -> ALCboolean;
+        pub fn alcGetError(device: *mut ALCdevice) -> ALCenum;
+        pub fn alcIsExtensionPresent(device: *mut ALCdevice, extname: *const ALCchar) -> ALCboolean;
+        pub fn alcGetProcAddress(device: *mut ALCdevice, funcname: *const ALCchar) -> Option<extern "C" fn()>;
+        pub fn alcGetEnumValue(device: *mut ALCdevice, enumname: *const ALCchar) -> ALCenum;
+        pub fn alcGetString(device: *mut ALCdevice, param: ALCenum) -> *const ALCchar;
+        pub fn alcGetIntegerv(device: *mut ALCdevice, param: ALCenum, size: ALCsizei, data: *mut ALCint);
+        pub fn alcCaptureOpenDevice(devicename: *const ALCchar, frequency: ALCuint, format: ALCenum, buffersize: ALCsizei) -> *mut ALCdevice;
+        pub fn alcCaptureCloseDevice(device: *mut ALCdevice) -> ALCboolean;
+        pub fn alcCaptureStart(device: *mut ALCdevice);
+        pub fn alcCaptureStop(device: *mut ALCdevice);
+        pub fn alcCaptureSamples(device: *mut ALCdevice, buffer: *mut ALCvoid, samples: ALCsizei);
     }
 }
 
-pub struct Context {
-    ptr: *const ffi::ALCcontext,
-}
-
-// pub fn get_current_context() -> Context {
-//     Context { ptr: unsafe { ffi::alcGetCurrentContext() } }
-// }
-
-impl Context {
-    pub fn make_current(&self) -> bool {
-        unsafe { ffi::alcMakeContextCurrent(self.ptr) == ffi::TRUE }
-    }
-
-    pub fn process(&self) {
-        unsafe { ffi::alcProcessContext(self.ptr); }
-    }
-
-    pub fn suspend(&self) {
-        unsafe { ffi::alcSuspendContext(self.ptr); }
-    }
-
-    pub fn destroy(self) {}
-
-    // pub fn get_device(&self) -> Device {
-    //     Device { ptr: unsafe { ffi::alcGetContextsDevice(self.ptr) } }
-    // }
-
-    pub fn is_current(&self) -> bool {
-        unsafe { ffi::alcGetCurrentContext() == self.ptr }
-    }
-}
-
-impl Drop for Context {
-    fn drop(&mut self) {
-        unsafe { ffi::alcDestroyContext(self.ptr); }
-    }
-}
-
-#[allow(missing_copy_implementations)]
-pub struct Device {
-    ptr: *const ffi::ALCdevice,
-}
-
-impl Device {
-    pub fn open(devicename: Option<&str>) -> Option<Device> {
-        let ptr = unsafe {
-          match devicename {
-            Some(devicename) => {
-                if let Ok(devicename) = CString::new(devicename.as_bytes()) {
-                    ffi::alcOpenDevice(devicename.as_ptr())
-                } else { ptr::null() }
-            },
-            None => ffi::alcOpenDevice(ptr::null())
-          }
-        };
-        if ptr.is_null() { None }
-        else { Some(Device { ptr: ptr  }) }
-    }
-
-    /// Closes the device.
-    ///
-    /// The device will not be closed if it contains any contexts or buffers.
-    /// If this is the case, the device will be returned again, wrapped in `Err`.
-    pub fn close(self) -> Result<(), Device> {
-        if unsafe { ffi::alcCloseDevice(self.ptr) == ffi::TRUE } { Ok(()) }
-        else { Err(self) }
-    }
-
-    pub fn get_error(&self) -> ALCenum {
-        unsafe { ffi::alcGetError(self.ptr) }
-    }
-
-    pub fn get_string(&self, param: ALCenum) -> String {
-        unsafe { str::from_utf8(CStr::from_ptr(ffi::alcGetString(self.ptr, param) as *const libc::c_char).to_bytes()).unwrap().to_owned() }
-    }
-
-    // pub fn GetIntegerv(&self, param: ALCenum, size: ALCsizei, data: *const ALCint) {
-    //     unsafe { ffi::alcGetIntegerv(); }
-    // }
-
-    pub fn create_context(&self, attr_list: &[ALCint]) -> Option<Context> {
-        let attrs_terminated = { let mut v = attr_list.to_vec(); v.push(0); v }; // teminate attributes with a 0
-        let ptr = unsafe { ffi::alcCreateContext(self.ptr, attrs_terminated.as_ptr()) };
-        if ptr.is_null() { None }
-        else { Some(Context { ptr: ptr  }) }
-    }
-}
-
-#[allow(missing_copy_implementations)]
-pub struct CaptureDevice {
-    ptr: *const ffi::ALCdevice,
-}
-
-impl CaptureDevice {
-    pub fn open(devicename: &str, frequency: ALCuint, format: ALCenum, buffersize: ALCsizei) -> Option<CaptureDevice> {
-        if let Ok(devicename) = CString::new(devicename.as_bytes()) {
-            let ptr = unsafe { ffi::alcCaptureOpenDevice(devicename.as_ptr(), frequency, format, buffersize) };
-            if ptr.is_null() { None }
-            else { Some(CaptureDevice { ptr: ptr  }) }
-        } else { None }
-    }
-
-    /// Closes the capture device.
-    ///
-    /// If an error occurs, the device will be returned again, wrapped in `Err`.
-    pub fn close(self) -> Result<(), CaptureDevice> {
-        if unsafe { ffi::alcCaptureCloseDevice(self.ptr) == ffi::TRUE } { Ok(()) }
-        else { Err(self) }
-    }
-
-    pub fn start(&self) {
-        unsafe { ffi::alcCaptureStart(self.ptr); }
-    }
-
-    pub fn stop(&self) {
-        unsafe { ffi::alcCaptureStop(self.ptr); }
-    }
-
-    // pub fn CaptureSamples(&self, buffer: *const ALCvoid, samples: ALCsizei) {
-    //     unsafe { ffi::alcCaptureSamples(); }
-    // }
-}

@@ -3,16 +3,13 @@ name = "openal-rs"
 description = """
 UNMAINTAINED - If you're interested in maintaining this crate, contact me
 Rust bindings for OpenAL 1.1"""
-version = "0.2.0"
+version = "0.3.0"
 authors = ["bjz", "samyatchmenoff", "jpernst"]
 license = "Apache-2.0"
 repository = "https://github.com/jpernst/openal-rs.git"
 documentation = "http://jpernst.github.io/openal-rs"
 keywords = ["openal", "sound", "audio"]
 
-[lib]
-name = "openal"
-
 [dependencies]
-libc = "0.2.6"
+libc = "0.2.17"
 

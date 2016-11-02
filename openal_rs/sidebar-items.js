@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["AlError",""],["AlcError",""]],"fn":[["is_extension_present",""]],"mod":[["ext",""],["ffi",""]],"struct":[["Buffer",""],["Context",""],["Device",""],["Source",""]],"type":[["AlResult",""],["AlcResult",""]]});

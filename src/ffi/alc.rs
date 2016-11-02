@@ -4,36 +4,35 @@
          non_camel_case_types,
          non_upper_case_globals,
          non_snake_case)]
-pub const ALC_INVALID: ::std::os::raw::c_uchar = 0;
-pub const ALC_VERSION_0_1: ::std::os::raw::c_uchar = 1;
-pub const ALC_FALSE: ::std::os::raw::c_uchar = 0;
-pub const ALC_TRUE: ::std::os::raw::c_uchar = 1;
-pub const ALC_FREQUENCY: ::std::os::raw::c_ushort = 4103;
-pub const ALC_REFRESH: ::std::os::raw::c_ushort = 4104;
-pub const ALC_SYNC: ::std::os::raw::c_ushort = 4105;
-pub const ALC_MONO_SOURCES: ::std::os::raw::c_ushort = 4112;
-pub const ALC_STEREO_SOURCES: ::std::os::raw::c_ushort = 4113;
-pub const ALC_NO_ERROR: ::std::os::raw::c_uchar = 0;
-pub const ALC_INVALID_DEVICE: ::std::os::raw::c_ushort = 40961;
-pub const ALC_INVALID_CONTEXT: ::std::os::raw::c_ushort = 40962;
-pub const ALC_INVALID_ENUM: ::std::os::raw::c_ushort = 40963;
-pub const ALC_INVALID_VALUE: ::std::os::raw::c_ushort = 40964;
-pub const ALC_OUT_OF_MEMORY: ::std::os::raw::c_ushort = 40965;
-pub const ALC_MAJOR_VERSION: ::std::os::raw::c_ushort = 4096;
-pub const ALC_MINOR_VERSION: ::std::os::raw::c_ushort = 4097;
-pub const ALC_ATTRIBUTES_SIZE: ::std::os::raw::c_ushort = 4098;
-pub const ALC_ALL_ATTRIBUTES: ::std::os::raw::c_ushort = 4099;
-pub const ALC_DEFAULT_DEVICE_SPECIFIER: ::std::os::raw::c_ushort = 4100;
-pub const ALC_DEVICE_SPECIFIER: ::std::os::raw::c_ushort = 4101;
-pub const ALC_EXTENSIONS: ::std::os::raw::c_ushort = 4102;
-pub const ALC_EXT_CAPTURE: ::std::os::raw::c_uchar = 1;
-pub const ALC_CAPTURE_DEVICE_SPECIFIER: ::std::os::raw::c_ushort = 784;
-pub const ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER: ::std::os::raw::c_ushort =
-    785;
-pub const ALC_CAPTURE_SAMPLES: ::std::os::raw::c_ushort = 786;
-pub const ALC_ENUMERATE_ALL_EXT: ::std::os::raw::c_uchar = 1;
-pub const ALC_DEFAULT_ALL_DEVICES_SPECIFIER: ::std::os::raw::c_ushort = 4114;
-pub const ALC_ALL_DEVICES_SPECIFIER: ::std::os::raw::c_ushort = 4115;
+pub const ALC_INVALID: ::std::os::raw::c_int = 0;
+pub const ALC_VERSION_0_1: ::std::os::raw::c_int = 1;
+pub const ALC_FALSE: ::std::os::raw::c_char = 0;
+pub const ALC_TRUE: ::std::os::raw::c_char = 1;
+pub const ALC_FREQUENCY: ::std::os::raw::c_int = 4103;
+pub const ALC_REFRESH: ::std::os::raw::c_int = 4104;
+pub const ALC_SYNC: ::std::os::raw::c_int = 4105;
+pub const ALC_MONO_SOURCES: ::std::os::raw::c_int = 4112;
+pub const ALC_STEREO_SOURCES: ::std::os::raw::c_int = 4113;
+pub const ALC_NO_ERROR: ::std::os::raw::c_int = 0;
+pub const ALC_INVALID_DEVICE: ::std::os::raw::c_int = 40961;
+pub const ALC_INVALID_CONTEXT: ::std::os::raw::c_int = 40962;
+pub const ALC_INVALID_ENUM: ::std::os::raw::c_int = 40963;
+pub const ALC_INVALID_VALUE: ::std::os::raw::c_int = 40964;
+pub const ALC_OUT_OF_MEMORY: ::std::os::raw::c_int = 40965;
+pub const ALC_MAJOR_VERSION: ::std::os::raw::c_int = 4096;
+pub const ALC_MINOR_VERSION: ::std::os::raw::c_int = 4097;
+pub const ALC_ATTRIBUTES_SIZE: ::std::os::raw::c_int = 4098;
+pub const ALC_ALL_ATTRIBUTES: ::std::os::raw::c_int = 4099;
+pub const ALC_DEFAULT_DEVICE_SPECIFIER: ::std::os::raw::c_int = 4100;
+pub const ALC_DEVICE_SPECIFIER: ::std::os::raw::c_int = 4101;
+pub const ALC_EXTENSIONS: ::std::os::raw::c_int = 4102;
+pub const ALC_EXT_CAPTURE: ::std::os::raw::c_int = 1;
+pub const ALC_CAPTURE_DEVICE_SPECIFIER: ::std::os::raw::c_int = 784;
+pub const ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER: ::std::os::raw::c_int = 785;
+pub const ALC_CAPTURE_SAMPLES: ::std::os::raw::c_int = 786;
+pub const ALC_ENUMERATE_ALL_EXT: ::std::os::raw::c_int = 1;
+pub const ALC_DEFAULT_ALL_DEVICES_SPECIFIER: ::std::os::raw::c_int = 4114;
+pub const ALC_ALL_DEVICES_SPECIFIER: ::std::os::raw::c_int = 4115;
 pub enum ALCdevice_struct { }
 pub type ALCdevice = ALCdevice_struct;
 pub enum ALCcontext_struct { }

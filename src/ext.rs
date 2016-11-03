@@ -1,4 +1,4 @@
-use ffi::*;
+use al_sys::*;
 
 
 macro_rules! alc_ext {

@@ -1,20 +1,20 @@
-extern crate openal_rs;
+extern crate alto;
 
 use std::ptr;
-use openal_rs::ffi;
+use std::ffi::CStr;
+use alto::sys::*;
 
 
 fn main() {
 	unsafe {
-		let dev = ffi::alcOpenDevice(ptr::null());
-		println!("{}", ffi::alcGetEnumValue(dev, "ALC_DONT_CARE_SOFT\0".as_bytes().as_ptr() as *const i8));
-		//let exts = ffi::alcGetString(dev, ffi::ALC_EXTENSIONS);
-		//println!("ALC: {}", std::ffi::CStr::from_ptr(exts).to_string_lossy());
-		//let ctx = ffi::alcCreateContext(dev, ptr::null());
-		//ffi::alcMakeContextCurrent(ctx);
-		//let exts = ffi::alGetString(ffi::AL_EXTENSIONS);
-		//println!("AL: {}", std::ffi::CStr::from_ptr(exts).to_string_lossy());
-		//ffi::alcDestroyContext(ctx);
-		ffi::alcCloseDevice(dev);
+		let dev = alcOpenDevice(ptr::null());
+		let exts = alcGetString(dev, ALC_EXTENSIONS);
+		println!("ALC: {}", CStr::from_ptr(exts).to_string_lossy());
+		let ctx = alcCreateContext(dev, ptr::null());
+		alcMakeContextCurrent(ctx);
+		let exts = alGetString(AL_EXTENSIONS);
+		println!("AL: {}", CStr::from_ptr(exts).to_string_lossy());
+		alcDestroyContext(ctx);
+		alcCloseDevice(dev);
 	}
 }

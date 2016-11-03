@@ -1,13 +1,13 @@
 [package]
-name = "alto"
-description = "Idiomatic interface for OpenAL 1.1 and extensions (including EFX)"
+name = "al-sys"
+description = "Rust bindings for OpenAL 1.1"
 version = "0.1.0"
 authors = ["jpernst"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/jpernst/alto.git"
 keywords = ["openal", "sound", "audio"]
+build = "build.rs"
 
-[dependencies]
-al-sys = "0.1.0"
-lazy_static = "0.2.1"
+[build-dependencies]
+pkg-config = "0.3.8"
 

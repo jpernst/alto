@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate lazy_static;
+extern crate al_sys;
 
 use std::sync;
 use std::ptr;
@@ -9,21 +10,13 @@ use std::mem;
 //use std::collections::{hash_map, HashMap};
 use std::sync::Mutex;
 
-pub mod ffi {
-	mod alc;
-	mod al;
-	//mod alext;
-	mod efx_presets;
-
-	pub use self::al::*;
-	pub use self::alc::*;
-	//pub use self::alext::*;
-	pub use self::efx_presets::*;
-}
-
 pub mod ext;
 
-use ffi::*;
+pub mod sys {
+	pub use al_sys::*;
+}
+
+use sys::*;
 
 
 lazy_static! {

@@ -5,7 +5,7 @@ version = "0.1.0"
 authors = ["jpernst"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/jpernst/alto.git"
-keywords = ["openal", "sound", "audio"]
+keywords = ["openal", "al", "sound", "audio"]
 
 [dependencies]
 al-sys = "0.1.0"

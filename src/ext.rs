@@ -1,21 +1,93 @@
+use std::ptr;
+use std::mem;
+use std::cell::{RefCell, Ref};
+use std::sync::{Mutex, RwLock};
+use owning_ref::RwLockReadGuardRef;
 use al_sys::*;
 
 
 macro_rules! alc_ext {
 	{
-		$(pub struct $struct_:ident {
-			$(
-				pub enum $enum_:ident,
-			)*
-			$(
-				pub fn $fn_:ident: $fn_ty:ty,
-			)*
+		pub cache $cache:ident;
+
+
+		$(pub ext $ext:ident {
+			$(pub enum $enum_:ident,)*
+			$(pub fn $fn_:ident: $fn_ty:ty,)*
 		})*
 	} => {
+		#[allow(non_snake_case)]
+		#[doc(hidden)]
+		pub struct $cache {
+			dev: *mut ALCdevice,
+			$($ext: RwLock<Option<Option<$ext>>>,)*
+		}
+
+
+		impl $cache {
+			pub fn new(dev: *mut ALCdevice) -> $cache {
+				$cache{
+					dev: dev,
+					$($ext: RwLock::new(None),)*
+				}
+			}
+
+
+			$(pub fn $ext(&self) -> Option<RwLockReadGuardRef<Option<Option<$ext>>, $ext>> {
+				if let Ok(mut e) = self.$ext.try_write() {
+					if e.is_none() {
+						*e = Some($ext::load(self.dev));
+					}
+				}
+
+				let e = RwLockReadGuardRef::new(self.$ext.read().unwrap()).map(|e| e.as_ref().unwrap());
+				if e.is_some() {
+					Some(e.map(|e| e.as_ref().unwrap()))
+				} else {
+					None
+				}
+			})*
+		}
+
+
+		unsafe impl Send for $cache { }
+		unsafe impl Sync for $cache { }
+
+
 		$(#[allow(non_snake_case)]
-		pub struct $struct_ {
+		#[doc(hidden)]
+		pub struct $ext {
 			$(pub $enum_: Option<ALCenum>,)*
 			$(pub $fn_: Option<$fn_ty>,)*
+		}
+
+
+		impl $ext {
+			pub fn load(dev: *mut ALCdevice) -> Option<$ext> {
+				unsafe { alcGetError(dev); }
+				if unsafe { alcIsExtensionPresent(dev, concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALCchar) } == ALC_TRUE {
+					Some($ext{
+						$($enum_: {
+							let e = unsafe { alcGetEnumValue(dev, concat!(stringify!($enum_), "\0").as_bytes().as_ptr() as *const ALCchar) };
+							if unsafe { alcGetError(dev) } == ALC_NO_ERROR {
+								Some(e)
+							} else {
+								None
+							}
+						},)*
+						$($fn_: {
+							let p = unsafe { alcGetProcAddress(dev, concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALCchar) };
+							if unsafe { alcGetError(dev) } == ALC_NO_ERROR {
+								unsafe { mem::transmute(p) }
+							} else {
+								None
+							}
+						},)*
+					})
+				} else {
+					None
+				}
+			}
 		})*
 	};
 }
@@ -23,66 +95,91 @@ macro_rules! alc_ext {
 
 macro_rules! al_ext {
 	{
-		$(pub struct $struct_:ident {
-			$(
-				pub enum $enum_:ident,
-			)*
-			$(
-				pub fn $fn_:ident: $fn_ty:ty,
-			)*
+		pub cache $cache:ident;
+
+
+		$(pub ext $ext:ident {
+			$(pub enum $enum_:ident,)*
+			$(pub fn $fn_:ident: $fn_ty:ty,)*
 		})*
 	} => {
+		#[allow(non_snake_case)]
+		#[doc(hidden)]
+		pub struct $cache {
+			$($ext: RefCell<Option<Option<$ext>>>,)*
+		}
+
+
+		impl $cache {
+			pub fn new() -> $cache {
+				$cache{
+					$($ext: RefCell::new(None),)*
+				}
+			}
+
+
+			$(pub fn $ext(&self) -> Option<Ref<$ext>> {
+				if let Ok(mut e) = self.$ext.try_borrow_mut() {
+					if e.is_none() {
+						*e = Some($ext::load());
+					}
+				}
+
+				let e = Ref::map(self.$ext.borrow(), |e| e.as_ref().unwrap());
+				if e.is_some() {
+					Some(Ref::map(e, |e| e.as_ref().unwrap()))
+				} else {
+					None
+				}
+			})*
+		}
+
+
+		unsafe impl Send for $cache { }
+
+
 		$(#[allow(non_snake_case)]
-		pub struct $struct_ {
+		#[doc(hidden)]
+		pub struct $ext {
 			$(pub $enum_: Option<ALenum>,)*
 			$(pub $fn_: Option<$fn_ty>,)*
+		}
+
+
+		impl $ext {
+			pub fn load() -> Option<$ext> {
+				unsafe { alGetError(); }
+				if unsafe { alIsExtensionPresent(concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALchar) } == AL_TRUE {
+					Some($ext{
+						$($enum_: {
+							let e = unsafe { alGetEnumValue(concat!(stringify!($enum_), "\0").as_bytes().as_ptr() as *const ALchar) };
+							if unsafe { alGetError() } == AL_NO_ERROR {
+								Some(e)
+							} else {
+								None
+							}
+						},)*
+						$($fn_: {
+							let p = unsafe { alGetProcAddress(concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALchar) };
+							if unsafe { alGetError() } == AL_NO_ERROR {
+								unsafe { mem::transmute(p) }
+							} else {
+								None
+							}
+						},)*
+					})
+				} else {
+					None
+				}
+			}
 		})*
 	};
 }
 
 
-//lazy_static! {
-//	static ref ALC_NULL_NAMES: HashMap<AlcNull, &'static [u8]> = {
-//		let mut map = HashMap::new();
-//		map.insert(AlcNull::EnumerateAll, "ALC_ENUMERATE_ALL_EXT\0".as_bytes());
-//		map.insert(AlcNull::SoftLoopback, "ALC_SOFT_loopback\0".as_bytes());
-//		map.insert(AlcNull::ThreadLocalContext, "ALC_EXT_thread_local_context\0".as_bytes());
-//		map
-//	};
-//	static ref ALC_NAMES: HashMap<Alc, &'static [u8]> = {
-//		let mut map = HashMap::new();
-//		map.insert(Alc::Dedicated, "ALC_EXT_DEDICATED\0".as_bytes());
-//		map.insert(Alc::Disconnect, "ALC_EXT_disconnect\0".as_bytes());
-//		map.insert(Alc::Efx, "ALC_EXT_EFX\0".as_bytes());
-//		map.insert(Alc::SoftHrtf, "ALC_SOFT_HRTF\0".as_bytes());
-//		map.insert(Alc::SoftPauseDevice, "ALC_SOFT_pause_device\0".as_bytes());
-//		map
-//	};
-//	static ref AL_NAMES: HashMap<Al, &'static [u8]> = {
-//		let mut map = HashMap::new();
-//		map.insert(Al::ALaw, "AL_EXT_ALAW\0".as_bytes());
-//		map.insert(Al::BFormat, "AL_EXT_BFORMAT\0".as_bytes());
-//		map.insert(Al::Double, "AL_EXT_double\0".as_bytes());
-//		map.insert(Al::Float32, "AL_EXT_float32\0".as_bytes());
-//		map.insert(Al::Ima4, "AL_EXT_IMA4\0".as_bytes());
-//		map.insert(Al::McFormats, "AL_EXT_MCFORMATS\0".as_bytes());
-//		map.insert(Al::MuLaw, "AL_EXT_MULAW\0".as_bytes());
-//		map.insert(Al::MuLawBFormat, "AL_EXT_MULAW_BFORMAT\0".as_bytes());
-//		map.insert(Al::MuLawMcFormats, "AL_EXT_MULAW_MCFORMATS\0".as_bytes());
-//		map.insert(Al::SoftBlockAlignment, "AL_SOFT_block_alignment\0".as_bytes());
-//		map.insert(Al::SoftBufferSamples, "AL_SOFT_buffer_samples\0".as_bytes());
-//		map.insert(Al::SoftBufferSubData, "AL_SOFT_buffer_sub_data\0".as_bytes());
-//		map.insert(Al::SoftDeferredUpdates, "AL_SOFT_deferred_updates\0".as_bytes());
-//		map.insert(Al::SoftDirectChannels, "AL_SOFT_direct_channels\0".as_bytes());
-//		map.insert(Al::SoftLoopPoints, "AL_SOFT_loop_points\0".as_bytes());
-//		map.insert(Al::SoftMsadpcm, "AL_SOFT_MSADPCM\0".as_bytes());
-//		map.insert(Al::SoftSourceLatency, "AL_SOFT_source_latency\0".as_bytes());
-//		map.insert(Al::SoftSourceLength, "AL_SOFT_source_length\0".as_bytes());
-//		map.insert(Al::SourceDistanceModel, "AL_EXT_source_distance_model\0".as_bytes());
-//		map
-//	};
-//	static ref ALC_CACHE: Mutex<AlcNullCache> = Mutex::new(AlcNullCache::new());
-//}
+lazy_static! {
+	static ref ALC_CACHE: AlcNullCache = AlcNullCache::new(ptr::null_mut());
+}
 
 
 #[derive(Copy, Clone, PartialEq, Hash, Eq, Debug)]
@@ -130,21 +227,17 @@ pub enum Al {
 }
 
 
-pub struct AlcNullCache {
-	pub enumerate_all: Option<Option<EnumerateAllSymbols>>,
-	pub soft_loopback: Option<Option<SoftLoopbackSymbols>>,
-	pub thread_local_context: Option<Option<ThreadLocalContextSymbols>>,
-}
-
-
 alc_ext! {
-	pub struct EnumerateAllSymbols {
+	pub cache AlcNullCache;
+
+
+	pub ext ALC_ENUMERATE_ALL_EXT {
 		pub enum ALC_ALL_DEVICES_SPECIFIER,
 		pub enum ALC_DEFAULT_ALL_DEVICES_SPECIFIER,
 	}
 
 
-	pub struct SoftLoopbackSymbols {
+	pub ext ALC_SOFT_loopback {
 		pub enum ALC_BYTE_SOFT,
 		pub enum ALC_UNSIGNED_BYTE_SOFT,
 		pub enum ALC_SHORT_SOFT,
@@ -167,42 +260,35 @@ alc_ext! {
 	}
 
 
-	pub struct ThreadLocalContextSymbols {
+	pub ext ALC_EXT_thread_local_context {
 		pub fn alcSetThreadContext: unsafe extern "C" fn(device: *mut ALCdevice) -> ALCboolean,
 		pub fn alcGetThreadContext: unsafe extern "C" fn() -> *mut ALCcontext,
 	}
 }
 
 
-pub struct AlcCache {
-	pub dev: *mut ALCdevice,
-	pub dedicated: Option<Option<DedicatedSymbols>>,
-	pub disconnect: Option<Option<DisconnectSymbols>>,
-	pub efx: Option<Option<EfxSymbols>>,
-	pub soft_hrtf: Option<Option<SoftHrtfSymbols>>,
-	pub soft_pause_device: Option<Option<SoftPauseDeviceSymbols>>,
-}
-
-
 alc_ext! {
-	pub struct DedicatedSymbols {
+	pub cache AlcCache;
+
+
+	pub ext ALC_EXT_DEDICATED {
 		//pub enum AL_EFFECT_DEDICATED_LOW_FREQUENCY_EFFECT,
 		//pub enum AL_EFFECT_DEDICATED_DIALOGUE,
 		//pub enum AL_EFFECT_DEDICATED_GAIN,
 	}
 
 
-	pub struct DisconnectSymbols {
+	pub ext ALC_EXT_DISCONNECT {
 		pub enum ALC_CONNECTED,
 	}
 
 
-	pub struct EfxSymbols {
+	pub ext ALC_EXT_EFX {
 		// TODO
 	}
 
 
-	pub struct SoftHrtfSymbols {
+	pub ext ALC_SOFT_HRTF {
 		pub enum ALC_HRTF_SOFT,
 		pub enum ALC_HRTF_ID_SOFT,
 		pub enum ALC_DONT_CARE_SOFT,
@@ -221,33 +307,10 @@ alc_ext! {
 	}
 
 
-	pub struct SoftPauseDeviceSymbols {
+	pub ext ALC_SOFT_pause_device {
 		pub fn alcDevicePauseSOFT: unsafe extern "C" fn(dev: *mut ALCdevice),
 		pub fn alcDeviceResumeSOFT: unsafe extern "C" fn(dev: *mut ALCdevice),
 	}
-}
-
-
-pub struct AlCache {
-	pub a_law: Option<Option<ALawSymbols>>,
-	pub b_format: Option<Option<BFormatSymbols>>,
-	pub double: Option<Option<DoubleSymbols>>,
-	pub float32: Option<Option<Float32Symbols>>,
-	pub ima4: Option<Option<Ima4Symbols>>,
-	pub mc_formats: Option<Option<McFormatsSymbols>>,
-	pub mu_law: Option<Option<MuLawSymbols>>,
-	pub mu_law_b_format: Option<Option<MuLawBFormatSymbols>>,
-	pub mu_law_mc_formats: Option<Option<MuLawMcFormatsSymbols>>,
-	pub soft_block_alignment: Option<Option<SoftBlockAlignmentSymbols>>,
-	pub soft_buffer_samples: Option<Option<SoftBufferSamplesSymbols>>,
-	pub soft_buffer_sub_data: Option<Option<SoftBufferSubDataSymbols>>,
-	pub soft_deferred_updates: Option<Option<SoftDeferredUpdatesSymbols>>,
-	pub soft_direct_channels: Option<Option<SoftDirectChannelsSymbols>>,
-	pub soft_loop_points: Option<Option<SoftLoopPointsSymbols>>,
-	pub soft_msadpcm: Option<Option<SoftMsadpcmSymbols>>,
-	pub soft_source_latency: Option<Option<SoftSourceLatencySymbols>>,
-	pub soft_source_length: Option<Option<SoftSourceLengthSymbols>>,
-	pub source_distance_model: Option<Option<SourceDistanceModelSymbols>>,
 }
 
 
@@ -256,13 +319,16 @@ pub type ALuint64SOFT = u64;
 
 
 al_ext! {
-	pub struct ALawSymbols {
+	pub cache AlCache;
+
+
+	pub ext AL_EXT_ALAW {
 		pub enum AL_FORMAT_MONO_ALAW_EXT,
 		pub enum AL_FORMAT_STEREO_ALAW_EXT,
 	}
 
 
-	pub struct BFormatSymbols {
+	pub ext AL_EXT_BFORMAT {
 		pub enum AL_FORMAT_BFORMAT2D_8,
 		pub enum AL_FORMAT_BFORMAT2D_16,
 		pub enum AL_FORMAT_BFORMAT2D_FLOAT32,
@@ -272,25 +338,25 @@ al_ext! {
 	}
 
 
-	pub struct DoubleSymbols {
+	pub ext AL_EXT_double {
 		pub enum AL_FORMAT_MONO_DOUBLE_EXT,
 		pub enum AL_FORMAT_STEREO_DOUBLE_EXT,
 	}
 
 
-	pub struct Float32Symbols {
+	pub ext AL_EXT_float32 {
 		pub enum AL_FORMAT_MONO_FLOAT32,
 		pub enum AL_FORMAT_STEREO_FLOAT32,
 	}
 
 
-	pub struct Ima4Symbols {
+	pub ext AL_EXT_IMA4 {
 		pub enum AL_FORMAT_MONO_IMA4,
 		pub enum AL_FORMAT_STEREO_IMA4,
 	}
 
 
-	pub struct McFormatsSymbols {
+	pub ext AL_EXT_MCFORMATS {
 		pub enum AL_FORMAT_QUAD8,
 		pub enum AL_FORMAT_QUAD16,
 		pub enum AL_FORMAT_QUAD32,
@@ -309,19 +375,19 @@ al_ext! {
 	}
 
 
-	pub struct MuLawSymbols {
+	pub ext AL_EXT_MULAW {
 		pub enum AL_FORMAT_MONO_MULAW_EXT,
 		pub enum AL_FORMAT_STEREO_MULAW_EXT,
 	}
 
 
-	pub struct MuLawBFormatSymbols {
+	pub ext AL_EXT_MULAW_BFORMAT {
 		pub enum AL_FORMAT_BFORMAT2D_MULAW,
 		pub enum AL_FORMAT_BFORMAT3D_MULAW,
 	}
 
 
-	pub struct MuLawMcFormatsSymbols {
+	pub ext AL_EXT_MULAW_MCFORMATS {
 		pub enum AL_FORMAT_MONO_MULAW,
 		pub enum AL_FORMAT_STEREO_MULAW,
 		pub enum AL_FORMAT_QUAD_MULAW,
@@ -332,13 +398,13 @@ al_ext! {
 	}
 
 
-	pub struct SoftBlockAlignmentSymbols {
+	pub ext AL_SOFT_block_alignment {
 		pub enum AL_UNPACK_BLOCK_ALIGNMENT_SOFT,
 		pub enum AL_PACK_BLOCK_ALIGNMENT_SOFT,
 	}
 
 
-	pub struct SoftBufferSamplesSymbols {
+	pub ext AL_SOFT_buffer_samples {
 		pub enum AL_MONO_SOFT,
 		pub enum AL_STEREO_SOFT,
 		pub enum AL_REAR_SOFT,
@@ -392,7 +458,7 @@ al_ext! {
 	}
 
 
-	pub struct SoftBufferSubDataSymbols {
+	pub ext AL_SOFT_buffer_sub_data {
 		pub enum AL_BYTE_RW_OFFSETS_SOFT,
 		pub enum AL_SAMPLE_RW_OFFSETS_SOFT,
 
@@ -400,7 +466,7 @@ al_ext! {
 	}
 
 
-	pub struct SoftDeferredUpdatesSymbols {
+	pub ext AL_SOFT_deferred_updates {
 		pub enum AL_DEFERRED_UPDATES_SOFT,
 
 		pub fn alDeferUpdatesSOFT: unsafe extern "C" fn(),
@@ -408,23 +474,23 @@ al_ext! {
 	}
 
 
-	pub struct SoftDirectChannelsSymbols {
+	pub ext AL_SOFT_direct_channels {
 		pub enum AL_DIRECT_CHANNELS_SOFT,
 	}
 
 
-	pub struct SoftLoopPointsSymbols {
+	pub ext AL_SOFT_loop_points {
 		pub enum AL_LOOP_POINTS_SOFT,
 	}
 
 
-	pub struct SoftMsadpcmSymbols {
+	pub ext AL_SOFT_MSADPCM {
 		pub enum AL_FORMAT_MONO_MSADPCM_SOFT,
 		pub enum AL_FORMAT_STEREO_MSADPCM_SOFT,
 	}
 
 
-	pub struct SoftSourceLatencySymbols {
+	pub ext AL_SOFT_source_latency {
 		pub enum AL_SAMPLE_OFFSET_LATENCY_SOFT,
 		pub enum AL_SEC_OFFSET_LATENCY_SOFT,
 
@@ -443,109 +509,16 @@ al_ext! {
 	}
 
 
-	pub struct SoftSourceLengthSymbols {
+	pub ext AL_SOFT_source_length {
 		pub enum AL_BYTE_LENGTH_SOFT,
 		pub enum AL_SAMPLE_LENGTH_SOFT,
 		pub enum AL_SEC_LENGTH_SOFT,
 	}
 
 
-	pub struct SourceDistanceModelSymbols {
+	pub ext AL_EXT_source_distance_model {
 		pub enum AL_SOURCE_DISTANCE_MODEL,
 	}
 }
 
 
-impl AlcNullCache {
-	pub fn new() -> AlcNullCache {
-		AlcNullCache{
-			enumerate_all: None,
-			soft_loopback: None,
-			thread_local_context: None,
-		}
-	}
-
-
-	pub fn query_enumerate_all(&mut self) -> Option<()> {
-		None
-	}
-
-
-	pub fn query_soft_loopback(&mut self) -> Option<&SoftLoopbackSymbols> {
-		None
-	}
-
-
-	pub fn query_thread_local_context(&mut self) -> Option<&ThreadLocalContextSymbols> {
-		None
-	}
-}
-
-
-impl AlcCache {
-	pub fn new(dev: *mut ALCdevice) -> AlcCache {
-		AlcCache{
-			dev: dev,
-			dedicated: None,
-			disconnect: None,
-			efx: None,
-			soft_hrtf: None,
-			soft_pause_device: None,
-		}
-	}
-
-
-	pub fn query_dedicated(&mut self) -> Option<()> {
-		None
-	}
-
-
-	pub fn query_disconnect(&mut self) -> Option<()> {
-		None
-	}
-
-
-	pub fn query_efx(&mut self) -> Option<&EfxSymbols> {
-		None
-	}
-
-
-	pub fn query_soft_hrtf(&mut self) -> Option<()> {
-		None
-	}
-
-
-	pub fn query_soft_pause_device(&mut self) -> Option<()> {
-		None
-	}
-}
-
-
-impl AlCache {
-	pub fn new() -> AlCache {
-		AlCache{
-			a_law: None,
-			b_format: None,
-			double: None,
-			float32: None,
-			ima4: None,
-			mc_formats: None,
-			mu_law: None,
-			mu_law_b_format: None,
-			mu_law_mc_formats: None,
-			soft_block_alignment: None,
-			soft_buffer_samples: None,
-			soft_buffer_sub_data: None,
-			soft_deferred_updates: None,
-			soft_direct_channels: None,
-			soft_loop_points: None,
-			soft_msadpcm: None,
-			soft_source_latency: None,
-			soft_source_length: None,
-			source_distance_model: None,
-		}
-	}
-
-
-
-}

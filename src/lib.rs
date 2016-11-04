@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate lazy_static;
+extern crate owning_ref;
 extern crate al_sys;
 
 use std::sync;

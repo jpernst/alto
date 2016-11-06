@@ -12,7 +12,7 @@ macro_rules! alc_ext {
 
 
 		$(pub ext $ext:ident {
-			$(pub enum $enum_:ident,)*
+			$(pub const $const_:ident,)*
 			$(pub fn $fn_:ident: $fn_ty:ty,)*
 		})*
 	} => {
@@ -57,7 +57,7 @@ macro_rules! alc_ext {
 		$(#[allow(non_snake_case)]
 		#[doc(hidden)]
 		pub struct $ext {
-			$(pub $enum_: Option<ALCenum>,)*
+			$(pub $const_: Option<ALCenum>,)*
 			$(pub $fn_: Option<$fn_ty>,)*
 		}
 
@@ -67,8 +67,8 @@ macro_rules! alc_ext {
 				unsafe { alcGetError(dev); }
 				if unsafe { alcIsExtensionPresent(dev, concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALCchar) } == ALC_TRUE {
 					Some($ext{
-						$($enum_: {
-							let e = unsafe { alcGetEnumValue(dev, concat!(stringify!($enum_), "\0").as_bytes().as_ptr() as *const ALCchar) };
+						$($const_: {
+							let e = unsafe { alcGetEnumValue(dev, concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALCchar) };
 							if unsafe { alcGetError(dev) } == ALC_NO_ERROR {
 								Some(e)
 							} else {
@@ -99,7 +99,7 @@ macro_rules! al_ext {
 
 
 		$(pub ext $ext:ident {
-			$(pub enum $enum_:ident,)*
+			$(pub const $const_:ident,)*
 			$(pub fn $fn_:ident: $fn_ty:ty,)*
 		})*
 	} => {
@@ -141,7 +141,7 @@ macro_rules! al_ext {
 		$(#[allow(non_snake_case)]
 		#[doc(hidden)]
 		pub struct $ext {
-			$(pub $enum_: Option<ALenum>,)*
+			$(pub $const_: Option<ALenum>,)*
 			$(pub $fn_: Option<$fn_ty>,)*
 		}
 
@@ -151,8 +151,8 @@ macro_rules! al_ext {
 				unsafe { alGetError(); }
 				if unsafe { alIsExtensionPresent(concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALchar) } == AL_TRUE {
 					Some($ext{
-						$($enum_: {
-							let e = unsafe { alGetEnumValue(concat!(stringify!($enum_), "\0").as_bytes().as_ptr() as *const ALchar) };
+						$($const_: {
+							let e = unsafe { alGetEnumValue(concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALchar) };
 							if unsafe { alGetError() } == AL_NO_ERROR {
 								Some(e)
 							} else {
@@ -232,27 +232,27 @@ alc_ext! {
 
 
 	pub ext ALC_ENUMERATE_ALL_EXT {
-		pub enum ALC_ALL_DEVICES_SPECIFIER,
-		pub enum ALC_DEFAULT_ALL_DEVICES_SPECIFIER,
+		pub const ALC_ALL_DEVICES_SPECIFIER,
+		pub const ALC_DEFAULT_ALL_DEVICES_SPECIFIER,
 	}
 
 
 	pub ext ALC_SOFT_loopback {
-		pub enum ALC_BYTE_SOFT,
-		pub enum ALC_UNSIGNED_BYTE_SOFT,
-		pub enum ALC_SHORT_SOFT,
-		pub enum ALC_UNSIGNED_SHORT_SOFT,
-		pub enum ALC_INT_SOFT,
-		pub enum ALC_UNSIGNED_INT_SOFT,
-		pub enum ALC_FLOAT_SOFT,
-		pub enum ALC_MONO_SOFT,
-		pub enum ALC_STEREO_SOFT,
-		pub enum ALC_QUAD_SOFT,
-		pub enum ALC_5POINT1_SOFT,
-		pub enum ALC_6POINT1_SOFT,
-		pub enum ALC_7POINT1_SOFT,
-		pub enum ALC_FORMAT_CHANNELS_SOFT,
-		pub enum ALC_FORMAT_TYPE_SOFT,
+		pub const ALC_BYTE_SOFT,
+		pub const ALC_UNSIGNED_BYTE_SOFT,
+		pub const ALC_SHORT_SOFT,
+		pub const ALC_UNSIGNED_SHORT_SOFT,
+		pub const ALC_INT_SOFT,
+		pub const ALC_UNSIGNED_INT_SOFT,
+		pub const ALC_FLOAT_SOFT,
+		pub const ALC_MONO_SOFT,
+		pub const ALC_STEREO_SOFT,
+		pub const ALC_QUAD_SOFT,
+		pub const ALC_5POINT1_SOFT,
+		pub const ALC_6POINT1_SOFT,
+		pub const ALC_7POINT1_SOFT,
+		pub const ALC_FORMAT_CHANNELS_SOFT,
+		pub const ALC_FORMAT_TYPE_SOFT,
 
 		pub fn alcLoopbackOpenDeviceSOFT: unsafe extern "C" fn(deviceName: *const ALCchar) -> *mut ALCdevice,
 		pub fn alcIsRenderFormatSupportedSOFT: unsafe extern "C" fn(device: *mut ALCdevice, frequency: ALCsizei, channels: ALCenum, type_: ALCenum) -> ALCboolean,
@@ -272,14 +272,14 @@ alc_ext! {
 
 
 	pub ext ALC_EXT_DEDICATED {
-		//pub enum AL_EFFECT_DEDICATED_LOW_FREQUENCY_EFFECT,
-		//pub enum AL_EFFECT_DEDICATED_DIALOGUE,
-		//pub enum AL_EFFECT_DEDICATED_GAIN,
+		//pub const AL_EFFECT_DEDICATED_LOW_FREQUENCY_EFFECT,
+		//pub const AL_EFFECT_DEDICATED_DIALOGUE,
+		//pub const AL_EFFECT_DEDICATED_GAIN,
 	}
 
 
 	pub ext ALC_EXT_DISCONNECT {
-		pub enum ALC_CONNECTED,
+		pub const ALC_CONNECTED,
 	}
 
 
@@ -289,18 +289,18 @@ alc_ext! {
 
 
 	pub ext ALC_SOFT_HRTF {
-		pub enum ALC_HRTF_SOFT,
-		pub enum ALC_HRTF_ID_SOFT,
-		pub enum ALC_DONT_CARE_SOFT,
-		pub enum ALC_HRTF_STATUS_SOFT,
-		pub enum ALC_NUM_HRTF_SPECIFIERS_SOFT,
-		pub enum ALC_HRTF_SPECIFIER_SOFT,
-		pub enum ALC_HRTF_DISABLED_SOFT,
-		pub enum ALC_HRTF_ENABLED_SOFT,
-		pub enum ALC_HRTF_DENIED_SOFT,
-		pub enum ALC_HRTF_REQUIRED_SOFT,
-		pub enum ALC_HRTF_HEADPHONES_DETECTED_SOFT,
-		pub enum ALC_HRTF_UNSUPPORTED_FORMAT_SOFT,
+		pub const ALC_HRTF_SOFT,
+		pub const ALC_HRTF_ID_SOFT,
+		pub const ALC_DONT_CARE_SOFT,
+		pub const ALC_HRTF_STATUS_SOFT,
+		pub const ALC_NUM_HRTF_SPECIFIERS_SOFT,
+		pub const ALC_HRTF_SPECIFIER_SOFT,
+		pub const ALC_HRTF_DISABLED_SOFT,
+		pub const ALC_HRTF_ENABLED_SOFT,
+		pub const ALC_HRTF_DENIED_SOFT,
+		pub const ALC_HRTF_REQUIRED_SOFT,
+		pub const ALC_HRTF_HEADPHONES_DETECTED_SOFT,
+		pub const ALC_HRTF_UNSUPPORTED_FORMAT_SOFT,
 
 		pub fn alcGetStringiSOFT: unsafe extern "C" fn(dev: *mut ALCdevice, paramName: ALCenum, index: ALCsizei) -> *const ALCchar,
 		pub fn alcResetDeviceSOFT: unsafe extern "C" fn(dev: *mut ALCdevice, attrList: *const ALCint) -> ALCboolean,
@@ -323,133 +323,133 @@ al_ext! {
 
 
 	pub ext AL_EXT_ALAW {
-		pub enum AL_FORMAT_MONO_ALAW_EXT,
-		pub enum AL_FORMAT_STEREO_ALAW_EXT,
+		pub const AL_FORMAT_MONO_ALAW_EXT,
+		pub const AL_FORMAT_STEREO_ALAW_EXT,
 	}
 
 
 	pub ext AL_EXT_BFORMAT {
-		pub enum AL_FORMAT_BFORMAT2D_8,
-		pub enum AL_FORMAT_BFORMAT2D_16,
-		pub enum AL_FORMAT_BFORMAT2D_FLOAT32,
-		pub enum AL_FORMAT_BFORMAT3D_8,
-		pub enum AL_FORMAT_BFORMAT3D_16,
-		pub enum AL_FORMAT_BFORMAT3D_FLOAT32,
+		pub const AL_FORMAT_BFORMAT2D_8,
+		pub const AL_FORMAT_BFORMAT2D_16,
+		pub const AL_FORMAT_BFORMAT2D_FLOAT32,
+		pub const AL_FORMAT_BFORMAT3D_8,
+		pub const AL_FORMAT_BFORMAT3D_16,
+		pub const AL_FORMAT_BFORMAT3D_FLOAT32,
 	}
 
 
 	pub ext AL_EXT_double {
-		pub enum AL_FORMAT_MONO_DOUBLE_EXT,
-		pub enum AL_FORMAT_STEREO_DOUBLE_EXT,
+		pub const AL_FORMAT_MONO_DOUBLE_EXT,
+		pub const AL_FORMAT_STEREO_DOUBLE_EXT,
 	}
 
 
 	pub ext AL_EXT_float32 {
-		pub enum AL_FORMAT_MONO_FLOAT32,
-		pub enum AL_FORMAT_STEREO_FLOAT32,
+		pub const AL_FORMAT_MONO_FLOAT32,
+		pub const AL_FORMAT_STEREO_FLOAT32,
 	}
 
 
 	pub ext AL_EXT_IMA4 {
-		pub enum AL_FORMAT_MONO_IMA4,
-		pub enum AL_FORMAT_STEREO_IMA4,
+		pub const AL_FORMAT_MONO_IMA4,
+		pub const AL_FORMAT_STEREO_IMA4,
 	}
 
 
 	pub ext AL_EXT_MCFORMATS {
-		pub enum AL_FORMAT_QUAD8,
-		pub enum AL_FORMAT_QUAD16,
-		pub enum AL_FORMAT_QUAD32,
-		pub enum AL_FORMAT_REAR8,
-		pub enum AL_FORMAT_REAR16,
-		pub enum AL_FORMAT_REAR32,
-		pub enum AL_FORMAT_51CHN8,
-		pub enum AL_FORMAT_51CHN16,
-		pub enum AL_FORMAT_51CHN32,
-		pub enum AL_FORMAT_61CHN8,
-		pub enum AL_FORMAT_61CHN16,
-		pub enum AL_FORMAT_61CHN32,
-		pub enum AL_FORMAT_71CHN8,
-		pub enum AL_FORMAT_71CHN16,
-		pub enum AL_FORMAT_71CHN32,
+		pub const AL_FORMAT_QUAD8,
+		pub const AL_FORMAT_QUAD16,
+		pub const AL_FORMAT_QUAD32,
+		pub const AL_FORMAT_REAR8,
+		pub const AL_FORMAT_REAR16,
+		pub const AL_FORMAT_REAR32,
+		pub const AL_FORMAT_51CHN8,
+		pub const AL_FORMAT_51CHN16,
+		pub const AL_FORMAT_51CHN32,
+		pub const AL_FORMAT_61CHN8,
+		pub const AL_FORMAT_61CHN16,
+		pub const AL_FORMAT_61CHN32,
+		pub const AL_FORMAT_71CHN8,
+		pub const AL_FORMAT_71CHN16,
+		pub const AL_FORMAT_71CHN32,
 	}
 
 
 	pub ext AL_EXT_MULAW {
-		pub enum AL_FORMAT_MONO_MULAW_EXT,
-		pub enum AL_FORMAT_STEREO_MULAW_EXT,
+		pub const AL_FORMAT_MONO_MULAW_EXT,
+		pub const AL_FORMAT_STEREO_MULAW_EXT,
 	}
 
 
 	pub ext AL_EXT_MULAW_BFORMAT {
-		pub enum AL_FORMAT_BFORMAT2D_MULAW,
-		pub enum AL_FORMAT_BFORMAT3D_MULAW,
+		pub const AL_FORMAT_BFORMAT2D_MULAW,
+		pub const AL_FORMAT_BFORMAT3D_MULAW,
 	}
 
 
 	pub ext AL_EXT_MULAW_MCFORMATS {
-		pub enum AL_FORMAT_MONO_MULAW,
-		pub enum AL_FORMAT_STEREO_MULAW,
-		pub enum AL_FORMAT_QUAD_MULAW,
-		pub enum AL_FORMAT_REAR_MULAW,
-		pub enum AL_FORMAT_51CHN_MULAW,
-		pub enum AL_FORMAT_61CHN_MULAW,
-		pub enum AL_FORMAT_71CHN_MULAW,
+		pub const AL_FORMAT_MONO_MULAW,
+		pub const AL_FORMAT_STEREO_MULAW,
+		pub const AL_FORMAT_QUAD_MULAW,
+		pub const AL_FORMAT_REAR_MULAW,
+		pub const AL_FORMAT_51CHN_MULAW,
+		pub const AL_FORMAT_61CHN_MULAW,
+		pub const AL_FORMAT_71CHN_MULAW,
 	}
 
 
 	pub ext AL_SOFT_block_alignment {
-		pub enum AL_UNPACK_BLOCK_ALIGNMENT_SOFT,
-		pub enum AL_PACK_BLOCK_ALIGNMENT_SOFT,
+		pub const AL_UNPACK_BLOCK_ALIGNMENT_SOFT,
+		pub const AL_PACK_BLOCK_ALIGNMENT_SOFT,
 	}
 
 
 	pub ext AL_SOFT_buffer_samples {
-		pub enum AL_MONO_SOFT,
-		pub enum AL_STEREO_SOFT,
-		pub enum AL_REAR_SOFT,
-		pub enum AL_QUAD_SOFT,
-		pub enum AL_5POINT1_SOFT,
-		pub enum AL_6POINT1_SOFT,
-		pub enum AL_7POINT1_SOFT,
+		pub const AL_MONO_SOFT,
+		pub const AL_STEREO_SOFT,
+		pub const AL_REAR_SOFT,
+		pub const AL_QUAD_SOFT,
+		pub const AL_5POINT1_SOFT,
+		pub const AL_6POINT1_SOFT,
+		pub const AL_7POINT1_SOFT,
 
-		pub enum AL_BYTE_SOFT,
-		pub enum AL_UNSIGNED_BYTE_SOFT,
-		pub enum AL_SHORT_SOFT,
-		pub enum AL_UNSIGNED_SHORT_SOFT,
-		pub enum AL_INT_SOFT,
-		pub enum AL_UNSIGNED_INT_SOFT,
-		pub enum AL_FLOAT_SOFT,
-		pub enum AL_DOUBLE_SOFT,
-		pub enum AL_BYTE3_SOFT,
-		pub enum AL_UNSIGNED_BYTE3_SOFT,
+		pub const AL_BYTE_SOFT,
+		pub const AL_UNSIGNED_BYTE_SOFT,
+		pub const AL_SHORT_SOFT,
+		pub const AL_UNSIGNED_SHORT_SOFT,
+		pub const AL_INT_SOFT,
+		pub const AL_UNSIGNED_INT_SOFT,
+		pub const AL_FLOAT_SOFT,
+		pub const AL_DOUBLE_SOFT,
+		pub const AL_BYTE3_SOFT,
+		pub const AL_UNSIGNED_BYTE3_SOFT,
 
-		pub enum AL_MONO8_SOFT,
-		pub enum AL_MONO16_SOFT,
-		pub enum AL_MONO32F_SOFT,
-		pub enum AL_STEREO8_SOFT,
-		pub enum AL_STEREO16_SOFT,
-		pub enum AL_STEREO32F_SOFT,
-		pub enum AL_QUAD8_SOFT,
-		pub enum AL_QUAD16_SOFT,
-		pub enum AL_QUAD32F_SOFT,
-		pub enum AL_REAR8_SOFT,
-		pub enum AL_REAR16_SOFT,
-		pub enum AL_REAR32F_SOFT,
-		pub enum AL_5POINT1_8_SOFT,
-		pub enum AL_5POINT1_16_SOFT,
-		pub enum AL_5POINT1_32F_SOFT,
-		pub enum AL_6POINT1_8_SOFT,
-		pub enum AL_6POINT1_16_SOFT,
-		pub enum AL_6POINT1_32F_SOFT,
-		pub enum AL_7POINT1_8_SOFT,
-		pub enum AL_7POINT1_16_SOFT,
-		pub enum AL_7POINT1_32F_SOFT,
+		pub const AL_MONO8_SOFT,
+		pub const AL_MONO16_SOFT,
+		pub const AL_MONO32F_SOFT,
+		pub const AL_STEREO8_SOFT,
+		pub const AL_STEREO16_SOFT,
+		pub const AL_STEREO32F_SOFT,
+		pub const AL_QUAD8_SOFT,
+		pub const AL_QUAD16_SOFT,
+		pub const AL_QUAD32F_SOFT,
+		pub const AL_REAR8_SOFT,
+		pub const AL_REAR16_SOFT,
+		pub const AL_REAR32F_SOFT,
+		pub const AL_5POINT1_8_SOFT,
+		pub const AL_5POINT1_16_SOFT,
+		pub const AL_5POINT1_32F_SOFT,
+		pub const AL_6POINT1_8_SOFT,
+		pub const AL_6POINT1_16_SOFT,
+		pub const AL_6POINT1_32F_SOFT,
+		pub const AL_7POINT1_8_SOFT,
+		pub const AL_7POINT1_16_SOFT,
+		pub const AL_7POINT1_32F_SOFT,
 
-		pub enum AL_INTERNAL_FORMAT_SOFT,
-		pub enum AL_BYTE_LENGTH_SOFT,
-		pub enum AL_SAMPLE_LENGTH_SOFT,
-		pub enum AL_SEC_LENGTH_SOFT,
+		pub const AL_INTERNAL_FORMAT_SOFT,
+		pub const AL_BYTE_LENGTH_SOFT,
+		pub const AL_SAMPLE_LENGTH_SOFT,
+		pub const AL_SEC_LENGTH_SOFT,
 
 		pub fn alBufferSamplesSOFT: unsafe extern "C" fn(buffer: ALuint, samplerate: ALuint, internalformat: ALenum, samples: ALsizei, channels: ALenum, type_: ALenum, data: *const ALvoid),
 		pub fn alBufferSubSamplesSOFT: unsafe extern "C" fn(buffer: ALuint, offset: ALsizei, samples: ALsizei, channels: ALenum, type_: ALenum, data: *const ALvoid),
@@ -459,15 +459,15 @@ al_ext! {
 
 
 	pub ext AL_SOFT_buffer_sub_data {
-		pub enum AL_BYTE_RW_OFFSETS_SOFT,
-		pub enum AL_SAMPLE_RW_OFFSETS_SOFT,
+		pub const AL_BYTE_RW_OFFSETS_SOFT,
+		pub const AL_SAMPLE_RW_OFFSETS_SOFT,
 
 		pub fn alBufferSubDataSOFT: unsafe extern "C" fn(buffer: ALuint, format: ALenum, data: *const ALvoid, offset: ALsizei, length: ALsizei),
 	}
 
 
 	pub ext AL_SOFT_deferred_updates {
-		pub enum AL_DEFERRED_UPDATES_SOFT,
+		pub const AL_DEFERRED_UPDATES_SOFT,
 
 		pub fn alDeferUpdatesSOFT: unsafe extern "C" fn(),
 		pub fn alProcessUpdatesSOFT: unsafe extern "C" fn(),
@@ -475,24 +475,24 @@ al_ext! {
 
 
 	pub ext AL_SOFT_direct_channels {
-		pub enum AL_DIRECT_CHANNELS_SOFT,
+		pub const AL_DIRECT_CHANNELS_SOFT,
 	}
 
 
 	pub ext AL_SOFT_loop_points {
-		pub enum AL_LOOP_POINTS_SOFT,
+		pub const AL_LOOP_POINTS_SOFT,
 	}
 
 
 	pub ext AL_SOFT_MSADPCM {
-		pub enum AL_FORMAT_MONO_MSADPCM_SOFT,
-		pub enum AL_FORMAT_STEREO_MSADPCM_SOFT,
+		pub const AL_FORMAT_MONO_MSADPCM_SOFT,
+		pub const AL_FORMAT_STEREO_MSADPCM_SOFT,
 	}
 
 
 	pub ext AL_SOFT_source_latency {
-		pub enum AL_SAMPLE_OFFSET_LATENCY_SOFT,
-		pub enum AL_SEC_OFFSET_LATENCY_SOFT,
+		pub const AL_SAMPLE_OFFSET_LATENCY_SOFT,
+		pub const AL_SEC_OFFSET_LATENCY_SOFT,
 
 		pub fn alSourcedSOFT: unsafe extern "C" fn(source: ALuint, param: ALenum, value: ALdouble),
 		pub fn alSource3dSOFT: unsafe extern "C" fn(source: ALuint, param: ALenum, value1: ALdouble, value2: ALdouble, value3: ALdouble),
@@ -510,14 +510,14 @@ al_ext! {
 
 
 	pub ext AL_SOFT_source_length {
-		pub enum AL_BYTE_LENGTH_SOFT,
-		pub enum AL_SAMPLE_LENGTH_SOFT,
-		pub enum AL_SEC_LENGTH_SOFT,
+		pub const AL_BYTE_LENGTH_SOFT,
+		pub const AL_SAMPLE_LENGTH_SOFT,
+		pub const AL_SEC_LENGTH_SOFT,
 	}
 
 
 	pub ext AL_EXT_source_distance_model {
-		pub enum AL_SOURCE_DISTANCE_MODEL,
+		pub const AL_SOURCE_DISTANCE_MODEL,
 	}
 }
 

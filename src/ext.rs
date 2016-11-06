@@ -254,7 +254,7 @@ alc_ext! {
 		pub enum ALC_FORMAT_CHANNELS_SOFT,
 		pub enum ALC_FORMAT_TYPE_SOFT,
 
-		pub fn alcLoopbackOpenDeviceSOFT: unsafe extern "C" fn(device: *mut ALCdevice) -> *mut ALCdevice,
+		pub fn alcLoopbackOpenDeviceSOFT: unsafe extern "C" fn(deviceName: *const ALCchar) -> *mut ALCdevice,
 		pub fn alcIsRenderFormatSupportedSOFT: unsafe extern "C" fn(device: *mut ALCdevice, frequency: ALCsizei, channels: ALCenum, type_: ALCenum) -> ALCboolean,
 		pub fn alcRenderSamplesSOFT: unsafe extern "C" fn(device: *mut ALCdevice, buffer: *mut ALvoid, samples: ALCsizei),
 	}

@@ -6,6 +6,8 @@ use alto::sys::*;
 
 
 fn main() {
+	println!("{:?}", alto::enumerate_outputs());
+
 	unsafe {
 		let sl = alto::ext::ALC_SOFT_loopback::load(ptr::null_mut()).unwrap();
 		let dev = sl.alcLoopbackOpenDeviceSOFT.unwrap()(ptr::null());

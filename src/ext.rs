@@ -178,7 +178,7 @@ macro_rules! al_ext {
 
 
 lazy_static! {
-	static ref ALC_CACHE: AlcNullCache = AlcNullCache::new(ptr::null_mut());
+	pub static ref ALC_CACHE: AlcNullCache = AlcNullCache::new(ptr::null_mut());
 }
 
 

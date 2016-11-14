@@ -24,6 +24,14 @@ pub enum AlError {
 }
 
 
+pub enum Format {
+	Mono8,
+	Mono16,
+	Stereo8,
+	Stereo16,
+}
+
+
 pub type AlResult<T> = ::std::result::Result<T, AlError>;
 
 

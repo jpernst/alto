@@ -238,13 +238,13 @@ unsafe impl Sync for LoopbackDevice { }
 
 
 impl CaptureDevice {
-//	pub fn open(spec: Option<&CStr>) -> AlcResult<CaptureDevice> {
+//	pub fn open(spec: Option<&CStr>, freq: u32, format: al::Format, size: usize) -> AlcResult<CaptureDevice> {
 //		(*ALC_INIT)?;
 //
 //		let dev = if let Some(spec) = spec {
-//			unsafe { sys::alcCaptureOpenDevice(spec.as_ptr()) }
+//			unsafe { sys::alcCaptureOpenDevice(spec.as_ptr(), freq, size) }
 //		} else {
-//			unsafe { sys::alcCaptureOpenDevice(ptr::null()) }
+//			unsafe { sys::alcCaptureOpenDevice(ptr::null(), freq, size) }
 //		};
 //
 //		if dev == ptr::null_mut() {

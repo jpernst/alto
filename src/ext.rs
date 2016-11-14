@@ -1,7 +1,7 @@
 use std::ptr;
 use std::mem;
 use std::cell::{RefCell, Ref};
-use std::sync::{Mutex, RwLock};
+use std::sync::RwLock;
 use owning_ref::RwLockReadGuardRef;
 use al_sys::*;
 
@@ -16,14 +16,17 @@ macro_rules! alc_ext {
 			$(pub fn $fn_:ident: $fn_ty:ty,)*
 		})*
 	} => {
-		#[allow(non_snake_case)]
 		#[doc(hidden)]
+		#[allow(non_snake_case)]
 		pub struct $cache {
 			dev: *mut ALCdevice,
-			$($ext: RwLock<Option<Option<$ext>>>,)*
+			$(
+				$ext: RwLock<Option<Option<$ext>>>,
+			)*
 		}
 
 
+		#[allow(non_snake_case)]
 		impl $cache {
 			pub fn new(dev: *mut ALCdevice) -> $cache {
 				$cache{
@@ -54,10 +57,12 @@ macro_rules! alc_ext {
 		unsafe impl Sync for $cache { }
 
 
-		$(#[allow(non_snake_case)]
-		#[doc(hidden)]
+		$(#[doc(hidden)]
+		#[allow(non_camel_case_types, non_snake_case)]
 		pub struct $ext {
-			$(pub $const_: Option<ALCenum>,)*
+			$(
+				pub $const_: Option<ALCenum>,
+			)*
 			$(pub $fn_: Option<$fn_ty>,)*
 		}
 
@@ -103,13 +108,14 @@ macro_rules! al_ext {
 			$(pub fn $fn_:ident: $fn_ty:ty,)*
 		})*
 	} => {
-		#[allow(non_snake_case)]
 		#[doc(hidden)]
+		#[allow(non_snake_case)]
 		pub struct $cache {
 			$($ext: RefCell<Option<Option<$ext>>>,)*
 		}
 
 
+		#[allow(non_snake_case)]
 		impl $cache {
 			pub fn new() -> $cache {
 				$cache{
@@ -138,8 +144,8 @@ macro_rules! al_ext {
 		unsafe impl Send for $cache { }
 
 
-		$(#[allow(non_snake_case)]
-		#[doc(hidden)]
+		$(#[doc(hidden)]
+		#[allow(non_camel_case_types, non_snake_case)]
 		pub struct $ext {
 			$(pub $const_: Option<ALenum>,)*
 			$(pub $fn_: Option<$fn_ty>,)*
@@ -183,7 +189,6 @@ lazy_static! {
 
 
 #[derive(Copy, Clone, PartialEq, Hash, Eq, Debug)]
-#[repr(isize)]
 pub enum AlcNull {
 	EnumerateAll,
 	SoftLoopback,
@@ -192,7 +197,6 @@ pub enum AlcNull {
 
 
 #[derive(Copy, Clone, PartialEq, Hash, Eq, Debug)]
-#[repr(isize)]
 pub enum Alc {
 	Dedicated,
 	Disconnect,
@@ -203,7 +207,6 @@ pub enum Alc {
 
 
 #[derive(Copy, Clone, PartialEq, Hash, Eq, Debug)]
-#[repr(isize)]
 pub enum Al {
 	ALaw,
 	BFormat,

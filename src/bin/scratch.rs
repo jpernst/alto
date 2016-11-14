@@ -6,7 +6,7 @@ use alto::sys::*;
 
 
 fn main() {
-	println!("{:?}", alto::enumerate_outputs());
+	println!("{:?}", alto::enumerate_captures());
 
 	unsafe {
 		let sl = alto::ext::ALC_SOFT_loopback::load(ptr::null_mut()).unwrap();

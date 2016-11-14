@@ -4,6 +4,7 @@ use std::ffi::{CString, CStr};
 use std::sync::Mutex;
 
 use ::sys;
+use ::al;
 use ::ext;
 
 
@@ -62,48 +63,63 @@ pub struct CaptureDevice {
 
 
 pub fn default_impl() -> AlcResult<CString> {
-	default(false)
+	(*ALC_INIT)?;
+
+	let spec = unsafe { CStr::from_ptr(sys::alcGetString(ptr::null_mut(), sys::ALC_DEFAULT_DEVICE_SPECIFIER)) };
+	get_error(ptr::null_mut()).map(|_| spec.to_owned())
 }
 
 
 pub fn default_output() -> AlcResult<CString> {
-	default(true)
+	(*ALC_INIT)?;
+
+	if let Some(ea) = ext::ALC_CACHE.ALC_ENUMERATE_ALL_EXT() {
+		let spec = unsafe { CStr::from_ptr(sys::alcGetString(ptr::null_mut(), ea.ALC_DEFAULT_ALL_DEVICES_SPECIFIER.unwrap())) };
+		get_error(ptr::null_mut()).map(|_| spec.to_owned())
+	} else {
+		default_impl()
+	}
 }
 
 
-fn default(all: bool) -> AlcResult<CString> {
+pub fn default_capture() -> AlcResult<CString> {
 	(*ALC_INIT)?;
 
-	let spec = if let (true, Some(dds)) = (all, ext::ALC_CACHE.ALC_ENUMERATE_ALL_EXT().and_then(|ext| ext.ALC_DEFAULT_ALL_DEVICES_SPECIFIER)) {
-		unsafe { sys::alcGetString(ptr::null_mut(), dds) }
-	} else {
-		unsafe { sys::alcGetString(ptr::null_mut(), sys::ALC_DEFAULT_DEVICE_SPECIFIER) }
-	};
-	get_error(ptr::null_mut())?;
-
-	Ok(unsafe { CStr::from_ptr(spec).to_owned() })
+	let spec = unsafe { CStr::from_ptr(sys::alcGetString(ptr::null_mut(), sys::ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)) };
+	get_error(ptr::null_mut()).map(|_| spec.to_owned())
 }
 
 
 pub fn enumerate_impls() -> AlcResult<Vec<CString>> {
-	enumerate(false)
+	(*ALC_INIT)?;
+
+	let spec = unsafe { sys::alcGetString(ptr::null_mut(), sys::ALC_DEVICE_SPECIFIER) };
+	get_error(ptr::null_mut()).and_then(|_| parse_enum_spec(spec as *const u8))
 }
 
 
 pub fn enumerate_outputs() -> AlcResult<Vec<CString>> {
-	enumerate(true)
+	(*ALC_INIT)?;
+
+	if let Some(ea) = ext::ALC_CACHE.ALC_ENUMERATE_ALL_EXT() {
+		let spec = unsafe { sys::alcGetString(ptr::null_mut(), ea.ALC_ALL_DEVICES_SPECIFIER.unwrap()) };
+		get_error(ptr::null_mut()).and_then(|_| parse_enum_spec(spec as *const u8))
+	} else {
+		enumerate_impls()
+	}
 }
 
 
-fn enumerate(all: bool) -> AlcResult<Vec<CString>> {
+pub fn enumerate_captures() -> AlcResult<Vec<CString>> {
 	(*ALC_INIT)?;
 
-	let spec = if let (true, Some(ads)) = (all, ext::ALC_CACHE.ALC_ENUMERATE_ALL_EXT().and_then(|ext| ext.ALC_ALL_DEVICES_SPECIFIER)) {
-		unsafe { sys::alcGetString(ptr::null_mut(), ads) }
-	} else {
-		unsafe { sys::alcGetString(ptr::null_mut(), sys::ALC_DEVICE_SPECIFIER) }
-	};
-	get_error(ptr::null_mut())?;
+	let spec = unsafe { sys::alcGetString(ptr::null_mut(), sys::ALC_CAPTURE_DEVICE_SPECIFIER) };
+	get_error(ptr::null_mut()).and_then(|_| parse_enum_spec(spec as *const u8))
+}
+
+
+fn parse_enum_spec(spec: *const u8) -> AlcResult<Vec<CString>> {
+	(*ALC_INIT)?;
 
 	let mut specs = Vec::with_capacity(0);
 
@@ -149,13 +165,15 @@ impl Device {
 	}
 
 
-	pub fn is_extension_present(&self, ext: ext::Alc) -> AlcResult<bool> {
-		unimplemented!();
-	}
-
-
-	pub fn get_string() -> AlcResult<CString> {
-		unimplemented!();
+	pub fn is_extension_present(&self, ext: ext::Alc) -> bool {
+		let cache = self.cache.lock().unwrap();
+		match ext {
+			ext::Alc::Dedicated => cache.ALC_EXT_DEDICATED().is_some(),
+			ext::Alc::Disconnect => cache.ALC_EXT_DISCONNECT().is_some(),
+			ext::Alc::Efx => cache.ALC_EXT_EFX().is_some(),
+			ext::Alc::SoftHrtf => cache.ALC_SOFT_HRTF().is_some(),
+			ext::Alc::SoftPauseDevice => cache.ALC_SOFT_pause_device().is_some(),
+		}
 	}
 
 
@@ -171,5 +189,71 @@ impl Drop for Device {
 
 unsafe impl Send for Device { }
 unsafe impl Sync for Device { }
+
+
+impl LoopbackDevice {
+	pub fn open(spec: Option<&CStr>) -> AlcResult<LoopbackDevice> {
+		(*ALC_INIT)?;
+		let sl = ext::ALC_CACHE.ALC_SOFT_loopback().ok_or(AlcError::ExtensionNotPresent)?;
+
+		let dev = if let Some(spec) = spec {
+			unsafe { sl.alcLoopbackOpenDeviceSOFT.unwrap()(spec.as_ptr()) }
+		} else {
+			unsafe { sl.alcLoopbackOpenDeviceSOFT.unwrap()(ptr::null()) }
+		};
+
+		if dev == ptr::null_mut() {
+			Err(AlcError::InvalidDevice)
+		} else {
+			get_error(dev)?;
+			Ok(LoopbackDevice{dev: dev, cache: Mutex::new(ext::AlcCache::new(dev))})
+		}
+	}
+
+
+	pub fn is_extension_present(&self, ext: ext::Alc) -> bool {
+		let cache = self.cache.lock().unwrap();
+		match ext {
+			ext::Alc::Dedicated => cache.ALC_EXT_DEDICATED().is_some(),
+			ext::Alc::Disconnect => cache.ALC_EXT_DISCONNECT().is_some(),
+			ext::Alc::Efx => cache.ALC_EXT_EFX().is_some(),
+			ext::Alc::SoftHrtf => cache.ALC_SOFT_HRTF().is_some(),
+			ext::Alc::SoftPauseDevice => cache.ALC_SOFT_pause_device().is_some(),
+		}
+	}
+
+
+}
+
+
+impl Drop for LoopbackDevice {
+	fn drop(&mut self) {
+		unsafe { sys::alcCloseDevice(self.dev); }
+	}
+}
+
+
+unsafe impl Send for LoopbackDevice { }
+unsafe impl Sync for LoopbackDevice { }
+
+
+impl CaptureDevice {
+//	pub fn open(spec: Option<&CStr>) -> AlcResult<CaptureDevice> {
+//		(*ALC_INIT)?;
+//
+//		let dev = if let Some(spec) = spec {
+//			unsafe { sys::alcCaptureOpenDevice(spec.as_ptr()) }
+//		} else {
+//			unsafe { sys::alcCaptureOpenDevice(ptr::null()) }
+//		};
+//
+//		if dev == ptr::null_mut() {
+//			Err(AlcError::InvalidDevice)
+//		} else {
+//			get_error(dev)?;
+//			Ok(CaptureDevice{dev: dev, cache: Mutex::new(ext::AlcCache::new(dev))})
+//		}
+//	}
+}
 
 

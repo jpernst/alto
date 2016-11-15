@@ -1,10 +1,13 @@
+use std::cmp;
 use std::ptr;
 use std::mem;
 use std::ffi::{CString, CStr};
 use std::sync::Mutex;
+use std::fmt;
+use std::error::Error as StdError;
 
 use ::sys;
-use ::al;
+use ::al::*;
 use ::ext;
 
 
@@ -25,16 +28,17 @@ lazy_static! {
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-#[repr(isize)]
 pub enum AlcError {
-	InvalidDevice = sys::ALC_INVALID_DEVICE as isize,
-	InvalidContext = sys::ALC_INVALID_CONTEXT as isize,
-	InvalidEnum = sys::ALC_INVALID_ENUM as isize,
-	InvalidValue = sys::ALC_INVALID_VALUE as isize,
-	OutOfMemory = sys::ALC_OUT_OF_MEMORY as isize,
+	InvalidDevice,
+	InvalidContext,
+	InvalidEnum,
+	InvalidValue,
+	OutOfMemory,
 
 	UnsupportedVersion,
 	ExtensionNotPresent,
+	Al(AlError),
+	UnknownError,
 }
 
 
@@ -141,7 +145,53 @@ fn parse_enum_spec(spec: *const u8) -> AlcResult<Vec<CString>> {
 fn get_error(dev: *mut sys::ALCdevice) -> AlcResult<()> {
 	match unsafe { sys::alcGetError(dev)} {
 		sys::ALC_NO_ERROR => Ok(()),
-		e => unsafe { Err(mem::transmute(e as isize)) }
+		e => unsafe { Err(e.into()) }
+	}
+}
+
+
+impl fmt::Display for AlcError {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "{}", self.description())
+	}
+}
+
+
+impl StdError for AlcError {
+	fn description(&self) -> &str {
+		match *self {
+			AlcError::InvalidDevice => "ALC ERROR: Invalid Device",
+			AlcError::InvalidContext => "ALC ERROR: Invalid Context",
+			AlcError::InvalidEnum => "ALC ERROR: Invalid Enum",
+			AlcError::InvalidValue => "ALC ERROR: Invalid Value",
+			AlcError::OutOfMemory => "ALC ERROR: Invalid Memory",
+
+			AlcError::UnsupportedVersion => "ALC ERROR: Unsupported Version",
+			AlcError::ExtensionNotPresent => "ALC ERROR: Extension Not Present",
+			AlcError::Al(ref al) => al.description(),
+			AlcError::UnknownError => "ALC ERROR: Unknown Error",
+		}
+	}
+}
+
+
+impl From<sys::ALCenum> for AlcError {
+	fn from(al: sys::ALCenum) -> AlcError {
+		match al {
+			sys::ALC_INVALID_DEVICE => AlcError::InvalidDevice,
+			sys::ALC_INVALID_CONTEXT => AlcError::InvalidContext,
+			sys::ALC_INVALID_ENUM => AlcError::InvalidEnum,
+			sys::ALC_INVALID_VALUE => AlcError::InvalidValue,
+			sys::ALC_OUT_OF_MEMORY => AlcError::OutOfMemory,
+			_ => AlcError::UnknownError,
+		}
+	}
+}
+
+
+impl From<AlError> for AlcError {
+	fn from(al: AlError) -> AlcError {
+		panic!();
 	}
 }
 
@@ -155,11 +205,11 @@ impl Device {
 		} else {
 			unsafe { sys::alcOpenDevice(ptr::null()) }
 		};
+		get_error(ptr::null_mut())?;
 
 		if dev == ptr::null_mut() {
 			Err(AlcError::InvalidDevice)
 		} else {
-			get_error(dev)?;
 			Ok(Device{dev: dev, cache: Mutex::new(ext::AlcCache::new(dev))})
 		}
 	}
@@ -201,11 +251,11 @@ impl LoopbackDevice {
 		} else {
 			unsafe { sl.alcLoopbackOpenDeviceSOFT.unwrap()(ptr::null()) }
 		};
+		get_error(ptr::null_mut())?;
 
 		if dev == ptr::null_mut() {
 			Err(AlcError::InvalidDevice)
 		} else {
-			get_error(dev)?;
 			Ok(LoopbackDevice{dev: dev, cache: Mutex::new(ext::AlcCache::new(dev))})
 		}
 	}
@@ -238,22 +288,23 @@ unsafe impl Sync for LoopbackDevice { }
 
 
 impl CaptureDevice {
-//	pub fn open(spec: Option<&CStr>, freq: u32, format: al::Format, size: usize) -> AlcResult<CaptureDevice> {
-//		(*ALC_INIT)?;
-//
-//		let dev = if let Some(spec) = spec {
-//			unsafe { sys::alcCaptureOpenDevice(spec.as_ptr(), freq, size) }
-//		} else {
-//			unsafe { sys::alcCaptureOpenDevice(ptr::null(), freq, size) }
-//		};
-//
-//		if dev == ptr::null_mut() {
-//			Err(AlcError::InvalidDevice)
-//		} else {
-//			get_error(dev)?;
-//			Ok(CaptureDevice{dev: dev, cache: Mutex::new(ext::AlcCache::new(dev))})
-//		}
-//	}
+	pub fn open(spec: Option<&CStr>, freq: sys::ALCuint, format: Format, size: sys::ALCsizei) -> AlcResult<CaptureDevice> {
+		(*ALC_INIT)?;
+
+		let dev = if let Some(spec) = spec {
+			unsafe { sys::alcCaptureOpenDevice(spec.as_ptr(), freq, format.into_raw(None)?, size) }
+		} else {
+			unsafe { sys::alcCaptureOpenDevice(ptr::null(), freq, format.into_raw(None)?, size) }
+		};
+		get_error(ptr::null_mut())?;
+
+		if dev == ptr::null_mut() {
+			Err(AlcError::InvalidDevice)
+		} else {
+			Ok(CaptureDevice{dev: dev})
+		}
+	}
 }
 
 
+unsafe impl Send for CaptureDevice { }

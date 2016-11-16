@@ -1,6 +1,4 @@
-use std::cmp;
 use std::ptr;
-use std::mem;
 use std::ffi::{CString, CStr};
 use std::sync::Mutex;
 use std::fmt;
@@ -77,7 +75,7 @@ pub fn default_impl() -> AlcResult<CString> {
 pub fn default_output() -> AlcResult<CString> {
 	(*ALC_INIT)?;
 
-	if let Some(ea) = ext::ALC_CACHE.ALC_ENUMERATE_ALL_EXT() {
+	if let Ok(ea) = ext::ALC_CACHE.ALC_ENUMERATE_ALL_EXT() {
 		let spec = unsafe { CStr::from_ptr(sys::alcGetString(ptr::null_mut(), ea.ALC_DEFAULT_ALL_DEVICES_SPECIFIER.unwrap())) };
 		get_error(ptr::null_mut()).map(|_| spec.to_owned())
 	} else {
@@ -105,7 +103,7 @@ pub fn enumerate_impls() -> AlcResult<Vec<CString>> {
 pub fn enumerate_outputs() -> AlcResult<Vec<CString>> {
 	(*ALC_INIT)?;
 
-	if let Some(ea) = ext::ALC_CACHE.ALC_ENUMERATE_ALL_EXT() {
+	if let Ok(ea) = ext::ALC_CACHE.ALC_ENUMERATE_ALL_EXT() {
 		let spec = unsafe { sys::alcGetString(ptr::null_mut(), ea.ALC_ALL_DEVICES_SPECIFIER.unwrap()) };
 		get_error(ptr::null_mut()).and_then(|_| parse_enum_spec(spec as *const u8))
 	} else {
@@ -218,11 +216,11 @@ impl Device {
 	pub fn is_extension_present(&self, ext: ext::Alc) -> bool {
 		let cache = self.cache.lock().unwrap();
 		match ext {
-			ext::Alc::Dedicated => cache.ALC_EXT_DEDICATED().is_some(),
-			ext::Alc::Disconnect => cache.ALC_EXT_DISCONNECT().is_some(),
-			ext::Alc::Efx => cache.ALC_EXT_EFX().is_some(),
-			ext::Alc::SoftHrtf => cache.ALC_SOFT_HRTF().is_some(),
-			ext::Alc::SoftPauseDevice => cache.ALC_SOFT_pause_device().is_some(),
+			ext::Alc::Dedicated => cache.ALC_EXT_DEDICATED().is_ok(),
+			ext::Alc::Disconnect => cache.ALC_EXT_DISCONNECT().is_ok(),
+			ext::Alc::Efx => cache.ALC_EXT_EFX().is_ok(),
+			ext::Alc::SoftHrtf => cache.ALC_SOFT_HRTF().is_ok(),
+			ext::Alc::SoftPauseDevice => cache.ALC_SOFT_pause_device().is_ok(),
 		}
 	}
 
@@ -244,7 +242,7 @@ unsafe impl Sync for Device { }
 impl LoopbackDevice {
 	pub fn open(spec: Option<&CStr>) -> AlcResult<LoopbackDevice> {
 		(*ALC_INIT)?;
-		let sl = ext::ALC_CACHE.ALC_SOFT_loopback().ok_or(AlcError::ExtensionNotPresent)?;
+		let sl = ext::ALC_CACHE.ALC_SOFT_loopback()?;
 
 		let dev = if let Some(spec) = spec {
 			unsafe { sl.alcLoopbackOpenDeviceSOFT.unwrap()(spec.as_ptr()) }
@@ -264,11 +262,11 @@ impl LoopbackDevice {
 	pub fn is_extension_present(&self, ext: ext::Alc) -> bool {
 		let cache = self.cache.lock().unwrap();
 		match ext {
-			ext::Alc::Dedicated => cache.ALC_EXT_DEDICATED().is_some(),
-			ext::Alc::Disconnect => cache.ALC_EXT_DISCONNECT().is_some(),
-			ext::Alc::Efx => cache.ALC_EXT_EFX().is_some(),
-			ext::Alc::SoftHrtf => cache.ALC_SOFT_HRTF().is_some(),
-			ext::Alc::SoftPauseDevice => cache.ALC_SOFT_pause_device().is_some(),
+			ext::Alc::Dedicated => cache.ALC_EXT_DEDICATED().is_ok(),
+			ext::Alc::Disconnect => cache.ALC_EXT_DISCONNECT().is_ok(),
+			ext::Alc::Efx => cache.ALC_EXT_EFX().is_ok(),
+			ext::Alc::SoftHrtf => cache.ALC_SOFT_HRTF().is_ok(),
+			ext::Alc::SoftPauseDevice => cache.ALC_SOFT_pause_device().is_ok(),
 		}
 	}
 

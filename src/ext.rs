@@ -220,8 +220,8 @@ pub enum Al {
 	MuLawBFormat,
 	MuLawMcFormats,
 	SoftBlockAlignment,
-	SoftBufferSamples,
-	SoftBufferSubData,
+//	SoftBufferSamples,
+//	SoftBufferSubData,
 	SoftDeferredUpdates,
 	SoftDirectChannels,
 	SoftLoopPoints,
@@ -409,66 +409,66 @@ al_ext! {
 	}
 
 
-	pub ext AL_SOFT_buffer_samples {
-		pub const AL_MONO_SOFT,
-		pub const AL_STEREO_SOFT,
-		pub const AL_REAR_SOFT,
-		pub const AL_QUAD_SOFT,
-		pub const AL_5POINT1_SOFT,
-		pub const AL_6POINT1_SOFT,
-		pub const AL_7POINT1_SOFT,
-
-		pub const AL_BYTE_SOFT,
-		pub const AL_UNSIGNED_BYTE_SOFT,
-		pub const AL_SHORT_SOFT,
-		pub const AL_UNSIGNED_SHORT_SOFT,
-		pub const AL_INT_SOFT,
-		pub const AL_UNSIGNED_INT_SOFT,
-		pub const AL_FLOAT_SOFT,
-		pub const AL_DOUBLE_SOFT,
-		pub const AL_BYTE3_SOFT,
-		pub const AL_UNSIGNED_BYTE3_SOFT,
-
-		pub const AL_MONO8_SOFT,
-		pub const AL_MONO16_SOFT,
-		pub const AL_MONO32F_SOFT,
-		pub const AL_STEREO8_SOFT,
-		pub const AL_STEREO16_SOFT,
-		pub const AL_STEREO32F_SOFT,
-		pub const AL_QUAD8_SOFT,
-		pub const AL_QUAD16_SOFT,
-		pub const AL_QUAD32F_SOFT,
-		pub const AL_REAR8_SOFT,
-		pub const AL_REAR16_SOFT,
-		pub const AL_REAR32F_SOFT,
-		pub const AL_5POINT1_8_SOFT,
-		pub const AL_5POINT1_16_SOFT,
-		pub const AL_5POINT1_32F_SOFT,
-		pub const AL_6POINT1_8_SOFT,
-		pub const AL_6POINT1_16_SOFT,
-		pub const AL_6POINT1_32F_SOFT,
-		pub const AL_7POINT1_8_SOFT,
-		pub const AL_7POINT1_16_SOFT,
-		pub const AL_7POINT1_32F_SOFT,
-
-		pub const AL_INTERNAL_FORMAT_SOFT,
-		pub const AL_BYTE_LENGTH_SOFT,
-		pub const AL_SAMPLE_LENGTH_SOFT,
-		pub const AL_SEC_LENGTH_SOFT,
-
-		pub fn alBufferSamplesSOFT: unsafe extern "C" fn(buffer: ALuint, samplerate: ALuint, internalformat: ALenum, samples: ALsizei, channels: ALenum, type_: ALenum, data: *const ALvoid),
-		pub fn alBufferSubSamplesSOFT: unsafe extern "C" fn(buffer: ALuint, offset: ALsizei, samples: ALsizei, channels: ALenum, type_: ALenum, data: *const ALvoid),
-		pub fn alGetBufferSamplesSOFT: unsafe extern "C" fn(buffer: ALuint, offset: ALsizei, samples: ALsizei, channels: ALenum, type_: ALenum, data: *mut ALvoid),
-		pub fn alIsBufferFormatSupportedSOFT: unsafe extern "C" fn(format: ALenum) -> ALboolean,
-	}
-
-
-	pub ext AL_SOFT_buffer_sub_data {
-		pub const AL_BYTE_RW_OFFSETS_SOFT,
-		pub const AL_SAMPLE_RW_OFFSETS_SOFT,
-
-		pub fn alBufferSubDataSOFT: unsafe extern "C" fn(buffer: ALuint, format: ALenum, data: *const ALvoid, offset: ALsizei, length: ALsizei),
-	}
+//	pub ext AL_SOFT_buffer_samples {
+//		pub const AL_MONO_SOFT,
+//		pub const AL_STEREO_SOFT,
+//		pub const AL_REAR_SOFT,
+//		pub const AL_QUAD_SOFT,
+//		pub const AL_5POINT1_SOFT,
+//		pub const AL_6POINT1_SOFT,
+//		pub const AL_7POINT1_SOFT,
+//
+//		pub const AL_BYTE_SOFT,
+//		pub const AL_UNSIGNED_BYTE_SOFT,
+//		pub const AL_SHORT_SOFT,
+//		pub const AL_UNSIGNED_SHORT_SOFT,
+//		pub const AL_INT_SOFT,
+//		pub const AL_UNSIGNED_INT_SOFT,
+//		pub const AL_FLOAT_SOFT,
+//		pub const AL_DOUBLE_SOFT,
+//		pub const AL_BYTE3_SOFT,
+//		pub const AL_UNSIGNED_BYTE3_SOFT,
+//
+//		pub const AL_MONO8_SOFT,
+//		pub const AL_MONO16_SOFT,
+//		pub const AL_MONO32F_SOFT,
+//		pub const AL_STEREO8_SOFT,
+//		pub const AL_STEREO16_SOFT,
+//		pub const AL_STEREO32F_SOFT,
+//		pub const AL_QUAD8_SOFT,
+//		pub const AL_QUAD16_SOFT,
+//		pub const AL_QUAD32F_SOFT,
+//		pub const AL_REAR8_SOFT,
+//		pub const AL_REAR16_SOFT,
+//		pub const AL_REAR32F_SOFT,
+//		pub const AL_5POINT1_8_SOFT,
+//		pub const AL_5POINT1_16_SOFT,
+//		pub const AL_5POINT1_32F_SOFT,
+//		pub const AL_6POINT1_8_SOFT,
+//		pub const AL_6POINT1_16_SOFT,
+//		pub const AL_6POINT1_32F_SOFT,
+//		pub const AL_7POINT1_8_SOFT,
+//		pub const AL_7POINT1_16_SOFT,
+//		pub const AL_7POINT1_32F_SOFT,
+//
+//		pub const AL_INTERNAL_FORMAT_SOFT,
+//		pub const AL_BYTE_LENGTH_SOFT,
+//		pub const AL_SAMPLE_LENGTH_SOFT,
+//		pub const AL_SEC_LENGTH_SOFT,
+//
+//		pub fn alBufferSamplesSOFT: unsafe extern "C" fn(buffer: ALuint, samplerate: ALuint, internalformat: ALenum, samples: ALsizei, channels: ALenum, type_: ALenum, data: *const ALvoid),
+//		pub fn alBufferSubSamplesSOFT: unsafe extern "C" fn(buffer: ALuint, offset: ALsizei, samples: ALsizei, channels: ALenum, type_: ALenum, data: *const ALvoid),
+//		pub fn alGetBufferSamplesSOFT: unsafe extern "C" fn(buffer: ALuint, offset: ALsizei, samples: ALsizei, channels: ALenum, type_: ALenum, data: *mut ALvoid),
+//		pub fn alIsBufferFormatSupportedSOFT: unsafe extern "C" fn(format: ALenum) -> ALboolean,
+//	}
+//
+//
+//	pub ext AL_SOFT_buffer_sub_data {
+//		pub const AL_BYTE_RW_OFFSETS_SOFT,
+//		pub const AL_SAMPLE_RW_OFFSETS_SOFT,
+//
+//		pub fn alBufferSubDataSOFT: unsafe extern "C" fn(buffer: ALuint, format: ALenum, data: *const ALvoid, offset: ALsizei, length: ALsizei),
+//	}
 
 
 	pub ext AL_SOFT_deferred_updates {

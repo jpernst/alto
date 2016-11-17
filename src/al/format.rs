@@ -1,35 +1,12 @@
-use std::sync::Mutex;
-use std::fmt;
-use std::error::Error as StdError;
-
-use ::sys;
-use ::alc::*;
-use ::ext;
-
-
-lazy_static! {
-	static ref AL_MUTEX: Mutex<()> = Mutex::new(());
-}
-
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum AlError {
-	InvalidName,
-	InvalidEnum,
-	InvalidValue,
-	InvalidOperation,
-	OutOfMemory,
-
-	ExtensionNotPresent,
-	UnknownError,
-}
+use sys;
+use al::*;
 
 
 pub enum Format {
-	Mono8,
-	Mono16,
-	Stereo8,
-	Stereo16,
+	MonoU8,
+	MonoI16,
+	StereoU8,
+	StereoI16,
 
 	ExtALaw(ExtALawFormat),
 	ExtBFormat(ExtBFormat),
@@ -79,21 +56,21 @@ pub enum ExtIma4Format {
 
 
 pub enum ExtMcFormat {
-	Quad8,
-	Quad16,
-	Quad32,
-	Rear8,
-	Rear16,
-	Rear32,
-	Mc51Chn8,
-	Mc51Chn16,
-	Mc51Chn32,
-	Mc61Chn8,
-	Mc61Chn16,
-	Mc61Chn32,
-	Mc71Chn8,
-	Mc71Chn16,
-	Mc71Chn32,
+	QuadU8,
+	QuadI16,
+	QuadF32,
+	RearU8,
+	RearI16,
+	RearF32,
+	Mc51U8,
+	Mc51I16,
+	Mc51F32,
+	Mc61U8,
+	Mc61I16,
+	Mc61F32,
+	Mc71U8,
+	Mc71I16,
+	Mc71F32,
 }
 
 
@@ -114,9 +91,9 @@ pub enum ExtMuLawMcFormat {
 	Stereo,
 	Quad,
 	Rear,
-	Mc51Chn,
-	Mc61Chn,
-	Mc71Chn,
+	Mc51,
+	Mc61,
+	Mc71,
 }
 
 
@@ -126,74 +103,160 @@ pub enum SoftMsadpcmFormat {
 }
 
 
-pub type AlResult<T> = ::std::result::Result<T, AlError>;
+pub unsafe trait SampleFrame: Copy {
+	type Sample: Copy;
 
-
-pub struct Context<'d> {
-	dev: &'d OutputDevice,
-	ctx: *mut sys::ALCcontext,
-	cache: ext::AlCache,
+	fn format() -> Format;
 }
 
 
-pub struct Buffer<'d>(sys::ALuint, &'d OutputDevice);
-
-
-pub struct Source<'c>(sys::ALuint, &'c Context<'c>);
-
-
-fn get_error() -> AlResult<()> {
-	match unsafe { sys::alGetError() } {
-		sys::AL_NO_ERROR => Ok(()),
-		e => unsafe { Err(e.into()) }
-	}
+pub struct Mono<S: Copy> {
+	center: S,
 }
 
 
-impl fmt::Display for AlError {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "{}", self.description())
-	}
+pub struct Stereo<S: Copy> {
+	left: S,
+	right: S,
 }
 
 
-impl StdError for AlError {
-	fn description(&self) -> &str {
-		match *self {
-			AlError::InvalidName => "AL ERROR: Invalid Name",
-			AlError::InvalidEnum => "AL ERROR: Invalid Enum",
-			AlError::InvalidValue => "AL ERROR: Invalid Value",
-			AlError::InvalidOperation => "AL ERROR: Invalid Operation",
-			AlError::OutOfMemory => "AL ERROR: Invalid Memory",
-
-			AlError::ExtensionNotPresent => "AL ERROR: Extension Not Present",
-			AlError::UnknownError => "AL ERROR: Unknown Error",
-		}
-	}
+pub struct McRear<S: Copy> {
+	rear: S,
 }
 
 
-impl From<sys::ALenum> for AlError {
-	fn from(al: sys::ALenum) -> AlError {
-		match al {
-			sys::AL_INVALID_NAME => AlError::InvalidName,
-			sys::AL_INVALID_ENUM => AlError::InvalidEnum,
-			sys::AL_INVALID_VALUE => AlError::InvalidValue,
-			sys::AL_INVALID_OPERATION => AlError::InvalidOperation,
-			sys::AL_OUT_OF_MEMORY => AlError::OutOfMemory,
-			_ => AlError::UnknownError,
-		}
-	}
+pub struct McQuad<S: Copy> {
+	front_left: S,
+	front_right: S,
+	back_left: S,
+	back_right: S,
+}
+
+
+pub struct Mc51<S: Copy> {
+	front_left: S,
+	front_right: S,
+	front_center: S,
+	low_freq: S,
+	back_left: S,
+	back_right: S,
+}
+
+
+pub struct Mc61<S: Copy> {
+	front_left: S,
+	front_right: S,
+	front_center: S,
+	low_freq: S,
+	back_left: S,
+	back_right: S,
+	back_center: S,
+}
+
+
+pub struct Mc71<S: Copy> {
+	front_left: S,
+	front_right: S,
+	front_center: S,
+	low_freq: S,
+	back_left: S,
+	back_right: S,
+	side_left: S,
+	side_right: S,
+}
+
+
+pub struct BFormat2D<S: Copy> {
+	pub w: S,
+	pub x: S,
+	pub y: S,
+}
+
+
+pub struct BFormat3D<S: Copy> {
+	pub w: S,
+	pub x: S,
+	pub y: S,
+	pub z: S,
+}
+
+
+pub struct ALawMono {
+	center: u8,
+}
+
+
+pub struct ALawStereo {
+	left: u8,
+	right: u8,
+}
+
+
+pub struct MuLawMono {
+	center: u8,
+}
+
+
+pub struct MuLawStereo {
+	left: u8,
+	right: u8,
+}
+
+
+pub struct MuLawMcRear {
+	rear: u8,
+}
+
+
+pub struct MuLawMcQuad {
+	front_left: u8,
+	front_right: u8,
+	back_left: u8,
+	back_right: u8,
+}
+
+
+pub struct MuLawMc51 {
+	front_left: u8,
+	front_right: u8,
+	front_center: u8,
+	low_freq: u8,
+	back_left: u8,
+	back_right: u8,
+}
+
+
+pub struct MuLawMc61 {
+	front_left: u8,
+	front_right: u8,
+	front_center: u8,
+	low_freq: u8,
+	back_left: u8,
+	back_right: u8,
+	back_center: u8,
+}
+
+
+pub struct MuLawMc71 {
+	front_left: u8,
+	front_right: u8,
+	front_center: u8,
+	low_freq: u8,
+	back_left: u8,
+	back_right: u8,
+	side_left: u8,
+	side_right: u8,
 }
 
 
 impl Format {
 	pub fn into_raw(self, ctx: Option<&Context>) -> AlResult<sys::ALint> {
 		match self {
-			Format::Mono8 => Ok(sys::AL_FORMAT_MONO8),
-			Format::Mono16 => Ok(sys::AL_FORMAT_MONO16),
-			Format::Stereo8 => Ok(sys::AL_FORMAT_STEREO8),
-			Format::Stereo16 => Ok(sys::AL_FORMAT_STEREO16),
+			Format::MonoU8 => Ok(sys::AL_FORMAT_MONO8),
+			Format::MonoI16 => Ok(sys::AL_FORMAT_MONO16),
+			Format::StereoU8 => Ok(sys::AL_FORMAT_STEREO8),
+			Format::StereoI16 => Ok(sys::AL_FORMAT_STEREO16),
 
 			Format::ExtALaw(f) => f.into_raw(ctx),
 			Format::ExtBFormat(f) => f.into_raw(ctx),
@@ -267,21 +330,21 @@ impl ExtIma4Format {
 impl ExtMcFormat {
 	pub fn into_raw(self, ctx: Option<&Context>) -> AlResult<sys::ALint> {
 		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
-			ExtMcFormat::Quad8 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD8?),
-			ExtMcFormat::Quad16 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD16?),
-			ExtMcFormat::Quad32 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD32?),
-			ExtMcFormat::Rear8 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_REAR8?),
-			ExtMcFormat::Rear16 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_REAR16?),
-			ExtMcFormat::Rear32 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_REAR32?),
-			ExtMcFormat::Mc51Chn8 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_51CHN8?),
-			ExtMcFormat::Mc51Chn16 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_51CHN16?),
-			ExtMcFormat::Mc51Chn32 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_51CHN32?),
-			ExtMcFormat::Mc61Chn8 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_61CHN8?),
-			ExtMcFormat::Mc61Chn16 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_61CHN16?),
-			ExtMcFormat::Mc61Chn32 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_61CHN32?),
-			ExtMcFormat::Mc71Chn8 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_71CHN8?),
-			ExtMcFormat::Mc71Chn16 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_71CHN16?),
-			ExtMcFormat::Mc71Chn32 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_71CHN32?),
+			ExtMcFormat::QuadU8 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD8?),
+			ExtMcFormat::QuadI16 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD16?),
+			ExtMcFormat::QuadF32 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD32?),
+			ExtMcFormat::RearU8 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_REAR8?),
+			ExtMcFormat::RearI16 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_REAR16?),
+			ExtMcFormat::RearF32 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_REAR32?),
+			ExtMcFormat::Mc51U8 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_51CHN8?),
+			ExtMcFormat::Mc51I16 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_51CHN16?),
+			ExtMcFormat::Mc51F32 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_51CHN32?),
+			ExtMcFormat::Mc61U8 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_61CHN8?),
+			ExtMcFormat::Mc61I16 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_61CHN16?),
+			ExtMcFormat::Mc61F32 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_61CHN32?),
+			ExtMcFormat::Mc71U8 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_71CHN8?),
+			ExtMcFormat::Mc71I16 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_71CHN16?),
+			ExtMcFormat::Mc71F32 => Ok(ctx.cache.AL_EXT_MCFORMATS()?.AL_FORMAT_71CHN32?),
 		})
 	}
 }
@@ -314,9 +377,9 @@ impl ExtMuLawMcFormat {
 			ExtMuLawMcFormat::Stereo => Ok(ctx.cache.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_STEREO_MULAW?),
 			ExtMuLawMcFormat::Quad => Ok(ctx.cache.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_QUAD_MULAW?),
 			ExtMuLawMcFormat::Rear => Ok(ctx.cache.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_REAR_MULAW?),
-			ExtMuLawMcFormat::Mc51Chn => Ok(ctx.cache.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_51CHN_MULAW?),
-			ExtMuLawMcFormat::Mc61Chn => Ok(ctx.cache.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_61CHN_MULAW?),
-			ExtMuLawMcFormat::Mc71Chn => Ok(ctx.cache.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_71CHN_MULAW?),
+			ExtMuLawMcFormat::Mc51 => Ok(ctx.cache.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_51CHN_MULAW?),
+			ExtMuLawMcFormat::Mc61 => Ok(ctx.cache.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_61CHN_MULAW?),
+			ExtMuLawMcFormat::Mc71 => Ok(ctx.cache.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_71CHN_MULAW?),
 		})
 	}
 }
@@ -330,35 +393,5 @@ impl SoftMsadpcmFormat {
 		})
 	}
 }
-
-
-impl<'d> Context<'d> {
-	pub fn is_extension_present(&self, ext: ext::Al) -> bool {
-		match ext {
-			ext::Al::ALaw => self.cache.AL_EXT_ALAW().is_ok(),
-			ext::Al::BFormat => self.cache.AL_EXT_BFORMAT().is_ok(),
-			ext::Al::Double => self.cache.AL_EXT_double().is_ok(),
-			ext::Al::Float32 => self.cache.AL_EXT_float32().is_ok(),
-			ext::Al::Ima4 => self.cache.AL_EXT_IMA4().is_ok(),
-			ext::Al::McFormats => self.cache.AL_EXT_MCFORMATS().is_ok(),
-			ext::Al::MuLaw => self.cache.AL_EXT_MULAW().is_ok(),
-			ext::Al::MuLawBFormat => self.cache.AL_EXT_MULAW_BFORMAT().is_ok(),
-			ext::Al::MuLawMcFormats => self.cache.AL_EXT_MULAW_MCFORMATS().is_ok(),
-			ext::Al::SoftBlockAlignment => self.cache.AL_SOFT_block_alignment().is_ok(),
-			ext::Al::SoftBufferSamples => self.cache.AL_SOFT_buffer_samples().is_ok(),
-			ext::Al::SoftBufferSubData => self.cache.AL_SOFT_buffer_sub_data().is_ok(),
-			ext::Al::SoftDeferredUpdates => self.cache.AL_SOFT_deferred_updates().is_ok(),
-			ext::Al::SoftDirectChannels => self.cache.AL_SOFT_direct_channels().is_ok(),
-			ext::Al::SoftLoopPoints => self.cache.AL_SOFT_loop_points().is_ok(),
-			ext::Al::SoftMsadpcm => self.cache.AL_SOFT_MSADPCM().is_ok(),
-			ext::Al::SoftSourceLatency => self.cache.AL_SOFT_source_latency().is_ok(),
-			ext::Al::SoftSourceLength => self.cache.AL_SOFT_source_length().is_ok(),
-			ext::Al::SourceDistanceModel => self.cache.AL_EXT_source_distance_model().is_ok(),
-		}
-	}
-}
-
-
-unsafe impl<'d> Send for Context<'d> { }
 
 

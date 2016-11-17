@@ -40,6 +40,31 @@ pub enum AlcError {
 }
 
 
+pub struct ContextAttrs {
+	pub frequency: Option<sys::ALCint>,
+	pub refresh: Option<sys::ALCint>,
+	pub mono_sources: Option<sys::ALCint>,
+	pub stereo_sources: Option<sys::ALCint>,
+}
+
+
+pub enum LoopbackFormatChannels {
+	Mono,
+	Stereo,
+	Quad,
+	Mc51,
+	Mc61,
+	Mc71,
+}
+
+
+pub enum LoopbackFormatType {
+	U8,
+	I16,
+	F32,
+}
+
+
 pub type AlcResult<T> = ::std::result::Result<T, AlcError>;
 
 
@@ -143,7 +168,7 @@ fn parse_enum_spec(spec: *const u8) -> AlcResult<Vec<CString>> {
 fn get_error(dev: *mut sys::ALCdevice) -> AlcResult<()> {
 	match unsafe { sys::alcGetError(dev)} {
 		sys::ALC_NO_ERROR => Ok(()),
-		e => unsafe { Err(e.into()) }
+		e => Err(e.into())
 	}
 }
 
@@ -189,7 +214,7 @@ impl From<sys::ALCenum> for AlcError {
 
 impl From<AlError> for AlcError {
 	fn from(al: AlError) -> AlcError {
-		panic!();
+		AlcError::Al(al)
 	}
 }
 
@@ -225,6 +250,10 @@ impl Device {
 	}
 
 
+}
+
+
+impl OutputDevice for Device {
 }
 
 
@@ -271,6 +300,37 @@ impl LoopbackDevice {
 	}
 
 
+	pub fn new_context(&self, freq: sys::ALCint, chan: LoopbackFormatChannels, ty: LoopbackFormatType, attrs: Option<ContextAttrs>) -> AlcResult<Context> {
+		let sl = ext::ALC_CACHE.ALC_SOFT_loopback()?;
+
+		let mut attrs_vec = Vec::with_capacity(4);
+		attrs_vec.extend(&[sys::ALC_FREQUENCY, freq]);
+		attrs_vec.extend(&[sl.ALC_FORMAT_CHANNELS_SOFT?, match chan {
+			LoopbackFormatChannels::Mono => sl.ALC_MONO_SOFT?,
+			LoopbackFormatChannels::Stereo => sl.ALC_STEREO_SOFT?,
+			LoopbackFormatChannels::Quad => sl.ALC_QUAD_SOFT?,
+			LoopbackFormatChannels::Mc51 => sl.ALC_5POINT1_SOFT?,
+			LoopbackFormatChannels::Mc61 => sl.ALC_6POINT1_SOFT?,
+			LoopbackFormatChannels::Mc71 => sl.ALC_7POINT1_SOFT?,
+		}]);
+		attrs_vec.extend(&[sl.ALC_FORMAT_TYPE_SOFT?, match ty {
+			LoopbackFormatType::U8 => sl.ALC_UNSIGNED_BYTE_SOFT?,
+			LoopbackFormatType::I16 => sl.ALC_SHORT_SOFT?,
+			LoopbackFormatType::F32 => sl.ALC_FLOAT_SOFT?,
+		}]);
+		if let Some(attrs) = attrs {
+		}
+		attrs_vec.push(0);
+
+		let ctx = unsafe { sys::alcCreateContext(self.dev, attrs_vec.as_slice().as_ptr()) };
+		get_error(self.dev)?;
+
+		Ok(unsafe { Context::new(self, ctx) })
+	}
+}
+
+
+impl OutputDevice for LoopbackDevice {
 }
 
 

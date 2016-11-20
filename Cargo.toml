@@ -8,7 +8,7 @@ repository = "https://github.com/jpernst/alto.git"
 keywords = ["openal", "al", "sound", "audio"]
 
 [dependencies]
-owning_ref = "0.2.2"
+owning_ref = { git = "https://github.com/Kimundi/owning-ref-rs" }
 lazy_static = "0.2.1"
-al-sys = "0.1.0"
+al-sys = { path = "al-sys" }
 

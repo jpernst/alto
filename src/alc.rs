@@ -1,28 +1,14 @@
 use std::ptr;
 use std::ffi::{CString, CStr};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::fmt;
 use std::error::Error as StdError;
+use std::io;
+use std::path::Path;
 
 use ::sys;
 use ::al::*;
 use ::ext;
-
-
-lazy_static! {
-	static ref ALC_INIT: AlcResult<()> = {
-		let mut major = 0;
-		unsafe { sys::alcGetIntegerv(ptr::null_mut(), sys::ALC_MAJOR_VERSION, 1, &mut major); }
-		let mut minor = 0;
-		unsafe { sys::alcGetIntegerv(ptr::null_mut(), sys::ALC_MINOR_VERSION, 1, &mut minor); }
-
-		if major == 1 && minor >= 1 {
-			Ok(())
-		} else {
-			Err(AlcError::UnsupportedVersion)
-		}
-	};
-}
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -36,6 +22,7 @@ pub enum AlcError {
 	UnsupportedVersion,
 	ExtensionNotPresent,
 	Al(AlError),
+	Io(io::Error),
 	UnknownError,
 }
 
@@ -68,107 +55,185 @@ pub enum LoopbackFormatType {
 pub type AlcResult<T> = ::std::result::Result<T, AlcError>;
 
 
+pub struct Alto {
+	fns: Arc<sys::AlImpl>,
+	ext: ext::AlcNull,
+}
+
+
 pub trait OutputDevice {
 }
 
 
-pub struct Device {
+pub struct Device<'a> {
+	alto: &'a Alto,
 	dev: *mut sys::ALCdevice,
 	cache: Mutex<ext::AlcCache>,
 }
 
 
-pub struct LoopbackDevice {
+pub struct LoopbackDevice<'a> {
+	alto: &'a Alto,
 	dev: *mut sys::ALCdevice,
 	cache: Mutex<ext::AlcCache>,
 }
 
 
-pub struct CaptureDevice {
+pub struct CaptureDevice<'a> {
+	alto: &'a Alto,
 	dev: *mut sys::ALCdevice,
 }
 
 
-pub fn default_impl() -> AlcResult<CString> {
-	(*ALC_INIT)?;
-
-	let spec = unsafe { CStr::from_ptr(sys::alcGetString(ptr::null_mut(), sys::ALC_DEFAULT_DEVICE_SPECIFIER)) };
-	get_error(ptr::null_mut()).map(|_| spec.to_owned())
-}
-
-
-pub fn default_output() -> AlcResult<CString> {
-	(*ALC_INIT)?;
-
-	if let Ok(ea) = ext::ALC_CACHE.ALC_ENUMERATE_ALL_EXT() {
-		let spec = unsafe { CStr::from_ptr(sys::alcGetString(ptr::null_mut(), ea.ALC_DEFAULT_ALL_DEVICES_SPECIFIER.unwrap())) };
-		get_error(ptr::null_mut()).map(|_| spec.to_owned())
-	} else {
-		default_impl()
+impl Alto {
+	pub fn load_default() -> AlcResult<Alto> {
+		let fns = Arc::new(sys::AlImpl::load_default()?);
+		Ok(Alto{
+			ext: unsafe { ext::AlcNull::new(fns.clone()) },
+			fns: fns,
+		}).and_then(|a| a.check_version())
 	}
-}
 
 
-pub fn default_capture() -> AlcResult<CString> {
-	(*ALC_INIT)?;
-
-	let spec = unsafe { CStr::from_ptr(sys::alcGetString(ptr::null_mut(), sys::ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)) };
-	get_error(ptr::null_mut()).map(|_| spec.to_owned())
-}
-
-
-pub fn enumerate_impls() -> AlcResult<Vec<CString>> {
-	(*ALC_INIT)?;
-
-	let spec = unsafe { sys::alcGetString(ptr::null_mut(), sys::ALC_DEVICE_SPECIFIER) };
-	get_error(ptr::null_mut()).and_then(|_| parse_enum_spec(spec as *const u8))
-}
-
-
-pub fn enumerate_outputs() -> AlcResult<Vec<CString>> {
-	(*ALC_INIT)?;
-
-	if let Ok(ea) = ext::ALC_CACHE.ALC_ENUMERATE_ALL_EXT() {
-		let spec = unsafe { sys::alcGetString(ptr::null_mut(), ea.ALC_ALL_DEVICES_SPECIFIER.unwrap()) };
-		get_error(ptr::null_mut()).and_then(|_| parse_enum_spec(spec as *const u8))
-	} else {
-		enumerate_impls()
+	pub fn load<P: AsRef<Path>>(path: P) -> AlcResult<Alto> {
+		let fns = Arc::new(sys::AlImpl::load_default()?);
+		Ok(Alto{
+			ext: unsafe { ext::AlcNull::new(fns.clone()) },
+			fns: fns,
+		}).and_then(|a| a.check_version())
 	}
-}
+
+	fn check_version(self) -> AlcResult<Alto> {
+		let mut major = 0;
+		unsafe { self.fns.alcGetIntegerv(ptr::null_mut(), sys::ALC_MAJOR_VERSION, 1, &mut major); }
+		let mut minor = 0;
+		unsafe { self.fns.alcGetIntegerv(ptr::null_mut(), sys::ALC_MINOR_VERSION, 1, &mut minor); }
+
+		if major == 1 && minor >= 1 {
+			Ok(self)
+		} else {
+			Err(AlcError::UnsupportedVersion)
+		}
+	}
 
 
-pub fn enumerate_captures() -> AlcResult<Vec<CString>> {
-	(*ALC_INIT)?;
-
-	let spec = unsafe { sys::alcGetString(ptr::null_mut(), sys::ALC_CAPTURE_DEVICE_SPECIFIER) };
-	get_error(ptr::null_mut()).and_then(|_| parse_enum_spec(spec as *const u8))
-}
+	pub fn default_impl(&self) -> AlcResult<CString> {
+		let spec = unsafe { CStr::from_ptr(self.fns.alcGetString(ptr::null_mut(), sys::ALC_DEFAULT_DEVICE_SPECIFIER)) };
+		self.get_error(ptr::null_mut()).map(|_| spec.to_owned())
+	}
 
 
-fn parse_enum_spec(spec: *const u8) -> AlcResult<Vec<CString>> {
-	(*ALC_INIT)?;
+	pub fn default_output(&self) -> AlcResult<CString> {
+		if let Ok(ea) = ext::ALC_CACHE.ALC_ENUMERATE_ALL_EXT() {
+			let spec = unsafe { CStr::from_ptr(self.fns.alcGetString(ptr::null_mut(), ea.ALC_DEFAULT_ALL_DEVICES_SPECIFIER.unwrap())) };
+			self.get_error(ptr::null_mut()).map(|_| spec.to_owned())
+		} else {
+			self.default_impl()
+		}
+	}
 
-	let mut specs = Vec::with_capacity(0);
 
-	let mut i = 0;
-	loop {
-		if unsafe { ptr::read(spec.offset(i)) == 0 && ptr::read(spec.offset(i + 1)) == 0 } {
-			break;
+	pub fn default_capture(&self) -> AlcResult<CString> {
+		let spec = unsafe { CStr::from_ptr(self.fns.alcGetString(ptr::null_mut(), sys::ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)) };
+		self.get_error(ptr::null_mut()).map(|_| spec.to_owned())
+	}
+
+
+	pub fn enumerate_impls(&self) -> AlcResult<Vec<CString>> {
+		let spec = unsafe { self.fns.alcGetString(ptr::null_mut(), sys::ALC_DEVICE_SPECIFIER) };
+		self.get_error(ptr::null_mut()).and_then(|_| Alto::parse_enum_spec(spec as *const u8))
+	}
+
+
+	pub fn enumerate_outputs(&self) -> AlcResult<Vec<CString>> {
+		if let Ok(ea) = ext::ALC_CACHE.ALC_ENUMERATE_ALL_EXT() {
+			let spec = unsafe { self.fns.alcGetString(ptr::null_mut(), ea.ALC_ALL_DEVICES_SPECIFIER.unwrap()) };
+			self.get_error(ptr::null_mut()).and_then(|_| Alto::parse_enum_spec(spec as *const u8))
+		} else {
+			self.enumerate_impls()
+		}
+	}
+
+
+	pub fn enumerate_captures(&self) -> AlcResult<Vec<CString>> {
+		let spec = unsafe { self.fns.alcGetString(ptr::null_mut(), sys::ALC_CAPTURE_DEVICE_SPECIFIER) };
+		self.get_error(ptr::null_mut()).and_then(|_| Alto::parse_enum_spec(spec as *const u8))
+	}
+
+
+	fn parse_enum_spec(spec: *const u8) -> AlcResult<Vec<CString>> {
+		let mut specs = Vec::with_capacity(0);
+
+		let mut i = 0;
+		loop {
+			if unsafe { ptr::read(spec.offset(i)) == 0 && ptr::read(spec.offset(i + 1)) == 0 } {
+				break;
+			}
+
+			i += 1;
 		}
 
-		i += 1;
+		specs.extend(unsafe { ::std::slice::from_raw_parts(spec as *const u8, i as usize) }.split(|c| *c == 0).map(|d| CString::new(d).unwrap()));
+
+		Ok(specs)
 	}
 
-	specs.extend(unsafe { ::std::slice::from_raw_parts(spec as *const u8, i as usize) }.split(|c| *c == 0).map(|d| CString::new(d).unwrap()));
 
-	Ok(specs)
-}
+	pub fn open(&self, spec: Option<&CStr>) -> AlcResult<Device> {
+		let dev = if let Some(spec) = spec {
+			unsafe { self.fns.alcOpenDevice(spec.as_ptr()) }
+		} else {
+			unsafe { self.fns.alcOpenDevice(ptr::null()) }
+		};
+		self.get_error(ptr::null_mut())?;
+
+		if dev == ptr::null_mut() {
+			Err(AlcError::InvalidDevice)
+		} else {
+			Ok(Device{dev: dev, cache: Mutex::new(ext::AlcCache::new(dev))})
+		}
+	}
 
 
-fn get_error(dev: *mut sys::ALCdevice) -> AlcResult<()> {
-	match unsafe { sys::alcGetError(dev)} {
-		sys::ALC_NO_ERROR => Ok(()),
-		e => Err(e.into())
+	pub fn open_loopback(&self, spec: Option<&CStr>) -> AlcResult<LoopbackDevice> {
+		let sl = ext::ALC_CACHE.ALC_SOFT_loopback()?;
+
+		let dev = if let Some(spec) = spec {
+			unsafe { sl.alcLoopbackOpenDeviceSOFT.unwrap()(spec.as_ptr()) }
+		} else {
+			unsafe { sl.alcLoopbackOpenDeviceSOFT.unwrap()(ptr::null()) }
+		};
+		self.get_error(ptr::null_mut())?;
+
+		if dev == ptr::null_mut() {
+			Err(AlcError::InvalidDevice)
+		} else {
+			Ok(LoopbackDevice{dev: dev, cache: Mutex::new(ext::AlcCache::new(dev))})
+		}
+	}
+
+
+	pub fn open_capture(&self, spec: Option<&CStr>, freq: sys::ALCuint, format: Format, size: sys::ALCsizei) -> AlcResult<CaptureDevice> {
+		let dev = if let Some(spec) = spec {
+			unsafe { self.fns.alcCaptureOpenDevice(spec.as_ptr(), freq, format.into_raw(None)?, size) }
+		} else {
+			unsafe { self.fns.alcCaptureOpenDevice(ptr::null(), freq, format.into_raw(None)?, size) }
+		};
+		self.get_error(ptr::null_mut())?;
+
+		if dev == ptr::null_mut() {
+			Err(AlcError::InvalidDevice)
+		} else {
+			Ok(CaptureDevice{dev: dev})
+		}
+	}
+
+
+	fn get_error(&self, dev: *mut sys::ALCdevice) -> AlcResult<()> {
+		match unsafe { self.fns.alcGetError(dev)} {
+			sys::ALC_NO_ERROR => Ok(()),
+			e => Err(e.into())
+		}
 	}
 }
 
@@ -219,25 +284,14 @@ impl From<AlError> for AlcError {
 }
 
 
-impl Device {
-	pub fn open(spec: Option<&CStr>) -> AlcResult<Device> {
-		(*ALC_INIT)?;
-
-		let dev = if let Some(spec) = spec {
-			unsafe { sys::alcOpenDevice(spec.as_ptr()) }
-		} else {
-			unsafe { sys::alcOpenDevice(ptr::null()) }
-		};
-		get_error(ptr::null_mut())?;
-
-		if dev == ptr::null_mut() {
-			Err(AlcError::InvalidDevice)
-		} else {
-			Ok(Device{dev: dev, cache: Mutex::new(ext::AlcCache::new(dev))})
-		}
+impl From<io::Error> for AlcError {
+	fn from(io: io::Error) -> AlcError {
+		AlcError::Io(io)
 	}
+}
 
 
+impl Device {
 	pub fn is_extension_present(&self, ext: ext::Alc) -> bool {
 		let cache = self.cache.lock().unwrap();
 		match ext {
@@ -259,7 +313,7 @@ impl OutputDevice for Device {
 
 impl Drop for Device {
 	fn drop(&mut self) {
-		unsafe { sys::alcCloseDevice(self.dev); }
+		unsafe { self.alto.fns.alcCloseDevice(self.dev); }
 	}
 }
 
@@ -269,25 +323,6 @@ unsafe impl Sync for Device { }
 
 
 impl LoopbackDevice {
-	pub fn open(spec: Option<&CStr>) -> AlcResult<LoopbackDevice> {
-		(*ALC_INIT)?;
-		let sl = ext::ALC_CACHE.ALC_SOFT_loopback()?;
-
-		let dev = if let Some(spec) = spec {
-			unsafe { sl.alcLoopbackOpenDeviceSOFT.unwrap()(spec.as_ptr()) }
-		} else {
-			unsafe { sl.alcLoopbackOpenDeviceSOFT.unwrap()(ptr::null()) }
-		};
-		get_error(ptr::null_mut())?;
-
-		if dev == ptr::null_mut() {
-			Err(AlcError::InvalidDevice)
-		} else {
-			Ok(LoopbackDevice{dev: dev, cache: Mutex::new(ext::AlcCache::new(dev))})
-		}
-	}
-
-
 	pub fn is_extension_present(&self, ext: ext::Alc) -> bool {
 		let cache = self.cache.lock().unwrap();
 		match ext {
@@ -322,8 +357,8 @@ impl LoopbackDevice {
 		}
 		attrs_vec.push(0);
 
-		let ctx = unsafe { sys::alcCreateContext(self.dev, attrs_vec.as_slice().as_ptr()) };
-		get_error(self.dev)?;
+		let ctx = unsafe { self.alto.fns.alcCreateContext(self.dev, attrs_vec.as_slice().as_ptr()) };
+		self.alto.get_error(self.dev)?;
 
 		Ok(unsafe { Context::new(self, ctx) })
 	}
@@ -346,22 +381,6 @@ unsafe impl Sync for LoopbackDevice { }
 
 
 impl CaptureDevice {
-	pub fn open(spec: Option<&CStr>, freq: sys::ALCuint, format: Format, size: sys::ALCsizei) -> AlcResult<CaptureDevice> {
-		(*ALC_INIT)?;
-
-		let dev = if let Some(spec) = spec {
-			unsafe { sys::alcCaptureOpenDevice(spec.as_ptr(), freq, format.into_raw(None)?, size) }
-		} else {
-			unsafe { sys::alcCaptureOpenDevice(ptr::null(), freq, format.into_raw(None)?, size) }
-		};
-		get_error(ptr::null_mut())?;
-
-		if dev == ptr::null_mut() {
-			Err(AlcError::InvalidDevice)
-		} else {
-			Ok(CaptureDevice{dev: dev})
-		}
-	}
 }
 
 

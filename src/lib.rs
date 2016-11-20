@@ -18,7 +18,3 @@ pub mod ext;
 pub mod sys {
 	pub use al_sys::*;
 }
-
-
-
-

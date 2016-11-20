@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::fmt;
 use std::error::Error as StdError;
 
@@ -11,12 +11,7 @@ mod format;
 pub use self::format::*;
 
 
-lazy_static! {
-	static ref AL_MUTEX: Mutex<()> = Mutex::new(());
-}
-
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Debug)]
 pub enum AlError {
 	InvalidName,
 	InvalidEnum,
@@ -32,25 +27,23 @@ pub enum AlError {
 pub type AlResult<T> = ::std::result::Result<T, AlError>;
 
 
-pub struct Context<'d> {
-	dev: &'d OutputDevice,
+pub trait ContextTrait {
+	fn exts(&self) -> &ext::AlCache;
+}
+
+
+pub struct Context<'d, D: DeviceTrait + 'd> {
+	api: Arc<sys::AlApi>,
+	dev: &'d D,
 	ctx: *mut sys::ALCcontext,
-	cache: ext::AlCache,
+	exts: ext::AlCache,
 }
 
 
-pub struct Buffer<'d>(sys::ALuint, &'d OutputDevice);
+pub struct Buffer<'d>(sys::ALuint, &'d DeviceTrait);
 
 
-pub struct Source<'c>(sys::ALuint, &'c Context<'c>);
-
-
-fn get_error() -> AlResult<()> {
-	match unsafe { sys::alGetError() } {
-		sys::AL_NO_ERROR => Ok(()),
-		e => Err(e.into())
-	}
-}
+pub struct Source<'c, C: ContextTrait + 'c>(sys::ALuint, &'c C);
 
 
 impl fmt::Display for AlError {
@@ -90,43 +83,65 @@ impl From<sys::ALenum> for AlError {
 }
 
 
-impl<'d> Context<'d> {
+impl From<ext::ExtensionError> for AlError {
+	fn from(_: ext::ExtensionError) -> AlError {
+		AlError::ExtensionNotPresent
+	}
+}
+
+
+impl<'d, D: DeviceTrait> Context<'d, D> {
 	#[doc(hidden)]
-	pub unsafe fn new(dev: &OutputDevice, ctx: *mut sys::ALCcontext) -> Context {
+	pub unsafe fn new(dev: &D, api: Arc<sys::AlApi>, ctx: *mut sys::ALCcontext, exts: ext::AlCache) -> Context<D> {
 		Context{
+			api: api,
 			dev: dev,
 			ctx: ctx,
-			cache: ext::AlCache::new(),
+			exts: exts,
 		}
 	}
 
 
 	pub fn is_extension_present(&self, ext: ext::Al) -> bool {
 		match ext {
-			ext::Al::ALaw => self.cache.AL_EXT_ALAW().is_ok(),
-			ext::Al::BFormat => self.cache.AL_EXT_BFORMAT().is_ok(),
-			ext::Al::Double => self.cache.AL_EXT_double().is_ok(),
-			ext::Al::Float32 => self.cache.AL_EXT_float32().is_ok(),
-			ext::Al::Ima4 => self.cache.AL_EXT_IMA4().is_ok(),
-			ext::Al::McFormats => self.cache.AL_EXT_MCFORMATS().is_ok(),
-			ext::Al::MuLaw => self.cache.AL_EXT_MULAW().is_ok(),
-			ext::Al::MuLawBFormat => self.cache.AL_EXT_MULAW_BFORMAT().is_ok(),
-			ext::Al::MuLawMcFormats => self.cache.AL_EXT_MULAW_MCFORMATS().is_ok(),
-			ext::Al::SoftBlockAlignment => self.cache.AL_SOFT_block_alignment().is_ok(),
-//			ext::Al::SoftBufferSamples => self.cache.AL_SOFT_buffer_samples().is_ok(),
-//			ext::Al::SoftBufferSubData => self.cache.AL_SOFT_buffer_sub_data().is_ok(),
-			ext::Al::SoftDeferredUpdates => self.cache.AL_SOFT_deferred_updates().is_ok(),
-			ext::Al::SoftDirectChannels => self.cache.AL_SOFT_direct_channels().is_ok(),
-			ext::Al::SoftLoopPoints => self.cache.AL_SOFT_loop_points().is_ok(),
-			ext::Al::SoftMsadpcm => self.cache.AL_SOFT_MSADPCM().is_ok(),
-			ext::Al::SoftSourceLatency => self.cache.AL_SOFT_source_latency().is_ok(),
-			ext::Al::SoftSourceLength => self.cache.AL_SOFT_source_length().is_ok(),
-			ext::Al::SourceDistanceModel => self.cache.AL_EXT_source_distance_model().is_ok(),
+			ext::Al::ALaw => self.exts.AL_EXT_ALAW().is_ok(),
+			ext::Al::BFormat => self.exts.AL_EXT_BFORMAT().is_ok(),
+			ext::Al::Double => self.exts.AL_EXT_double().is_ok(),
+			ext::Al::Float32 => self.exts.AL_EXT_float32().is_ok(),
+			ext::Al::Ima4 => self.exts.AL_EXT_IMA4().is_ok(),
+			ext::Al::McFormats => self.exts.AL_EXT_MCFORMATS().is_ok(),
+			ext::Al::MuLaw => self.exts.AL_EXT_MULAW().is_ok(),
+			ext::Al::MuLawBFormat => self.exts.AL_EXT_MULAW_BFORMAT().is_ok(),
+			ext::Al::MuLawMcFormats => self.exts.AL_EXT_MULAW_MCFORMATS().is_ok(),
+			ext::Al::SoftBlockAlignment => self.exts.AL_SOFT_block_alignment().is_ok(),
+//			ext::Al::SoftBufferSamples => self.ext.AL_SOFT_buffer_samples().is_ok(),
+//			ext::Al::SoftBufferSubData => self.ext.AL_SOFT_buffer_sub_data().is_ok(),
+			ext::Al::SoftDeferredUpdates => self.exts.AL_SOFT_deferred_updates().is_ok(),
+			ext::Al::SoftDirectChannels => self.exts.AL_SOFT_direct_channels().is_ok(),
+			ext::Al::SoftLoopPoints => self.exts.AL_SOFT_loop_points().is_ok(),
+			ext::Al::SoftMsadpcm => self.exts.AL_SOFT_MSADPCM().is_ok(),
+			ext::Al::SoftSourceLatency => self.exts.AL_SOFT_source_latency().is_ok(),
+			ext::Al::SoftSourceLength => self.exts.AL_SOFT_source_length().is_ok(),
+			ext::Al::SourceDistanceModel => self.exts.AL_EXT_source_distance_model().is_ok(),
+		}
+	}
+
+
+	fn get_error(&self) -> AlResult<()> {
+		match unsafe { (*self.api.alGetError)() } {
+			sys::AL_NO_ERROR => Ok(()),
+			e => Err(e.into())
 		}
 	}
 }
 
 
-unsafe impl<'d> Send for Context<'d> { }
+impl<'d, D: DeviceTrait> ContextTrait for Context<'d, D> {
+	#[inline(always)]
+	fn exts(&self) -> &ext::AlCache { &self.exts }
+}
+
+
+unsafe impl<'d, D: DeviceTrait> Send for Context<'d, D> { }
 
 

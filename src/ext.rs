@@ -2,6 +2,9 @@ use std::ptr;
 use std::mem;
 use std::cell::{RefCell, Ref};
 use std::sync::{Arc, RwLock};
+use std::ops::Deref;
+use std::fmt;
+use std::error::Error as StdError;
 
 use owning_ref::RwLockReadGuardRef;
 use ::sys::*;
@@ -22,29 +25,29 @@ macro_rules! alc_ext {
 		#[doc(hidden)]
 		#[allow(non_snake_case)]
 		pub struct $cache {
-			fns: Arc<AlImpl>,
+			api: Arc<AlApi>,
 			dev: *mut ALCdevice,
 			$(
-				$ext: RwLock<Option<AlcResult<$ext>>>,
+				$ext: RwLock<Option<ExtResult<$ext>>>,
 			)*
 		}
 
 
 		#[allow(non_snake_case)]
 		impl $cache {
-			pub unsafe fn new(fns: Arc<AlImpl>, dev: *mut ALCdevice) -> $cache {
+			pub unsafe fn new(api: Arc<AlApi>, dev: *mut ALCdevice) -> $cache {
 				$cache{
-					fns: fns,
+					api: api,
 					dev: dev,
 					$($ext: RwLock::new(None),)*
 				}
 			}
 
 
-			$(pub fn $ext(&self) -> AlcResult<RwLockReadGuardRef<Option<AlcResult<$ext>>, $ext>> {
+			$(pub fn $ext(&self) -> ExtResult<RwLockReadGuardRef<Option<ExtResult<$ext>>, $ext>> {
 				if let Ok(mut ext) = self.$ext.try_write() {
 					if ext.is_none() {
-						*ext = Some($ext::load(&self.fns, self.dev));
+						*ext = Some($ext::load(&self.api, self.dev));
 					}
 				}
 
@@ -66,36 +69,36 @@ macro_rules! alc_ext {
 		#[derive(Debug)]
 		pub struct $ext {
 			$(
-				pub $const_: AlcResult<ALCenum>,
+				pub $const_: ExtResult<ALCenum>,
 			)*
-			$(pub $fn_: AlcResult<$fn_ty>,)*
+			$(pub $fn_: ExtResult<$fn_ty>,)*
 		}
 
 
 		impl $ext {
-			pub fn load(fns: &AlImpl, dev: *mut ALCdevice) -> AlcResult<$ext> {
-				unsafe { fns.alcGetError(dev); }
-				if unsafe { fns.alcIsExtensionPresent(dev, concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALCchar) } == ALC_TRUE {
+			pub fn load(api: &AlApi, dev: *mut ALCdevice) -> ExtResult<$ext> {
+				unsafe { (*api.alcGetError)(dev); }
+				if unsafe { (*api.alcIsExtensionPresent)(dev, concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALCchar) } == ALC_TRUE {
 					Ok($ext{
 						$($const_: {
-							let e = unsafe { fns.alcGetEnumValue(dev, concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALCchar) };
-							if unsafe { fns.alcGetError(dev) } == ALC_NO_ERROR {
+							let e = unsafe { (*api.alcGetEnumValue)(dev, concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALCchar) };
+							if unsafe { (*api.alcGetError)(dev) } == ALC_NO_ERROR {
 								Ok(e)
 							} else {
-								Err(AlcError::ExtensionNotPresent)
+								Err(ExtensionError)
 							}
 						},)*
 						$($fn_: {
-							let p = unsafe { fns.alcGetProcAddress(dev, concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALCchar) };
-							if unsafe { fns.alcGetError(dev) } == ALC_NO_ERROR {
+							let p = unsafe { (*api.alcGetProcAddress)(dev, concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALCchar) };
+							if unsafe { (*api.alcGetError)(dev) } == ALC_NO_ERROR {
 								Ok(unsafe { mem::transmute(p) })
 							} else {
-								Err(AlcError::ExtensionNotPresent)
+								Err(ExtensionError)
 							}
 						},)*
 					})
 				} else {
-					Err(AlcError::ExtensionNotPresent)
+					Err(ExtensionError)
 				}
 			}
 		})*
@@ -116,25 +119,25 @@ macro_rules! al_ext {
 		#[doc(hidden)]
 		#[allow(non_snake_case)]
 		pub struct $cache {
-			fns: Arc<AlImpl>,
-			$($ext: RefCell<Option<AlResult<$ext>>>,)*
+			api: Arc<AlApi>,
+			$($ext: RefCell<Option<ExtResult<$ext>>>,)*
 		}
 
 
 		#[allow(non_snake_case)]
 		impl $cache {
-			pub unsafe fn new(fns: Arc<AlImpl>) -> $cache {
+			pub unsafe fn new(api: Arc<AlApi>) -> $cache {
 				$cache{
-					fns: fns,
+					api: api,
 					$($ext: RefCell::new(None),)*
 				}
 			}
 
 
-			$(pub fn $ext(&self) -> AlResult<Ref<$ext>> {
+			$(pub fn $ext(&self) -> ExtResult<Ref<$ext>> {
 				if let Ok(mut ext) = self.$ext.try_borrow_mut() {
 					if ext.is_none() {
-						*ext = Some($ext::load(&self.fns));
+						*ext = Some($ext::load(&self.api));
 					}
 				}
 
@@ -154,35 +157,35 @@ macro_rules! al_ext {
 		#[allow(non_camel_case_types, non_snake_case)]
 		#[derive(Debug)]
 		pub struct $ext {
-			$(pub $const_: AlResult<ALenum>,)*
-			$(pub $fn_: AlResult<$fn_ty>,)*
+			$(pub $const_: ExtResult<ALenum>,)*
+			$(pub $fn_: ExtResult<$fn_ty>,)*
 		}
 
 
 		impl $ext {
-			pub fn load(fns: &AlImpl) -> AlResult<$ext> {
-				unsafe { fns.alGetError(); }
-				if unsafe { fns.alIsExtensionPresent(concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALchar) } == AL_TRUE {
+			pub fn load(api: &AlApi) -> ExtResult<$ext> {
+				unsafe { (*api.alGetError)(); }
+				if unsafe { (*api.alIsExtensionPresent)(concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALchar) } == AL_TRUE {
 					Ok($ext{
 						$($const_: {
-							let e = unsafe { fns.alGetEnumValue(concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALchar) };
-							if unsafe { fns.alGetError() } == AL_NO_ERROR {
+							let e = unsafe { (*api.alGetEnumValue)(concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALchar) };
+							if unsafe { (*api.alGetError)() } == AL_NO_ERROR {
 								Ok(e)
 							} else {
-								Err(AlError::ExtensionNotPresent)
+								Err(ExtensionError)
 							}
 						},)*
 						$($fn_: {
-							let p = unsafe { fns.alGetProcAddress(concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALchar) };
-							if unsafe { fns.alGetError() } == AL_NO_ERROR {
+							let p = unsafe { (*api.alGetProcAddress)(concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALchar) };
+							if unsafe { (*api.alGetError)() } == AL_NO_ERROR {
 								Ok(unsafe { mem::transmute(p) })
 							} else {
-								Err(AlError::ExtensionNotPresent)
+								Err(ExtensionError)
 							}
 						},)*
 					})
 				} else {
-					Err(AlError::ExtensionNotPresent)
+					Err(ExtensionError)
 				}
 			}
 		})*
@@ -190,9 +193,11 @@ macro_rules! al_ext {
 }
 
 
-lazy_static! {
-	pub static ref ALC_CACHE: AlcNullCache = AlcNullCache::new(ptr::null_mut());
-}
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct ExtensionError;
+
+
+pub type ExtResult<T> = ::std::result::Result<T, ExtensionError>;
 
 
 #[derive(Copy, Clone, PartialEq, Hash, Eq, Debug)]
@@ -234,6 +239,18 @@ pub enum Al {
 	SoftSourceLatency,
 	SoftSourceLength,
 	SourceDistanceModel,
+}
+
+
+impl fmt::Display for ExtensionError {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "{}", self.description())
+	}
+}
+
+
+impl StdError for ExtensionError {
+	fn description(&self) -> &str { "Extension Not Present" }
 }
 
 

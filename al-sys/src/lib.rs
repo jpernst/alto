@@ -18,19 +18,19 @@ pub use efx::*;
 pub use efx_presets::*;
 
 
-macro_rules! al_impl {
+macro_rules! al_api {
 	{
 		$($sym:ident: $sym_ty:ty,)*
 	} => {
 		#[allow(non_snake_case)]
-		pub struct AlImpl {
+		pub struct AlApi {
 			$(pub $sym: owning_ref::OwningHandle<Arc<libloading::Library>, libloading::Symbol<'static, $sym_ty>>,)*
 		}
 
 
-		impl AlImpl {
-			pub fn load_default() -> io::Result<AlImpl> {
-				AlImpl::from_lib(libloading::Library::new("libopenal.so")
+		impl AlApi {
+			pub fn load_default() -> io::Result<AlApi> {
+				AlApi::from_lib(libloading::Library::new("libopenal.so")
 					.or_else(|_| libloading::Library::new("libopenal.dylib"))
 					.or_else(|_| libloading::Library::new("OpenAL.framework/OpenAL"))
 					.or_else(|_| libloading::Library::new("soft_oal.dll"))
@@ -39,16 +39,16 @@ macro_rules! al_impl {
 			}
 
 
-			pub fn load<P: AsRef<Path>>(path: P) -> io::Result<AlImpl> {
-				AlImpl::from_lib(libloading::Library::new(path.as_ref())?)
+			pub fn load<P: AsRef<Path>>(path: P) -> io::Result<AlApi> {
+				AlApi::from_lib(libloading::Library::new(path.as_ref())?)
 			}
 
 
-			fn from_lib(lib: libloading::Library) -> io::Result<AlImpl> {
+			fn from_lib(lib: libloading::Library) -> io::Result<AlApi> {
 				$(let _: libloading::Symbol<$sym_ty> = unsafe { lib.get(stringify!($sym).as_bytes())? };)*
 
 				let lib = Arc::new(lib);
-				Ok(AlImpl{$(
+				Ok(AlApi{$(
 					$sym: {
 						owning_ref::OwningHandle::new(lib.clone(), |l| unsafe { (*l).get(stringify!($sym).as_bytes()).unwrap() })
 					},
@@ -58,7 +58,7 @@ macro_rules! al_impl {
 	};
 }
 
-al_impl! {
+al_api! {
 	alcCreateContext: unsafe extern "C" fn(device: *mut ALCdevice, attrlist: *const ALCint) -> *mut ALCcontext,
 	alcMakeContextCurrent: unsafe extern "C" fn(context: *mut ALCcontext) -> ALCboolean,
 	alcProcessContext: unsafe extern "C" fn(context: *mut ALCcontext),

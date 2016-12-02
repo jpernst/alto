@@ -1,15 +1,11 @@
-use std::ptr;
 use std::mem;
 use std::cell::{RefCell, Ref};
 use std::sync::{Arc, RwLock};
-use std::ops::Deref;
 use std::fmt;
 use std::error::Error as StdError;
 
-use owning_ref::RwLockReadGuardRef;
+use rental::{self, RentRwLock};
 use ::sys::*;
-use ::alc::*;
-use ::al::*;
 
 
 macro_rules! alc_ext {
@@ -44,16 +40,16 @@ macro_rules! alc_ext {
 			}
 
 
-			$(pub fn $ext(&self) -> ExtResult<RwLockReadGuardRef<Option<ExtResult<$ext>>, $ext>> {
+			$(pub fn $ext(&self) -> ExtResult<RentRwLock<Option<ExtResult<$ext>>, $ext>> {
 				if let Ok(mut ext) = self.$ext.try_write() {
 					if ext.is_none() {
 						*ext = Some($ext::load(&self.api, self.dev));
 					}
 				}
 
-				let ext = RwLockReadGuardRef::new(self.$ext.read().unwrap()).map(|ext| ext.as_ref().unwrap());
+				let ext = RentRwLock::new(self.$ext.read().unwrap(), |ext| ext.as_ref().unwrap());
 				match *ext {
-					Ok(_) => Ok(ext.map(|ext| ext.as_ref().unwrap())),
+					Ok(_) => Ok(rental::MapRef::map(ext, |ext| ext.as_ref().unwrap())),
 					Err(e) => Err(e),
 				}
 			})*

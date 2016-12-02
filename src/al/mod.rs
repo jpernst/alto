@@ -33,8 +33,9 @@ pub trait ContextTrait {
 
 
 pub struct Context<'d, D: DeviceTrait + 'd> {
-	api: Arc<sys::AlApi>,
 	dev: &'d D,
+	api: Arc<sys::AlApi>,
+	ctx_lock: &'d Mutex<()>,
 	ctx: *mut sys::ALCcontext,
 	exts: ext::AlCache,
 }
@@ -92,10 +93,11 @@ impl From<ext::ExtensionError> for AlError {
 
 impl<'d, D: DeviceTrait> Context<'d, D> {
 	#[doc(hidden)]
-	pub unsafe fn new(dev: &D, api: Arc<sys::AlApi>, ctx: *mut sys::ALCcontext, exts: ext::AlCache) -> Context<D> {
+	pub unsafe fn new(dev: &'d D, api: Arc<sys::AlApi>, ctx_lock: &'d Mutex<()>, ctx: *mut sys::ALCcontext, exts: ext::AlCache) -> Context<'d, D> {
 		Context{
-			api: api,
 			dev: dev,
+			api: api,
+			ctx_lock: ctx_lock,
 			ctx: ctx,
 			exts: exts,
 		}

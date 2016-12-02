@@ -1,5 +1,6 @@
 extern crate libloading;
-extern crate owning_ref;
+#[macro_use]
+extern crate rental;
 
 
 use std::sync::Arc;
@@ -18,13 +19,22 @@ pub use efx::*;
 pub use efx_presets::*;
 
 
+rental!{
+	mod rent_lib {
+		pub rental RentSym<'rental, S: ['rental]>(::std::sync::Arc<::libloading::Library>, ::libloading::Symbol<'rental, S>): Deref(S);
+	}
+}
+
+use rent_lib::RentSym;
+
+
 macro_rules! al_api {
 	{
 		$($sym:ident: $sym_ty:ty,)*
 	} => {
 		#[allow(non_snake_case)]
 		pub struct AlApi {
-			$(pub $sym: owning_ref::OwningHandle<Arc<libloading::Library>, libloading::Symbol<'static, $sym_ty>>,)*
+			$(pub $sym: RentSym<'static, $sym_ty>,)*
 		}
 
 
@@ -50,7 +60,10 @@ macro_rules! al_api {
 				let lib = Arc::new(lib);
 				Ok(AlApi{$(
 					$sym: {
-						owning_ref::OwningHandle::new(lib.clone(), |l| unsafe { (*l).get(stringify!($sym).as_bytes()).unwrap() })
+						match RentSym::try_new(lib.clone(), |l| unsafe { l.get(stringify!($sym).as_bytes()) }) {
+							Ok(s) => s,
+							Err((e, _)) => return Err(e),
+						}
 					},
 				)*})
 			}

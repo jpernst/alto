@@ -58,26 +58,27 @@ pub type AlcResult<T> = ::std::result::Result<T, AlcError>;
 pub struct Alto {
 	api: Arc<sys::AlApi>,
 	exts: ext::AlcNullCache,
+	ctx_lock: Mutex<()>,
 }
 
 
 pub trait DeviceTrait {
 	fn alto(&self) -> &Alto;
-	fn exts(&self) -> &Mutex<ext::AlcCache>;
+	fn exts(&self) -> &Arc<ext::AlcCache>;
 }
 
 
 pub struct Device<'a> {
 	alto: &'a Alto,
 	dev: *mut sys::ALCdevice,
-	exts: Mutex<ext::AlcCache>,
+	exts: Arc<ext::AlcCache>,
 }
 
 
 pub struct LoopbackDevice<'a> {
 	alto: &'a Alto,
 	dev: *mut sys::ALCdevice,
-	exts: Mutex<ext::AlcCache>,
+	exts: Arc<ext::AlcCache>,
 }
 
 
@@ -93,6 +94,7 @@ impl Alto {
 		Ok(Alto{
 			exts: unsafe { ext::AlcNullCache::new(api.clone(), ptr::null_mut()) },
 			api: api,
+			ctx_lock: Mutex::new(()),
 		}).and_then(|a| a.check_version())
 	}
 
@@ -102,6 +104,7 @@ impl Alto {
 		Ok(Alto{
 			exts: unsafe { ext::AlcNullCache::new(api.clone(), ptr::null_mut()) },
 			api: api,
+			ctx_lock: Mutex::new(()),
 		}).and_then(|a| a.check_version())
 	}
 
@@ -192,7 +195,7 @@ impl Alto {
 		if dev == ptr::null_mut() {
 			Err(AlcError::InvalidDevice)
 		} else {
-			Ok(Device{alto: self, dev: dev, exts: Mutex::new(unsafe { ext::AlcCache::new(self.api.clone(), dev) })})
+			Ok(Device{alto: self, dev: dev, exts: Arc::new(unsafe { ext::AlcCache::new(self.api.clone(), dev) })})
 		}
 	}
 
@@ -210,7 +213,7 @@ impl Alto {
 		if dev == ptr::null_mut() {
 			Err(AlcError::InvalidDevice)
 		} else {
-			Ok(LoopbackDevice{alto: self, dev: dev, exts: Mutex::new(unsafe { ext::AlcCache::new(self.api.clone(), dev) })})
+			Ok(LoopbackDevice{alto: self, dev: dev, exts: Arc::new(unsafe { ext::AlcCache::new(self.api.clone(), dev) })})
 		}
 	}
 
@@ -303,13 +306,12 @@ impl From<io::Error> for AlcError {
 
 impl<'a> Device<'a> {
 	pub fn is_extension_present(&self, ext: ext::Alc) -> bool {
-		let exts = self.exts.lock().unwrap();
 		match ext {
-			ext::Alc::Dedicated => exts.ALC_EXT_DEDICATED().is_ok(),
-			ext::Alc::Disconnect => exts.ALC_EXT_DISCONNECT().is_ok(),
-			ext::Alc::Efx => exts.ALC_EXT_EFX().is_ok(),
-			ext::Alc::SoftHrtf => exts.ALC_SOFT_HRTF().is_ok(),
-			ext::Alc::SoftPauseDevice => exts.ALC_SOFT_pause_device().is_ok(),
+			ext::Alc::Dedicated => self.exts.ALC_EXT_DEDICATED().is_ok(),
+			ext::Alc::Disconnect => self.exts.ALC_EXT_DISCONNECT().is_ok(),
+			ext::Alc::Efx => self.exts.ALC_EXT_EFX().is_ok(),
+			ext::Alc::SoftHrtf => self.exts.ALC_SOFT_HRTF().is_ok(),
+			ext::Alc::SoftPauseDevice => self.exts.ALC_SOFT_pause_device().is_ok(),
 		}
 	}
 
@@ -321,7 +323,7 @@ impl<'a> DeviceTrait for Device<'a> {
 	#[inline(always)]
 	fn alto(&self) -> &Alto { &self.alto }
 	#[inline(always)]
-	fn exts(&self) -> &Mutex<ext::AlcCache> { &self.exts }
+	fn exts(&self) -> &Arc<ext::AlcCache> { &self.exts }
 }
 
 
@@ -338,13 +340,12 @@ unsafe impl<'a> Sync for Device<'a> { }
 
 impl<'a> LoopbackDevice<'a> {
 	pub fn is_extension_present(&self, ext: ext::Alc) -> bool {
-		let exts = self.exts.lock().unwrap();
 		match ext {
-			ext::Alc::Dedicated => exts.ALC_EXT_DEDICATED().is_ok(),
-			ext::Alc::Disconnect => exts.ALC_EXT_DISCONNECT().is_ok(),
-			ext::Alc::Efx => exts.ALC_EXT_EFX().is_ok(),
-			ext::Alc::SoftHrtf => exts.ALC_SOFT_HRTF().is_ok(),
-			ext::Alc::SoftPauseDevice => exts.ALC_SOFT_pause_device().is_ok(),
+			ext::Alc::Dedicated => self.exts.ALC_EXT_DEDICATED().is_ok(),
+			ext::Alc::Disconnect => self.exts.ALC_EXT_DISCONNECT().is_ok(),
+			ext::Alc::Efx => self.exts.ALC_EXT_EFX().is_ok(),
+			ext::Alc::SoftHrtf => self.exts.ALC_SOFT_HRTF().is_ok(),
+			ext::Alc::SoftPauseDevice => self.exts.ALC_SOFT_pause_device().is_ok(),
 		}
 	}
 
@@ -374,7 +375,7 @@ impl<'a> LoopbackDevice<'a> {
 		let ctx = unsafe { (*self.alto.api.alcCreateContext)(self.dev, attrs_vec.as_slice().as_ptr()) };
 		self.alto.get_error(self.dev)?;
 
-		Ok(unsafe { Context::new(self, self.alto.api.clone(), ctx, ext::AlCache::new(self.alto.api.clone())) })
+		Ok(unsafe { Context::new(self, self.alto.api.clone(), &self.alto.ctx_lock, ctx, ext::AlCache::new(self.alto.api.clone())) })
 	}
 }
 
@@ -383,7 +384,7 @@ impl<'a> DeviceTrait for LoopbackDevice<'a> {
 	#[inline(always)]
 	fn alto(&self) -> &Alto { &self.alto }
 	#[inline(always)]
-	fn exts(&self) -> &Mutex<ext::AlcCache> { &self.exts }
+	fn exts(&self) -> &Arc<ext::AlcCache> { &self.exts }
 }
 
 

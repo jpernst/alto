@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
-extern crate owning_ref;
+#[macro_use]
+extern crate rental;
 extern crate al_sys;
 
 

@@ -10,5 +10,5 @@ keywords = ["openal", "al", "sound", "audio"]
 [dependencies]
 rental = "0.2.0"
 lazy_static = "0.2.1"
-al-sys = { path = "al-sys" }
+al-sys = "0.2.0"
 

@@ -21,7 +21,10 @@ pub use efx_presets::*;
 
 rental!{
 	mod rent_lib {
-		pub rental RentSym<'rental, S: ['rental]>(::std::sync::Arc<::libloading::Library>, ::libloading::Symbol<'rental, S>): Deref(S);
+		use std::sync::Arc;
+		use libloading::{Library, Symbol};
+
+		pub rental RentSym<'rental, S: ['rental]>(Arc<Library>, Symbol<'rental, S>): Deref(S);
 	}
 }
 

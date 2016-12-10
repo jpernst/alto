@@ -37,7 +37,7 @@ pub struct Context<'d, D: DeviceTrait + 'd> {
 	api: Arc<sys::AlApi>,
 	ctx_lock: &'d Mutex<()>,
 	ctx: *mut sys::ALCcontext,
-	exts: ext::AlCache,
+	exts: ext::AlCache<'d>,
 }
 
 
@@ -93,7 +93,7 @@ impl From<ext::ExtensionError> for AlError {
 
 impl<'d, D: DeviceTrait> Context<'d, D> {
 	#[doc(hidden)]
-	pub unsafe fn new(dev: &'d D, api: Arc<sys::AlApi>, ctx_lock: &'d Mutex<()>, ctx: *mut sys::ALCcontext, exts: ext::AlCache) -> Context<'d, D> {
+	pub unsafe fn new(dev: &'d D, api: Arc<sys::AlApi>, ctx_lock: &'d Mutex<()>, ctx: *mut sys::ALCcontext, exts: ext::AlCache<'d>) -> Context<'d, D> {
 		Context{
 			dev: dev,
 			api: api,
@@ -130,7 +130,7 @@ impl<'d, D: DeviceTrait> Context<'d, D> {
 
 
 	fn get_error(&self) -> AlResult<()> {
-		match unsafe { (*self.api.alGetError)() } {
+		match unsafe { self.api.alGetError()() } {
 			sys::AL_NO_ERROR => Ok(()),
 			e => Err(e.into())
 		}

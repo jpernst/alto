@@ -3,11 +3,6 @@ extern crate libloading;
 extern crate rental;
 
 
-use std::sync::Arc;
-use std::io;
-use std::path::Path;
-
-
 mod alc;
 mod al;
 mod efx;
@@ -19,60 +14,73 @@ pub use efx::*;
 pub use efx_presets::*;
 
 
-rental!{
-	mod rent_lib {
-		use std::sync::Arc;
-		use libloading::{Library, Symbol};
-
-		pub rental RentSym<'rental, S: ['rental]>(Arc<Library>, Symbol<'rental, S>): Deref(S);
-	}
-}
-
-use rent_lib::RentSym;
-
-
 macro_rules! al_api {
 	{
 		$($sym:ident: $sym_ty:ty,)*
 	} => {
-		#[allow(non_snake_case)]
-		pub struct AlApi {
-			$(pub $sym: RentSym<'static, $sym_ty>,)*
+		mod al_api {
+			use std::io;
+			use std::path::Path;
+			use libloading;
+			use rental::Rental;
+
+			use super::*;
+
+
+			#[allow(non_snake_case)]
+			pub struct AlSymbols<'lib> {
+				$(pub $sym: ::libloading::Symbol<'lib, $sym_ty>,)*
+			}
+
+			rental!{
+				mod rent {
+					pub rental RentSymbols<'rental>(Box<::libloading::Library>, super::AlSymbols<'rental>);
+				}
+			}
+
+			use self::rent::RentSymbols;
+
+
+			pub struct AlApi(rent::RentSymbols<'static>);
+
+
+			impl AlApi {
+				pub fn load_default() -> io::Result<AlApi> {
+					AlApi::from_lib(libloading::Library::new("libopenal.so")
+						.or_else(|_| libloading::Library::new("libopenal.dylib"))
+						.or_else(|_| libloading::Library::new("OpenAL.framework/OpenAL"))
+						.or_else(|_| libloading::Library::new("soft_oal.dll"))
+						.or_else(|_| libloading::Library::new("OpenAL32.dll"))
+					?)
+				}
+
+
+				pub fn load<P: AsRef<Path>>(path: P) -> io::Result<AlApi> {
+					AlApi::from_lib(libloading::Library::new(path.as_ref())?)
+				}
+
+
+				fn from_lib(lib: libloading::Library) -> io::Result<AlApi> {
+					match RentSymbols::try_new(Box::new(lib), |lib| Ok(AlSymbols{
+						$($sym: unsafe { lib.get(stringify!($sym).as_bytes())? },)*
+					})) {
+						Ok(syms) => Ok(AlApi(syms)),
+						Err((e, _)) => return Err(e),
+					}
+				}
+
+
+				$(#[allow(non_snake_case)]
+				pub fn $sym(&self) -> &$sym_ty {
+					unsafe { &*self.0.rental().$sym }
+				})*
+			}
 		}
 
-
-		impl AlApi {
-			pub fn load_default() -> io::Result<AlApi> {
-				AlApi::from_lib(libloading::Library::new("libopenal.so")
-					.or_else(|_| libloading::Library::new("libopenal.dylib"))
-					.or_else(|_| libloading::Library::new("OpenAL.framework/OpenAL"))
-					.or_else(|_| libloading::Library::new("soft_oal.dll"))
-					.or_else(|_| libloading::Library::new("OpenAL32.dll"))
-				?)
-			}
-
-
-			pub fn load<P: AsRef<Path>>(path: P) -> io::Result<AlApi> {
-				AlApi::from_lib(libloading::Library::new(path.as_ref())?)
-			}
-
-
-			fn from_lib(lib: libloading::Library) -> io::Result<AlApi> {
-				$(let _: libloading::Symbol<$sym_ty> = unsafe { lib.get(stringify!($sym).as_bytes())? };)*
-
-				let lib = Arc::new(lib);
-				Ok(AlApi{$(
-					$sym: {
-						match RentSym::try_new(lib.clone(), |l| unsafe { l.get(stringify!($sym).as_bytes()) }) {
-							Ok(s) => s,
-							Err((e, _)) => return Err(e),
-						}
-					},
-				)*})
-			}
-		}
+		pub use al_api::AlApi;
 	};
 }
+
 
 al_api! {
 	alcCreateContext: unsafe extern "C" fn(device: *mut ALCdevice, attrlist: *const ALCint) -> *mut ALCcontext,

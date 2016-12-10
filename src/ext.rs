@@ -20,8 +20,8 @@ macro_rules! alc_ext {
 	} => {
 		#[doc(hidden)]
 		#[allow(non_snake_case)]
-		pub struct $cache {
-			api: Arc<AlApi>,
+		pub struct $cache<'a> {
+			api: &'a AlApi,
 			dev: *mut ALCdevice,
 			$(
 				$ext: RwLock<Option<ExtResult<$ext>>>,
@@ -30,8 +30,8 @@ macro_rules! alc_ext {
 
 
 		#[allow(non_snake_case)]
-		impl $cache {
-			pub unsafe fn new(api: Arc<AlApi>, dev: *mut ALCdevice) -> $cache {
+		impl<'a> $cache<'a> {
+			pub unsafe fn new(api: &'a AlApi, dev: *mut ALCdevice) -> $cache<'a> {
 				$cache{
 					api: api,
 					dev: dev,
@@ -56,8 +56,8 @@ macro_rules! alc_ext {
 		}
 
 
-		unsafe impl Send for $cache { }
-		unsafe impl Sync for $cache { }
+		unsafe impl<'a> Send for $cache<'a> { }
+		unsafe impl<'a> Sync for $cache<'a> { }
 
 
 		$(#[doc(hidden)]
@@ -73,20 +73,20 @@ macro_rules! alc_ext {
 
 		impl $ext {
 			pub fn load(api: &AlApi, dev: *mut ALCdevice) -> ExtResult<$ext> {
-				unsafe { (*api.alcGetError)(dev); }
-				if unsafe { (*api.alcIsExtensionPresent)(dev, concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALCchar) } == ALC_TRUE {
+				unsafe { api.alcGetError()(dev); }
+				if unsafe { api.alcIsExtensionPresent()(dev, concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALCchar) } == ALC_TRUE {
 					Ok($ext{
 						$($const_: {
-							let e = unsafe { (*api.alcGetEnumValue)(dev, concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALCchar) };
-							if unsafe { (*api.alcGetError)(dev) } == ALC_NO_ERROR {
+							let e = unsafe { api.alcGetEnumValue()(dev, concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALCchar) };
+							if unsafe { api.alcGetError()(dev) } == ALC_NO_ERROR {
 								Ok(e)
 							} else {
 								Err(ExtensionError)
 							}
 						},)*
 						$($fn_: {
-							let p = unsafe { (*api.alcGetProcAddress)(dev, concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALCchar) };
-							if unsafe { (*api.alcGetError)(dev) } == ALC_NO_ERROR {
+							let p = unsafe { api.alcGetProcAddress()(dev, concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALCchar) };
+							if unsafe { api.alcGetError()(dev) } == ALC_NO_ERROR {
 								Ok(unsafe { mem::transmute(p) })
 							} else {
 								Err(ExtensionError)
@@ -114,15 +114,15 @@ macro_rules! al_ext {
 	} => {
 		#[doc(hidden)]
 		#[allow(non_snake_case)]
-		pub struct $cache {
-			api: Arc<AlApi>,
+		pub struct $cache<'a> {
+			api: &'a AlApi,
 			$($ext: RefCell<Option<ExtResult<$ext>>>,)*
 		}
 
 
 		#[allow(non_snake_case)]
-		impl $cache {
-			pub unsafe fn new(api: Arc<AlApi>) -> $cache {
+		impl<'a> $cache<'a> {
+			pub unsafe fn new(api: &'a AlApi) -> $cache<'a> {
 				$cache{
 					api: api,
 					$($ext: RefCell::new(None),)*
@@ -146,7 +146,7 @@ macro_rules! al_ext {
 		}
 
 
-		unsafe impl Send for $cache { }
+		unsafe impl<'a> Send for $cache<'a> { }
 
 
 		$(#[doc(hidden)]
@@ -160,20 +160,20 @@ macro_rules! al_ext {
 
 		impl $ext {
 			pub fn load(api: &AlApi) -> ExtResult<$ext> {
-				unsafe { (*api.alGetError)(); }
-				if unsafe { (*api.alIsExtensionPresent)(concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALchar) } == AL_TRUE {
+				unsafe { api.alGetError()(); }
+				if unsafe { api.alIsExtensionPresent()(concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALchar) } == AL_TRUE {
 					Ok($ext{
 						$($const_: {
-							let e = unsafe { (*api.alGetEnumValue)(concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALchar) };
-							if unsafe { (*api.alGetError)() } == AL_NO_ERROR {
+							let e = unsafe { api.alGetEnumValue()(concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALchar) };
+							if unsafe { api.alGetError()() } == AL_NO_ERROR {
 								Ok(e)
 							} else {
 								Err(ExtensionError)
 							}
 						},)*
 						$($fn_: {
-							let p = unsafe { (*api.alGetProcAddress)(concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALchar) };
-							if unsafe { (*api.alGetError)() } == AL_NO_ERROR {
+							let p = unsafe { api.alGetProcAddress()(concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALchar) };
+							if unsafe { api.alGetError()() } == AL_NO_ERROR {
 								Ok(unsafe { mem::transmute(p) })
 							} else {
 								Err(ExtensionError)

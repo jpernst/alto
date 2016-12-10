@@ -64,7 +64,7 @@ pub struct Alto {
 
 pub trait DeviceTrait {
 	fn alto(&self) -> &Alto;
-	fn exts(&self) -> &Arc<ext::AlcCache>;
+	fn exts(&self) -> &ext::AlcCache;
 }
 
 
@@ -323,7 +323,7 @@ impl<'a> DeviceTrait for Device<'a> {
 	#[inline(always)]
 	fn alto(&self) -> &Alto { &self.alto }
 	#[inline(always)]
-	fn exts(&self) -> &Arc<ext::AlcCache> { &self.exts }
+	fn exts(&self) -> &ext::AlcCache { &self.exts }
 }
 
 
@@ -384,7 +384,7 @@ impl<'a> DeviceTrait for LoopbackDevice<'a> {
 	#[inline(always)]
 	fn alto(&self) -> &Alto { &self.alto }
 	#[inline(always)]
-	fn exts(&self) -> &Arc<ext::AlcCache> { &self.exts }
+	fn exts(&self) -> &ext::AlcCache { &self.exts }
 }
 
 

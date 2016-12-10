@@ -22,7 +22,6 @@ macro_rules! al_api {
 			use std::io;
 			use std::path::Path;
 			use libloading;
-			use rental::Rental;
 
 			use super::*;
 
@@ -72,7 +71,7 @@ macro_rules! al_api {
 
 				$(#[allow(non_snake_case)]
 				pub fn $sym(&self) -> &$sym_ty {
-					unsafe { &*self.0.rental().$sym }
+					self.0.rent_ref(|s| &*s.$sym)
 				})*
 			}
 		}

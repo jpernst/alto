@@ -35,6 +35,12 @@ pub struct ContextAttrs {
 }
 
 
+pub struct LoopbackAttrs {
+	pub mono_sources: Option<sys::ALCint>,
+	pub stereo_sources: Option<sys::ALCint>,
+}
+
+
 pub enum LoopbackFormatChannels {
 	Mono,
 	Stereo,
@@ -333,6 +339,32 @@ impl<'a> Device<'a> {
 	}
 
 
+	pub fn new_context(&self, attrs: Option<ContextAttrs>) -> AlcResult<Context<Self>> {
+		let attrs_vec = attrs.map(|a| {
+			let mut attrs_vec = Vec::with_capacity(9);
+
+			if let Some(freq) = a.frequency {
+				attrs_vec.extend(&[sys::ALC_FREQUENCY, freq]);
+			}
+			if let Some(refresh) = a.refresh {
+				attrs_vec.extend(&[sys::ALC_REFRESH, refresh]);
+			}
+			if let Some(mono) = a.mono_sources {
+				attrs_vec.extend(&[sys::ALC_MONO_SOURCES, mono]);
+			}
+			if let Some(stereo) = a.stereo_sources {
+				attrs_vec.extend(&[sys::ALC_STEREO_SOURCES, stereo]);
+			}
+
+			attrs_vec.push(0);
+			attrs_vec
+		});
+
+		let ctx = unsafe { self.alto.api.alcCreateContext()(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
+		self.alto.get_error(self.dev)?;
+
+		Ok(unsafe { Context::new(self, self.alto.api.clone(), &self.alto.ctx_lock, ctx, ext::AlCache::new(&self.alto.api)) })
+	}
 }
 
 
@@ -367,11 +399,11 @@ impl<'a> LoopbackDevice<'a> {
 	}
 
 
-	pub fn new_context(&self, freq: sys::ALCint, chan: LoopbackFormatChannels, ty: LoopbackFormatType, attrs: Option<ContextAttrs>) -> AlcResult<Context<Self>> {
+	pub fn new_context(&self, freq: sys::ALCint, chan: LoopbackFormatChannels, ty: LoopbackFormatType, attrs: Option<LoopbackAttrs>) -> AlcResult<Context<Self>> {
 		self.alto.exts.rent(move|exts| {
 			let sl = exts.ALC_SOFT_loopback()?;
 
-			let mut attrs_vec = Vec::with_capacity(4);
+			let mut attrs_vec = Vec::with_capacity(11);
 			attrs_vec.extend(&[sys::ALC_FREQUENCY, freq]);
 			attrs_vec.extend(&[sl.ALC_FORMAT_CHANNELS_SOFT?, match chan {
 				LoopbackFormatChannels::Mono => sl.ALC_MONO_SOFT?,
@@ -387,6 +419,12 @@ impl<'a> LoopbackDevice<'a> {
 				LoopbackFormatType::F32 => sl.ALC_FLOAT_SOFT?,
 			}]);
 			if let Some(attrs) = attrs {
+				if let Some(mono) = attrs.mono_sources {
+					attrs_vec.extend(&[sys::ALC_MONO_SOURCES, mono]);
+				}
+				if let Some(stereo) = attrs.stereo_sources {
+					attrs_vec.extend(&[sys::ALC_STEREO_SOURCES, stereo]);
+				}
 			}
 			attrs_vec.push(0);
 

@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::fmt;
 use std::error::Error as StdError;
 
@@ -28,23 +28,29 @@ pub type AlResult<T> = ::std::result::Result<T, AlError>;
 
 
 pub trait ContextTrait {
-	fn exts(&self) -> &ext::AlCache;
+	fn extensions(&self) -> &ext::AlCache;
 }
 
 
 pub struct Context<'d, D: DeviceTrait + 'd> {
 	dev: &'d D,
-	api: Arc<sys::AlApi>,
+	api: &'d AlApi<'static>,
 	ctx_lock: &'d Mutex<()>,
 	ctx: *mut sys::ALCcontext,
 	exts: ext::AlCache<'d>,
 }
 
 
-pub struct Buffer<'d>(sys::ALuint, &'d DeviceTrait);
+pub struct Buffer<'d, D: DeviceTrait + 'd> {
+	dev: &'d D,
+	hnd: sys::ALuint, 
+}
 
 
-pub struct Source<'c, C: ContextTrait + 'c>(sys::ALuint, &'c C);
+pub struct Source<'c, C: ContextTrait + 'c> {
+	ctx: &'c C,
+	hnd: sys::ALuint,
+}
 
 
 impl fmt::Display for AlError {
@@ -93,13 +99,13 @@ impl From<ext::ExtensionError> for AlError {
 
 impl<'d, D: DeviceTrait> Context<'d, D> {
 	#[doc(hidden)]
-	pub unsafe fn new(dev: &'d D, api: Arc<sys::AlApi>, ctx_lock: &'d Mutex<()>, ctx: *mut sys::ALCcontext, exts: ext::AlCache<'d>) -> Context<'d, D> {
+	pub unsafe fn new(dev: &'d D, api: &'d AlApi<'static>, ctx_lock: &'d Mutex<()>, ctx: *mut sys::ALCcontext) -> Context<'d, D> {
 		Context{
 			dev: dev,
 			api: api,
 			ctx_lock: ctx_lock,
 			ctx: ctx,
-			exts: exts,
+			exts: ext::AlCache::new(api.owner()),
 		}
 	}
 
@@ -130,7 +136,7 @@ impl<'d, D: DeviceTrait> Context<'d, D> {
 
 
 	fn get_error(&self) -> AlResult<()> {
-		match unsafe { self.api.alGetError()() } {
+		match unsafe { self.api.owner().alGetError()() } {
 			sys::AL_NO_ERROR => Ok(()),
 			e => Err(e.into())
 		}
@@ -140,7 +146,7 @@ impl<'d, D: DeviceTrait> Context<'d, D> {
 
 impl<'d, D: DeviceTrait> ContextTrait for Context<'d, D> {
 	#[inline(always)]
-	fn exts(&self) -> &ext::AlCache { &self.exts }
+	fn extensions(&self) -> &ext::AlCache { &self.exts }
 }
 
 

@@ -137,21 +137,15 @@ impl Alto {
 	}
 
 
-	pub fn default_impl(&self) -> AlcResult<CString> {
-		let spec = unsafe { CStr::from_ptr(self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_DEFAULT_DEVICE_SPECIFIER)) };
-		self.get_error(ptr::null_mut()).map(|_| spec.to_owned())
-	}
-
-
 	pub fn default_output(&self) -> AlcResult<CString> {
-		self.api.rent(|exts|
-			if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
-				let spec = unsafe { CStr::from_ptr(self.api.owner().alcGetString()(ptr::null_mut(), ea.ALC_DEFAULT_ALL_DEVICES_SPECIFIER.unwrap())) };
-				self.get_error(ptr::null_mut()).map(|_| spec.to_owned())
+		self.api.rent(|exts| {
+			let spec = if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
+				unsafe { CStr::from_ptr(self.api.owner().alcGetString()(ptr::null_mut(), ea.ALC_DEFAULT_ALL_DEVICES_SPECIFIER.unwrap())) }
 			} else {
-				self.default_impl()
-			}
-		)
+				unsafe { CStr::from_ptr(self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_DEFAULT_DEVICE_SPECIFIER)) }
+			};
+			self.get_error(ptr::null_mut()).map(|_| spec.to_owned())
+		})
 	}
 
 
@@ -161,21 +155,15 @@ impl Alto {
 	}
 
 
-	pub fn enumerate_impls(&self) -> AlcResult<Vec<CString>> {
-		let spec = unsafe { self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_DEVICE_SPECIFIER) };
-		self.get_error(ptr::null_mut()).and_then(|_| Alto::parse_enum_spec(spec as *const u8))
-	}
-
-
 	pub fn enumerate_outputs(&self) -> AlcResult<Vec<CString>> {
-		self.api.rent(|exts|
-			if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
-				let spec = unsafe { self.api.owner().alcGetString()(ptr::null_mut(), ea.ALC_ALL_DEVICES_SPECIFIER.unwrap()) };
-				self.get_error(ptr::null_mut()).and_then(|_| Alto::parse_enum_spec(spec as *const u8))
+		self.api.rent(|exts| {
+			let spec = if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
+				unsafe { self.api.owner().alcGetString()(ptr::null_mut(), ea.ALC_ALL_DEVICES_SPECIFIER.unwrap()) }
 			} else {
-				self.enumerate_impls()
-			}
-		)
+				unsafe { self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_DEVICE_SPECIFIER) }
+			};
+			self.get_error(ptr::null_mut()).and_then(|_| Alto::parse_enum_spec(spec as *const u8))
+		})
 	}
 
 

@@ -1,6 +1,6 @@
 use std::mem;
 use std::cell::{RefCell, Ref};
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
 use std::fmt;
 use std::error::Error as StdError;
 
@@ -23,9 +23,7 @@ macro_rules! alc_ext {
 		pub struct $cache<'a> {
 			api: &'a AlApi,
 			dev: *mut ALCdevice,
-			$(
-				$ext: RwLock<Option<ExtResult<$ext>>>,
-			)*
+			$($ext: RwLock<Option<ExtResult<$ext>>>,)*
 		}
 
 
@@ -116,7 +114,7 @@ macro_rules! al_ext {
 		#[allow(non_snake_case)]
 		pub struct $cache<'a> {
 			api: &'a AlApi,
-			$($ext: RefCell<Option<ExtResult<$ext>>>,)*
+			$($ext: RwLock<Option<ExtResult<$ext>>>,)*
 		}
 
 
@@ -125,21 +123,21 @@ macro_rules! al_ext {
 			pub unsafe fn new(api: &'a AlApi) -> $cache<'a> {
 				$cache{
 					api: api,
-					$($ext: RefCell::new(None),)*
+					$($ext: RwLock::new(None),)*
 				}
 			}
 
 
-			$(pub fn $ext(&self) -> ExtResult<Ref<$ext>> {
-				if let Ok(mut ext) = self.$ext.try_borrow_mut() {
+			$(pub fn $ext(&self) -> ExtResult<RentRwLock<Option<ExtResult<$ext>>, $ext>> {
+				if let Ok(mut ext) = self.$ext.try_write() {
 					if ext.is_none() {
 						*ext = Some($ext::load(&self.api));
 					}
 				}
 
-				let ext = Ref::map(self.$ext.borrow(), |e| e.as_ref().unwrap());
+				let ext = RentRwLock::new(self.$ext.read().unwrap(), |ext| ext.as_ref().unwrap());
 				match *ext {
-					Ok(_) => Ok(Ref::map(ext, |ext| ext.as_ref().unwrap())),
+					Ok(_) => Ok(rental::MapRef::map(ext, |ext| ext.as_ref().unwrap())),
 					Err(e) => Err(e),
 				}
 			})*

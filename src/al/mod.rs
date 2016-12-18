@@ -1,6 +1,7 @@
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::fmt;
 use std::error::Error as StdError;
+use std::collections::VecDeque;
 
 use ::sys;
 use ::alc::*;
@@ -27,11 +28,6 @@ pub enum AlError {
 pub type AlResult<T> = ::std::result::Result<T, AlError>;
 
 
-pub trait ContextTrait {
-	fn extensions(&self) -> &ext::AlCache;
-}
-
-
 pub struct Context<'d, D: DeviceTrait + 'd> {
 	dev: &'d D,
 	api: &'d AlApi<'static>,
@@ -47,9 +43,17 @@ pub struct Buffer<'d, D: DeviceTrait + 'd> {
 }
 
 
-pub struct Source<'c, C: ContextTrait + 'c> {
-	ctx: &'c C,
+pub struct StaticSource<'d: 'c, 'c, D: DeviceTrait + 'd> {
+	ctx: &'c Context<'d, D>,
 	hnd: sys::ALuint,
+	buf: Option<Arc<Buffer<'d, D>>>,
+}
+
+
+pub struct StreamingSource<'d: 'c, 'c, D: DeviceTrait + 'd> {
+	ctx: &'c Context<'d, D>,
+	hnd: sys::ALuint,
+	buf: VecDeque<Buffer<'d, D>>,
 }
 
 
@@ -110,6 +114,10 @@ impl<'d, D: DeviceTrait> Context<'d, D> {
 	}
 
 
+	pub fn new_source() {
+	}
+
+
 	pub fn is_extension_present(&self, ext: ext::Al) -> bool {
 		match ext {
 			ext::Al::ALaw => self.exts.AL_EXT_ALAW().is_ok(),
@@ -135,6 +143,10 @@ impl<'d, D: DeviceTrait> Context<'d, D> {
 	}
 
 
+	#[inline(always)]
+	fn extensions(&self) -> &ext::AlCache { &self.exts }
+
+
 	fn get_error(&self) -> AlResult<()> {
 		match unsafe { self.api.owner().alGetError()() } {
 			sys::AL_NO_ERROR => Ok(()),
@@ -144,12 +156,20 @@ impl<'d, D: DeviceTrait> Context<'d, D> {
 }
 
 
-impl<'d, D: DeviceTrait> ContextTrait for Context<'d, D> {
-	#[inline(always)]
-	fn extensions(&self) -> &ext::AlCache { &self.exts }
+unsafe impl<'d, D: DeviceTrait> Send for Context<'d, D> { }
+unsafe impl<'d, D: DeviceTrait> Sync for Context<'d, D> { }
+
+
+impl<'d, D: DeviceTrait + 'd> Buffer<'d, D> {
 }
 
 
-unsafe impl<'d, D: DeviceTrait> Send for Context<'d, D> { }
+impl<'d: 'c, 'c, D: DeviceTrait + 'd> StaticSource<'d, 'c, D> {
+	pub fn set_buffer(self, buf: Option<Arc<Buffer<'d, D>>>) -> AlResult<()> {
+		panic!();
+	}
+}
 
 
+impl<'d: 'c, 'c, D: DeviceTrait + 'd> StreamingSource<'d, 'c, D> {
+}

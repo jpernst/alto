@@ -1,6 +1,7 @@
 use sys;
 use alc::*;
 use al::*;
+use ext;
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -121,7 +122,7 @@ pub enum SoftMsadpcmFormat {
 
 
 pub unsafe trait SampleFrame: Copy {
-	type Unit: Copy;
+	type Sample: Copy;
 
 	fn len() -> usize;
 	fn format() -> Format;
@@ -220,7 +221,7 @@ pub struct BFormat3D<S: Copy> {
 
 
 impl Format {
-	pub fn into_raw<'d, D: DeviceTrait>(self, ctx: Option<&Context<'d, D>>) -> AlResult<sys::ALint> {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
 		match self {
 			Format::Standard(f) => Ok(f.into_raw()),
 			Format::ExtALaw(f) => f.into_raw(ctx),
@@ -251,7 +252,7 @@ impl StandardFormat {
 
 
 impl ExtALawFormat {
-	pub fn into_raw<'d, D: DeviceTrait>(self, ctx: Option<&Context<'d, D>>) -> AlResult<sys::ALint> {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
 		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtALawFormat::Mono => Ok(ctx.extensions().AL_EXT_ALAW()?.AL_FORMAT_MONO_ALAW_EXT?),
 			ExtALawFormat::Stereo => Ok(ctx.extensions().AL_EXT_ALAW()?.AL_FORMAT_STEREO_ALAW_EXT?),
@@ -261,7 +262,7 @@ impl ExtALawFormat {
 
 
 impl ExtBFormat {
-	pub fn into_raw<'d, D: DeviceTrait>(self, ctx: Option<&Context<'d, D>>) -> AlResult<sys::ALint> {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
 		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtBFormat::B2DU8 => Ok(ctx.extensions().AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_8?),
 			ExtBFormat::B2DI16 => Ok(ctx.extensions().AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_16?),
@@ -275,7 +276,7 @@ impl ExtBFormat {
 
 
 impl ExtDoubleFormat {
-	pub fn into_raw<'d, D: DeviceTrait>(self, ctx: Option<&Context<'d, D>>) -> AlResult<sys::ALint> {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
 		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtDoubleFormat::Mono => Ok(ctx.extensions().AL_EXT_double()?.AL_FORMAT_MONO_DOUBLE_EXT?),
 			ExtDoubleFormat::Stereo => Ok(ctx.extensions().AL_EXT_double()?.AL_FORMAT_STEREO_DOUBLE_EXT?),
@@ -285,7 +286,7 @@ impl ExtDoubleFormat {
 
 
 impl ExtFloat32Format {
-	pub fn into_raw<'d, D: DeviceTrait>(self, ctx: Option<&Context<'d, D>>) -> AlResult<sys::ALint> {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
 		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtFloat32Format::Mono => Ok(ctx.extensions().AL_EXT_float32()?.AL_FORMAT_MONO_FLOAT32?),
 			ExtFloat32Format::Stereo => Ok(ctx.extensions().AL_EXT_float32()?.AL_FORMAT_STEREO_FLOAT32?),
@@ -295,7 +296,7 @@ impl ExtFloat32Format {
 
 
 impl ExtIma4Format {
-	pub fn into_raw<'d, D: DeviceTrait>(self, ctx: Option<&Context<'d, D>>) -> AlResult<sys::ALint> {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
 		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtIma4Format::Mono => Ok(ctx.extensions().AL_EXT_IMA4()?.AL_FORMAT_MONO_IMA4?),
 			ExtIma4Format::Stereo => Ok(ctx.extensions().AL_EXT_IMA4()?.AL_FORMAT_STEREO_IMA4?),
@@ -305,7 +306,7 @@ impl ExtIma4Format {
 
 
 impl ExtMcFormat {
-	pub fn into_raw<'d, D: DeviceTrait>(self, ctx: Option<&Context<'d, D>>) -> AlResult<sys::ALint> {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
 		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtMcFormat::QuadU8 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD8?),
 			ExtMcFormat::QuadI16 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD16?),
@@ -328,7 +329,7 @@ impl ExtMcFormat {
 
 
 impl ExtMuLawFormat {
-	pub fn into_raw<'d, D: DeviceTrait>(self, ctx: Option<&Context<'d, D>>) -> AlResult<sys::ALint> {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
 		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtMuLawFormat::Mono => Ok(ctx.extensions().AL_EXT_MULAW()?.AL_FORMAT_MONO_MULAW_EXT?),
 			ExtMuLawFormat::Stereo => Ok(ctx.extensions().AL_EXT_MULAW()?.AL_FORMAT_STEREO_MULAW_EXT?),
@@ -338,7 +339,7 @@ impl ExtMuLawFormat {
 
 
 impl ExtMuLawBFormat {
-	pub fn into_raw<'d, D: DeviceTrait>(self, ctx: Option<&Context<'d, D>>) -> AlResult<sys::ALint> {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
 		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtMuLawBFormat::B2D => Ok(ctx.extensions().AL_EXT_MULAW_BFORMAT()?.AL_FORMAT_BFORMAT2D_MULAW?),
 			ExtMuLawBFormat::B3D => Ok(ctx.extensions().AL_EXT_MULAW_BFORMAT()?.AL_FORMAT_BFORMAT3D_MULAW?),
@@ -348,7 +349,7 @@ impl ExtMuLawBFormat {
 
 
 impl ExtMuLawMcFormat {
-	pub fn into_raw<'d, D: DeviceTrait>(self, ctx: Option<&Context<'d, D>>) -> AlResult<sys::ALint> {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
 		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtMuLawMcFormat::Mono => Ok(ctx.extensions().AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_MONO_MULAW?),
 			ExtMuLawMcFormat::Stereo => Ok(ctx.extensions().AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_STEREO_MULAW?),
@@ -363,7 +364,7 @@ impl ExtMuLawMcFormat {
 
 
 impl SoftMsadpcmFormat {
-	pub fn into_raw<'d, D: DeviceTrait>(self, ctx: Option<&Context<'d, D>>) -> AlResult<sys::ALint> {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
 		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
 			SoftMsadpcmFormat::Mono => Ok(ctx.extensions().AL_SOFT_MSADPCM()?.AL_FORMAT_MONO_MSADPCM_SOFT?),
 			SoftMsadpcmFormat::Stereo => Ok(ctx.extensions().AL_SOFT_MSADPCM()?.AL_FORMAT_STEREO_MSADPCM_SOFT?),
@@ -373,47 +374,37 @@ impl SoftMsadpcmFormat {
 
 
 unsafe impl SampleFrame for Mono<u8> {
-	type Unit = u8;
+	type Sample = u8;
 
 	#[inline(always)] fn len() -> usize { 1 }
 	#[inline(always)] fn format() -> Format { Format::Standard(StandardFormat::MonoU8) }
 }
-
-
 unsafe impl SampleFrame for Mono<i16> {
-	type Unit = i16;
+	type Sample = i16;
 
 	#[inline(always)] fn len() -> usize { 1 }
 	#[inline(always)] fn format() -> Format { Format::Standard(StandardFormat::MonoI16) }
 }
-
-
 unsafe impl SampleFrame for Mono<f32> {
-	type Unit = f32;
+	type Sample = f32;
 
 	#[inline(always)] fn len() -> usize { 1 }
 	#[inline(always)] fn format() -> Format { Format::ExtFloat32(ExtFloat32Format::Mono) }
 }
-
-
 unsafe impl SampleFrame for Mono<f64> {
-	type Unit = f64;
+	type Sample = f64;
 
 	#[inline(always)] fn len() -> usize { 1 }
 	#[inline(always)] fn format() -> Format { Format::ExtDouble(ExtDoubleFormat::Mono) }
 }
-
-
 unsafe impl SampleFrame for Mono<ALawSample> {
-	type Unit = ALawSample;
+	type Sample = ALawSample;
 
 	#[inline(always)] fn len() -> usize { 1 }
 	#[inline(always)] fn format() -> Format { Format::ExtALaw(ExtALawFormat::Mono) }
 }
-
-
 unsafe impl SampleFrame for Mono<MuLawSample> {
-	type Unit = MuLawSample;
+	type Sample = MuLawSample;
 
 	#[inline(always)] fn len() -> usize { 1 }
 	#[inline(always)] fn format() -> Format { Format::ExtMuLaw(ExtMuLawFormat::Mono) }
@@ -421,47 +412,37 @@ unsafe impl SampleFrame for Mono<MuLawSample> {
 
 
 unsafe impl SampleFrame for Stereo<u8> {
-	type Unit = u8;
+	type Sample = u8;
 
 	#[inline(always)] fn len() -> usize { 2 }
 	#[inline(always)] fn format() -> Format { Format::Standard(StandardFormat::StereoU8) }
 }
-
-
 unsafe impl SampleFrame for Stereo<i16> {
-	type Unit = i16;
+	type Sample = i16;
 
 	#[inline(always)] fn len() -> usize { 2 }
 	#[inline(always)] fn format() -> Format { Format::Standard(StandardFormat::StereoI16) }
 }
-
-
 unsafe impl SampleFrame for Stereo<f32> {
-	type Unit = f32;
+	type Sample = f32;
 
 	#[inline(always)] fn len() -> usize { 2 }
 	#[inline(always)] fn format() -> Format { Format::ExtFloat32(ExtFloat32Format::Stereo) }
 }
-
-
 unsafe impl SampleFrame for Stereo<f64> {
-	type Unit = f64;
+	type Sample = f64;
 
 	#[inline(always)] fn len() -> usize { 2 }
 	#[inline(always)] fn format() -> Format { Format::ExtDouble(ExtDoubleFormat::Stereo) }
 }
-
-
 unsafe impl SampleFrame for Stereo<ALawSample> {
-	type Unit = ALawSample;
+	type Sample = ALawSample;
 
 	#[inline(always)] fn len() -> usize { 2 }
 	#[inline(always)] fn format() -> Format { Format::ExtALaw(ExtALawFormat::Stereo) }
 }
-
-
 unsafe impl SampleFrame for Stereo<MuLawSample> {
-	type Unit = MuLawSample;
+	type Sample = MuLawSample;
 
 	#[inline(always)] fn len() -> usize { 2 }
 	#[inline(always)] fn format() -> Format { Format::ExtMuLaw(ExtMuLawFormat::Stereo) }
@@ -469,31 +450,25 @@ unsafe impl SampleFrame for Stereo<MuLawSample> {
 
 
 unsafe impl SampleFrame for McRear<u8> {
-	type Unit = u8;
+	type Sample = u8;
 
 	#[inline(always)] fn len() -> usize { 1 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::RearU8) }
 }
-
-
 unsafe impl SampleFrame for McRear<i16> {
-	type Unit = i16;
+	type Sample = i16;
 
 	#[inline(always)] fn len() -> usize { 1 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::RearI16)  }
 }
-
-
 unsafe impl SampleFrame for McRear<f32> {
-	type Unit = f32;
+	type Sample = f32;
 
 	#[inline(always)] fn len() -> usize { 1 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::RearF32) }
 }
-
-
 unsafe impl SampleFrame for McRear<MuLawSample> {
-	type Unit = MuLawSample;
+	type Sample = MuLawSample;
 
 	#[inline(always)] fn len() -> usize { 1 }
 	#[inline(always)] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Rear) }
@@ -501,31 +476,25 @@ unsafe impl SampleFrame for McRear<MuLawSample> {
 
 
 unsafe impl SampleFrame for McQuad<u8> {
-	type Unit = u8;
+	type Sample = u8;
 
 	#[inline(always)] fn len() -> usize { 4 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::QuadU8) }
 }
-
-
 unsafe impl SampleFrame for McQuad<i16> {
-	type Unit = i16;
+	type Sample = i16;
 
 	#[inline(always)] fn len() -> usize { 4 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::QuadI16)  }
 }
-
-
 unsafe impl SampleFrame for McQuad<f32> {
-	type Unit = f32;
+	type Sample = f32;
 
 	#[inline(always)] fn len() -> usize { 4 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::QuadF32) }
 }
-
-
 unsafe impl SampleFrame for McQuad<MuLawSample> {
-	type Unit = MuLawSample;
+	type Sample = MuLawSample;
 
 	#[inline(always)] fn len() -> usize { 4 }
 	#[inline(always)] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Quad) }
@@ -533,31 +502,25 @@ unsafe impl SampleFrame for McQuad<MuLawSample> {
 
 
 unsafe impl SampleFrame for Mc51Chn<u8> {
-	type Unit = u8;
+	type Sample = u8;
 
 	#[inline(always)] fn len() -> usize { 6 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc51ChnU8) }
 }
-
-
 unsafe impl SampleFrame for Mc51Chn<i16> {
-	type Unit = i16;
+	type Sample = i16;
 
 	#[inline(always)] fn len() -> usize { 6 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc51ChnI16)  }
 }
-
-
 unsafe impl SampleFrame for Mc51Chn<f32> {
-	type Unit = f32;
+	type Sample = f32;
 
 	#[inline(always)] fn len() -> usize { 6 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc51ChnF32) }
 }
-
-
 unsafe impl SampleFrame for Mc51Chn<MuLawSample> {
-	type Unit = MuLawSample;
+	type Sample = MuLawSample;
 
 	#[inline(always)] fn len() -> usize { 6 }
 	#[inline(always)] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Mc51Chn) }
@@ -565,31 +528,25 @@ unsafe impl SampleFrame for Mc51Chn<MuLawSample> {
 
 
 unsafe impl SampleFrame for Mc61Chn<u8> {
-	type Unit = u8;
+	type Sample = u8;
 
 	#[inline(always)] fn len() -> usize { 7 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc61ChnU8) }
 }
-
-
 unsafe impl SampleFrame for Mc61Chn<i16> {
-	type Unit = i16;
+	type Sample = i16;
 
 	#[inline(always)] fn len() -> usize { 7 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc61ChnI16)  }
 }
-
-
 unsafe impl SampleFrame for Mc61Chn<f32> {
-	type Unit = f32;
+	type Sample = f32;
 
 	#[inline(always)] fn len() -> usize { 7 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc61ChnF32) }
 }
-
-
 unsafe impl SampleFrame for Mc61Chn<MuLawSample> {
-	type Unit = MuLawSample;
+	type Sample = MuLawSample;
 
 	#[inline(always)] fn len() -> usize { 7 }
 	#[inline(always)] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Mc61Chn) }
@@ -597,31 +554,25 @@ unsafe impl SampleFrame for Mc61Chn<MuLawSample> {
 
 
 unsafe impl SampleFrame for Mc71Chn<u8> {
-	type Unit = u8;
+	type Sample = u8;
 
 	#[inline(always)] fn len() -> usize { 8 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc71ChnU8) }
 }
-
-
 unsafe impl SampleFrame for Mc71Chn<i16> {
-	type Unit = i16;
+	type Sample = i16;
 
 	#[inline(always)] fn len() -> usize { 8 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc71ChnI16)  }
 }
-
-
 unsafe impl SampleFrame for Mc71Chn<f32> {
-	type Unit = f32;
+	type Sample = f32;
 
 	#[inline(always)] fn len() -> usize { 8 }
 	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc71ChnF32) }
 }
-
-
 unsafe impl SampleFrame for Mc71Chn<MuLawSample> {
-	type Unit = MuLawSample;
+	type Sample = MuLawSample;
 
 	#[inline(always)] fn len() -> usize { 8 }
 	#[inline(always)] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Mc71Chn) }
@@ -629,31 +580,25 @@ unsafe impl SampleFrame for Mc71Chn<MuLawSample> {
 
 
 unsafe impl SampleFrame for BFormat2D<u8> {
-	type Unit = u8;
+	type Sample = u8;
 
 	#[inline(always)] fn len() -> usize { 3 }
 	#[inline(always)] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B2DU8) }
 }
-
-
 unsafe impl SampleFrame for BFormat2D<i16> {
-	type Unit = i16;
+	type Sample = i16;
 
 	#[inline(always)] fn len() -> usize { 3 }
 	#[inline(always)] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B2DI16) }
 }
-
-
 unsafe impl SampleFrame for BFormat2D<f32> {
-	type Unit = f32;
+	type Sample = f32;
 
 	#[inline(always)] fn len() -> usize { 3 }
 	#[inline(always)] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B2DF32) }
 }
-
-
 unsafe impl SampleFrame for BFormat2D<MuLawSample> {
-	type Unit = MuLawSample;
+	type Sample = MuLawSample;
 
 	#[inline(always)] fn len() -> usize { 3 }
 	#[inline(always)] fn format() -> Format { Format::ExtMuLawBFormat(ExtMuLawBFormat::B2D) }
@@ -661,34 +606,128 @@ unsafe impl SampleFrame for BFormat2D<MuLawSample> {
 
 
 unsafe impl SampleFrame for BFormat3D<u8> {
-	type Unit = u8;
+	type Sample = u8;
 
 	#[inline(always)] fn len() -> usize { 4 }
 	#[inline(always)] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B3DU8) }
 }
-
-
 unsafe impl SampleFrame for BFormat3D<i16> {
-	type Unit = i16;
+	type Sample = i16;
 
 	#[inline(always)] fn len() -> usize { 4 }
 	#[inline(always)] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B3DI16) }
 }
-
-
 unsafe impl SampleFrame for BFormat3D<f32> {
-	type Unit = f32;
+	type Sample = f32;
 
 	#[inline(always)] fn len() -> usize { 4 }
 	#[inline(always)] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B3DF32) }
 }
-
-
 unsafe impl SampleFrame for BFormat3D<MuLawSample> {
-	type Unit = MuLawSample;
+	type Sample = MuLawSample;
 
 	#[inline(always)] fn len() -> usize { 4 }
 	#[inline(always)] fn format() -> Format { Format::ExtMuLawBFormat(ExtMuLawBFormat::B3D) }
 }
 
 
+unsafe impl LoopbackFrame for Mono<u8>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_MONO_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_UNSIGNED_BYTE_SOFT }
+}
+unsafe impl LoopbackFrame for Mono<i16>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_MONO_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_SHORT_SOFT }
+}
+unsafe impl LoopbackFrame for Mono<f32>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_MONO_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_FLOAT_SOFT }
+}
+
+
+unsafe impl LoopbackFrame for Stereo<u8>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_STEREO_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_UNSIGNED_BYTE_SOFT }
+}
+unsafe impl LoopbackFrame for Stereo<i16>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_STEREO_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_SHORT_SOFT }
+}
+unsafe impl LoopbackFrame for Stereo<f32>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_STEREO_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_FLOAT_SOFT }
+}
+
+
+unsafe impl LoopbackFrame for McQuad<u8>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_QUAD_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_UNSIGNED_BYTE_SOFT }
+}
+unsafe impl LoopbackFrame for McQuad<i16>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_QUAD_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_SHORT_SOFT }
+}
+unsafe impl LoopbackFrame for McQuad<f32>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_QUAD_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_FLOAT_SOFT }
+}
+
+
+unsafe impl LoopbackFrame for Mc51Chn<u8>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_5POINT1_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_UNSIGNED_BYTE_SOFT }
+}
+unsafe impl LoopbackFrame for Mc51Chn<i16>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_5POINT1_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_SHORT_SOFT }
+}
+unsafe impl LoopbackFrame for Mc51Chn<f32>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_5POINT1_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_FLOAT_SOFT }
+}
+
+
+unsafe impl LoopbackFrame for Mc61Chn<u8>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_6POINT1_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_UNSIGNED_BYTE_SOFT }
+}
+unsafe impl LoopbackFrame for Mc61Chn<i16>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_6POINT1_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_SHORT_SOFT }
+}
+unsafe impl LoopbackFrame for Mc61Chn<f32>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_6POINT1_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_FLOAT_SOFT }
+}
+
+
+unsafe impl LoopbackFrame for Mc71Chn<u8>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_7POINT1_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_UNSIGNED_BYTE_SOFT }
+}
+unsafe impl LoopbackFrame for Mc71Chn<i16>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_7POINT1_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_SHORT_SOFT }
+}
+unsafe impl LoopbackFrame for Mc71Chn<f32>
+{
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_7POINT1_SOFT }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_FLOAT_SOFT }
+}

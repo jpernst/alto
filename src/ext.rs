@@ -1,5 +1,4 @@
 use std::mem;
-use std::cell::{RefCell, Ref};
 use std::sync::RwLock;
 use std::fmt;
 use std::error::Error as StdError;
@@ -62,9 +61,7 @@ macro_rules! alc_ext {
 		#[allow(non_camel_case_types, non_snake_case)]
 		#[derive(Debug)]
 		pub struct $ext {
-			$(
-				pub $const_: ExtResult<ALCenum>,
-			)*
+			$(pub $const_: ExtResult<ALCenum>,)*
 			$(pub $fn_: ExtResult<$fn_ty>,)*
 		}
 
@@ -282,7 +279,7 @@ alc_ext! {
 
 
 	pub ext ALC_EXT_thread_local_context {
-		pub fn alcSetThreadContext: unsafe extern "C" fn(device: *mut ALCdevice) -> ALCboolean,
+		pub fn alcSetThreadContext: unsafe extern "C" fn(ctx: *mut ALCcontext) -> ALCboolean,
 		pub fn alcGetThreadContext: unsafe extern "C" fn() -> *mut ALCcontext,
 	}
 }

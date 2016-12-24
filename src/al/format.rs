@@ -134,18 +134,22 @@ pub trait Block {
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[repr(C)]
 pub struct ALawSample(pub u8);
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[repr(C)]
 pub struct MuLawSample(pub u8);
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[repr(C)]
 pub struct Mono<S: Copy> {
 	center: S,
 }
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[repr(C)]
 pub struct Stereo<S: Copy> {
 	left: S,
 	right: S,
@@ -153,12 +157,14 @@ pub struct Stereo<S: Copy> {
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[repr(C)]
 pub struct McRear<S: Copy> {
 	rear: S,
 }
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[repr(C)]
 pub struct McQuad<S: Copy> {
 	front_left: S,
 	front_right: S,
@@ -168,6 +174,7 @@ pub struct McQuad<S: Copy> {
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[repr(C)]
 pub struct Mc51Chn<S: Copy> {
 	front_left: S,
 	front_right: S,
@@ -179,6 +186,7 @@ pub struct Mc51Chn<S: Copy> {
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[repr(C)]
 pub struct Mc61Chn<S: Copy> {
 	front_left: S,
 	front_right: S,
@@ -191,6 +199,7 @@ pub struct Mc61Chn<S: Copy> {
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[repr(C)]
 pub struct Mc71Chn<S: Copy> {
 	front_left: S,
 	front_right: S,
@@ -204,6 +213,7 @@ pub struct Mc71Chn<S: Copy> {
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[repr(C)]
 pub struct BFormat2D<S: Copy> {
 	pub w: S,
 	pub x: S,
@@ -212,6 +222,7 @@ pub struct BFormat2D<S: Copy> {
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[repr(C)]
 pub struct BFormat3D<S: Copy> {
 	pub w: S,
 	pub x: S,

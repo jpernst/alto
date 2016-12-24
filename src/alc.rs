@@ -3,7 +3,7 @@ use std::ffi::{CString, CStr};
 use std::sync::Mutex;
 use std::fmt;
 use std::error::Error as StdError;
-use std::io;
+use std::io::{self, Write};
 use std::path::Path;
 use std::marker::PhantomData;
 
@@ -261,7 +261,8 @@ impl Alto {
 	}
 
 
-	fn get_error(&self, dev: *mut sys::ALCdevice) -> AlcResult<()> {
+	#[doc(hidden)]
+	pub fn get_error(&self, dev: *mut sys::ALCdevice) -> AlcResult<()> {
 		match unsafe { self.api.owner().alcGetError()(dev)} {
 			sys::ALC_NO_ERROR => Ok(()),
 			e => Err(e.into())
@@ -403,6 +404,9 @@ impl<'a> Eq for Device<'a> { }
 impl<'a> Drop for Device<'a> {
 	fn drop(&mut self) {
 		unsafe { self.alto.api.owner().alcCloseDevice()(self.dev); }
+		if let Err(_) = self.alto.get_error(self.dev) {
+			let _ = writeln!(io::stderr(), "ALTO ERROR: `alcCloseDevice` failed in Device drop");
+		}
 	}
 }
 
@@ -473,6 +477,9 @@ impl<'a, F: LoopbackFrame> Eq for LoopbackDevice<'a, F> { }
 impl<'a, F: LoopbackFrame> Drop for LoopbackDevice<'a, F> {
 	fn drop(&mut self) {
 		unsafe { self.alto.api.owner().alcCloseDevice()(self.dev); }
+		if let Err(_) = self.alto.get_error(self.dev) {
+			let _ = writeln!(io::stderr(), "ALTO ERROR: `alcCloseDevice` failed in LoopbackDevice drop");
+		}
 	}
 }
 

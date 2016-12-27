@@ -312,45 +312,41 @@ impl<'d> Context<'d> {
 	}
 
 
-	pub fn play_all<S: SourceTrait<'d>>(&self, srcs: &[S]) -> AlResult<()> {
-		if srcs.len() > sys::ALint::max_value() as usize { return Err(AlError::InvalidValue) }
-		if srcs.iter().find(|s| s.context() != self).is_some() { return Err(AlError::InvalidValue) }
+	pub fn play_all<S: SourceTrait<'d>, R: AsRef<S>, I: Iterator<Item=R>>(&self, srcs: I) -> AlResult<()> {
+		let v: Vec<_> = srcs.filter(|s| s.as_ref().context() == self).map(|s| s.as_ref().raw_source()).collect();
+		if v.len() > sys::ALint::max_value() as usize { return Err(AlError::InvalidValue) }
 
 		let _lock = self.make_current(true)?;
-		let v: Vec<_> = srcs.iter().map(|s| s.raw_source()).collect();
 		unsafe { self.api.owner().alSourcePlayv()(v.len() as i32, v.as_slice().as_ptr()); }
 		self.get_error()
 	}
 
 
-	pub fn pause_all<S: SourceTrait<'d>>(&self, srcs: &[S]) -> AlResult<()> {
-		if srcs.len() > sys::ALint::max_value() as usize { return Err(AlError::InvalidValue) }
-		if srcs.iter().find(|s| s.context() != self).is_some() { return Err(AlError::InvalidValue) }
+	pub fn pause_all<S: SourceTrait<'d>, R: AsRef<S>, I: Iterator<Item=R>>(&self, srcs: I) -> AlResult<()> {
+		let v: Vec<_> = srcs.filter(|s| s.as_ref().context() == self).map(|s| s.as_ref().raw_source()).collect();
+		if v.len() > sys::ALint::max_value() as usize { return Err(AlError::InvalidValue) }
 
 		let _lock = self.make_current(true)?;
-		let v: Vec<_> = srcs.iter().map(|s| s.raw_source()).collect();
 		unsafe { self.api.owner().alSourcePausev()(v.len() as i32, v.as_slice().as_ptr()); }
 		self.get_error()
 	}
 
 
-	pub fn stop_all<S: SourceTrait<'d>>(&self, srcs: &[S]) -> AlResult<()> {
-		if srcs.len() > sys::ALint::max_value() as usize { return Err(AlError::InvalidValue) }
-		if srcs.iter().find(|s| s.context() != self).is_some() { return Err(AlError::InvalidValue) }
+	pub fn stop_all<S: SourceTrait<'d>, R: AsRef<S>, I: Iterator<Item=R>>(&self, srcs: I) -> AlResult<()> {
+		let v: Vec<_> = srcs.filter(|s| s.as_ref().context() == self).map(|s| s.as_ref().raw_source()).collect();
+		if v.len() > sys::ALint::max_value() as usize { return Err(AlError::InvalidValue) }
 
 		let _lock = self.make_current(true)?;
-		let v: Vec<_> = srcs.iter().map(|s| s.raw_source()).collect();
 		unsafe { self.api.owner().alSourceStopv()(v.len() as i32, v.as_slice().as_ptr()); }
 		self.get_error()
 	}
 
 
-	pub fn rewind_all<S: SourceTrait<'d>>(&self, srcs: &[S]) -> AlResult<()> {
-		if srcs.len() > sys::ALint::max_value() as usize { return Err(AlError::InvalidValue) }
-		if srcs.iter().find(|s| s.context() != self).is_some() { return Err(AlError::InvalidValue) }
+	pub fn rewind_all<S: SourceTrait<'d>, R: AsRef<S>, I: Iterator<Item=R>>(&self, srcs: I) -> AlResult<()> {
+		let v: Vec<_> = srcs.filter(|s| s.as_ref().context() == self).map(|s| s.as_ref().raw_source()).collect();
+		if v.len() > sys::ALint::max_value() as usize { return Err(AlError::InvalidValue) }
 
 		let _lock = self.make_current(true)?;
-		let v: Vec<_> = srcs.iter().map(|s| s.raw_source()).collect();
 		unsafe { self.api.owner().alSourceRewindv()(v.len() as i32, v.as_slice().as_ptr()); }
 		self.get_error()
 	}
@@ -397,7 +393,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	pub fn raw_buffer(&self) -> sys::ALuint { self.buf }
 
 
-	pub fn set_buffer_data<F: SampleFrame>(&self, data: &[F]) -> AlResult<()> {
+	pub fn set_data<F: SampleFrame>(&self, data: &[F]) -> AlResult<()> {
 		Ok(())
 	}
 

@@ -1,6 +1,8 @@
+use std::ops::Deref;
 use std::ptr;
 use std::ffi::{CString, CStr};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::fmt;
 use std::error::Error as StdError;
 use std::io::{self, Write};
@@ -83,6 +85,7 @@ pub trait DeviceTrait {
 	fn specifier(&self) -> &CStr;
 	fn raw_device(&self) -> *mut sys::ALCdevice;
 	fn extensions(&self) -> &ext::AlcCache;
+	fn connected(&self) -> AlcResult<bool>;
 }
 
 
@@ -91,7 +94,11 @@ pub struct Device<'a> {
 	spec: CString,
 	dev: *mut sys::ALCdevice,
 	exts: ext::AlcCache<'a>,
+	pause_rc: Arc<AtomicUsize>,
 }
+
+
+pub struct SoftPauseLock<'a: 'd, 'd>(&'d Device<'a>);
 
 
 pub unsafe trait LoopbackFrame: SampleFrame {
@@ -152,7 +159,7 @@ impl Alto {
 	pub fn default_output(&self) -> AlcResult<CString> {
 		self.api.rent(|exts| {
 			let spec = if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
-				unsafe { CStr::from_ptr(self.api.owner().alcGetString()(ptr::null_mut(), ea.ALC_DEFAULT_ALL_DEVICES_SPECIFIER.unwrap())) }
+				unsafe { CStr::from_ptr(self.api.owner().alcGetString()(ptr::null_mut(), ea.ALC_DEFAULT_ALL_DEVICES_SPECIFIER?)) }
 			} else {
 				unsafe { CStr::from_ptr(self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_DEFAULT_DEVICE_SPECIFIER)) }
 			};
@@ -170,7 +177,7 @@ impl Alto {
 	pub fn enumerate_outputs(&self) -> AlcResult<Vec<CString>> {
 		self.api.rent(|exts| {
 			let spec = if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
-				unsafe { self.api.owner().alcGetString()(ptr::null_mut(), ea.ALC_ALL_DEVICES_SPECIFIER.unwrap()) }
+				unsafe { self.api.owner().alcGetString()(ptr::null_mut(), ea.ALC_ALL_DEVICES_SPECIFIER?) }
 			} else {
 				unsafe { self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_DEVICE_SPECIFIER) }
 			};
@@ -216,7 +223,7 @@ impl Alto {
 		if dev == ptr::null_mut() {
 			Err(AlcError::InvalidDevice)
 		} else {
-			Ok(Device{alto: self, spec: spec, dev: dev, exts: unsafe { ext::AlcCache::new(self.api.owner(), dev) }})
+			Ok(Device{alto: self, spec: spec, dev: dev, exts: unsafe { ext::AlcCache::new(self.api.owner(), dev) }, pause_rc: Arc::new(AtomicUsize::new(0))})
 		}
 	}
 
@@ -231,7 +238,7 @@ impl Alto {
 				self.default_output()?
 			};
 
-			let dev = unsafe { sl.alcLoopbackOpenDeviceSOFT.unwrap()(spec.as_ptr()) };
+			let dev = unsafe { sl.alcLoopbackOpenDeviceSOFT?(spec.as_ptr()) };
 			self.get_error(ptr::null_mut())?;
 
 			if dev == ptr::null_mut() {
@@ -265,7 +272,7 @@ impl Alto {
 	pub fn get_error(&self, dev: *mut sys::ALCdevice) -> AlcResult<()> {
 		match unsafe { self.api.owner().alcGetError()(dev)} {
 			sys::ALC_NO_ERROR => Ok(()),
-			e => Err(e.into())
+			e => Err(e.into()),
 		}
 	}
 }
@@ -378,6 +385,11 @@ impl<'a> Device<'a> {
 
 		Ok(unsafe { Context::new(self, &self.alto.api, &self.alto.ctx_lock, ctx) })
 	}
+
+
+	pub fn soft_pause<'d>(&'d self) -> AlcResult<SoftPauseLock<'a, 'd>> {
+		SoftPauseLock::new(self)
+	}
 }
 
 
@@ -390,6 +402,13 @@ impl<'a> DeviceTrait for Device<'a> {
 	fn raw_device(&self) -> *mut sys::ALCdevice { self.dev }
 	#[inline(always)]
 	fn extensions(&self) -> &ext::AlcCache { &self.exts }
+
+
+	fn connected(&self) -> AlcResult<bool> {
+		let mut connected = 0;
+		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_DISCONNECT()?.ALC_CONNECTED?, 1, &mut connected); }
+		self.alto.get_error(self.dev).map(|_| connected == sys::ALC_TRUE as sys::ALCint)
+	}
 }
 
 
@@ -413,6 +432,44 @@ impl<'a> Drop for Device<'a> {
 
 unsafe impl<'a> Send for Device<'a> { }
 unsafe impl<'a> Sync for Device<'a> { }
+
+
+impl<'a: 'd, 'd> SoftPauseLock<'a, 'd> {
+	fn new(dev: &'d Device<'a>) -> AlcResult<SoftPauseLock<'a, 'd>> {
+		let adps = dev.exts.ALC_SOFT_pause_device()?.alcDevicePauseSOFT?;
+
+		let old = dev.pause_rc.fetch_add(1, Ordering::SeqCst);
+		if old == 0 {
+			unsafe { adps(dev.dev) }
+			if let Err(e) = dev.alto.get_error(dev.dev) {
+				dev.pause_rc.fetch_sub(1, Ordering::SeqCst);
+				return Err(e);
+			}
+		}
+
+		Ok(SoftPauseLock(dev))
+	}
+}
+
+
+impl<'a: 'd, 'd> Deref for SoftPauseLock<'a, 'd> {
+	type Target = Device<'a>;
+
+	fn deref(&self) -> &Device<'a> { self.0 }
+}
+
+
+impl<'a: 'd, 'd> Drop for SoftPauseLock<'a, 'd> {
+	fn drop(&mut self) {
+		let old = self.0.pause_rc.fetch_sub(1, Ordering::SeqCst);
+		if old == 1 {
+			unsafe { self.0.exts.ALC_SOFT_pause_device().unwrap().alcDeviceResumeSOFT.unwrap()(self.0.dev); }
+			if let Err(_) = self.0.alto.get_error(self.0.dev) {
+				let _ = writeln!(io::stderr(), "ALTO ERROR: `alcDeviceResumeSOFT` failed in SoftPauseLock drop");
+			}
+		}
+	}
+}
 
 
 impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
@@ -463,6 +520,8 @@ impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
 	fn raw_device(&self) -> *mut sys::ALCdevice { self.dev }
 	#[inline(always)]
 	fn extensions(&self) -> &ext::AlcCache { &self.exts }
+	#[inline(always)]
+	fn connected(&self) -> AlcResult<bool> { Ok(true) }
 }
 
 

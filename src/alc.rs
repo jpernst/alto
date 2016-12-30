@@ -35,15 +35,20 @@ pub struct ContextAttrs {
 	pub refresh: Option<sys::ALCint>,
 	pub mono_sources: Option<sys::ALCint>,
 	pub stereo_sources: Option<sys::ALCint>,
+	pub soft_hrtf: Option<bool>,
+	pub soft_hrtf_id: Option<sys::ALCint>,
 }
 
 
 pub struct LoopbackAttrs {
 	pub mono_sources: Option<sys::ALCint>,
 	pub stereo_sources: Option<sys::ALCint>,
+	pub soft_hrtf: Option<bool>,
+	pub soft_hrtf_id: Option<sys::ALCint>,
 }
 
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum LoopbackFormatChannels {
 	Mono,
 	Stereo,
@@ -54,10 +59,23 @@ pub enum LoopbackFormatChannels {
 }
 
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum LoopbackFormatType {
 	U8,
 	I16,
 	F32,
+}
+
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum SoftHrtfStatus {
+	Disabled,
+	Enabled,
+	Denied,
+	Required,
+	HeadphonesDetected,
+	UnsupportedFormat,
+	Unknown(sys::ALCint),
 }
 
 
@@ -86,6 +104,8 @@ pub trait DeviceTrait {
 	fn raw_device(&self) -> *mut sys::ALCdevice;
 	fn extensions(&self) -> &ext::AlcCache;
 	fn connected(&self) -> AlcResult<bool>;
+	fn enumerate_soft_hrtfs(&self) -> AlcResult<Vec<CString>>;
+	fn soft_hrtf_status(&self) -> AlcResult<SoftHrtfStatus>;
 }
 
 
@@ -223,7 +243,13 @@ impl Alto {
 		if dev == ptr::null_mut() {
 			Err(AlcError::InvalidDevice)
 		} else {
-			Ok(Device{alto: self, spec: spec, dev: dev, exts: unsafe { ext::AlcCache::new(self.api.owner(), dev) }, pause_rc: Arc::new(AtomicUsize::new(0))})
+			Ok(Device{
+				alto: self,
+				spec: spec,
+				dev: dev,
+				exts: unsafe { ext::AlcCache::new(self.api.owner(), dev) },
+				pause_rc: Arc::new(AtomicUsize::new(0))
+			})
 		}
 	}
 
@@ -244,7 +270,13 @@ impl Alto {
 			if dev == ptr::null_mut() {
 				Err(AlcError::InvalidDevice)
 			} else {
-				Ok(LoopbackDevice{alto: self, spec: spec, dev: dev, exts: unsafe { ext::AlcCache::new(self.api.owner(), dev) }, marker: PhantomData})
+				Ok(LoopbackDevice{
+					alto: self,
+					spec: spec,
+					dev: dev,
+					exts: unsafe { ext::AlcCache::new(self.api.owner(), dev) },
+					marker: PhantomData
+				})
 			}
 		})
 	}
@@ -359,36 +391,55 @@ impl<'a> Device<'a> {
 	}
 
 
-	pub fn new_context(&self, attrs: Option<ContextAttrs>) -> AlcResult<Context> {
-		let attrs_vec = attrs.map(|a| {
-			let mut attrs_vec = Vec::with_capacity(9);
-
-			if let Some(freq) = a.frequency {
+	fn make_attrs_vec(&self, attrs: Option<ContextAttrs>) -> AlcResult<Vec<sys::ALCint>> {
+		let mut attrs_vec = Vec::with_capacity(13);
+		if let Some(attrs) = attrs {
+			if let Some(freq) = attrs.frequency {
 				attrs_vec.extend(&[sys::ALC_FREQUENCY, freq]);
 			}
-			if let Some(refresh) = a.refresh {
+			if let Some(refresh) = attrs.refresh {
 				attrs_vec.extend(&[sys::ALC_REFRESH, refresh]);
 			}
-			if let Some(mono) = a.mono_sources {
+			if let Some(mono) = attrs.mono_sources {
 				attrs_vec.extend(&[sys::ALC_MONO_SOURCES, mono]);
 			}
-			if let Some(stereo) = a.stereo_sources {
+			if let Some(stereo) = attrs.stereo_sources {
 				attrs_vec.extend(&[sys::ALC_STEREO_SOURCES, stereo]);
 			}
 
+			if let Ok(ash) = self.exts.ALC_SOFT_HRTF() {
+				if let Some(hrtf) = attrs.soft_hrtf {
+					attrs_vec.extend(&[ash.ALC_HRTF_SOFT?, if hrtf { sys::ALC_TRUE } else { sys::ALC_FALSE } as sys::ALCint]);
+				}
+				if let Some(hrtf_id) = attrs.soft_hrtf_id {
+					attrs_vec.extend(&[ash.ALC_HRTF_ID_SOFT?, hrtf_id]);
+				}
+			}
+
 			attrs_vec.push(0);
-			attrs_vec
-		});
+		};
+		Ok(attrs_vec)
+	}
+
+
+	pub fn new_context(&self, attrs: Option<ContextAttrs>) -> AlcResult<Context> {
+		let attrs_vec = self.make_attrs_vec(attrs);
 
 		let ctx = unsafe { self.alto.api.owner().alcCreateContext()(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
-		self.alto.get_error(self.dev)?;
-
-		Ok(unsafe { Context::new(self, &self.alto.api, &self.alto.ctx_lock, ctx) })
+		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, &self.alto.ctx_lock, ctx) })
 	}
 
 
 	pub fn soft_pause<'d>(&'d self) -> AlcResult<SoftPauseLock<'a, 'd>> {
 		SoftPauseLock::new(self)
+	}
+
+
+	pub fn soft_reset(&self, attrs: Option<ContextAttrs>) -> AlcResult<()> {
+		let ards = self.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
+		let attrs_vec = self.make_attrs_vec(attrs);
+		unsafe { ards(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
+		self.alto.get_error(self.dev)
 	}
 }
 
@@ -408,6 +459,40 @@ impl<'a> DeviceTrait for Device<'a> {
 		let mut connected = 0;
 		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_DISCONNECT()?.ALC_CONNECTED?, 1, &mut connected); }
 		self.alto.get_error(self.dev).map(|_| connected == sys::ALC_TRUE as sys::ALCint)
+	}
+
+
+	fn enumerate_soft_hrtfs(&self) -> AlcResult<Vec<CString>> {
+		let ash = self.exts.ALC_SOFT_HRTF()?;
+
+		let mut num = 0;
+		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_NUM_HRTF_SPECIFIERS_SOFT?, 1, &mut num); }
+		self.alto.get_error(self.dev)?;
+
+		let mut spec_vec = Vec::new();
+		for i in 0 .. num {
+			unsafe {
+				let spec = ash.alcGetStringiSOFT?(self.dev, ash.ALC_HRTF_SPECIFIER_SOFT?, i) as *mut _;
+				spec_vec.push(self.alto.get_error(self.dev).map(|_| CString::from_raw(spec))?);
+			}
+		}
+		Ok(spec_vec)
+	}
+
+
+	fn soft_hrtf_status(&self) -> AlcResult<SoftHrtfStatus> {
+		let ash = self.exts.ALC_SOFT_HRTF()?;
+		let mut status = 0;
+		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut status); }
+		self.alto.get_error(self.dev).and_then(|_| match status {
+			s if s == ash.ALC_HRTF_DISABLED_SOFT? => Ok(SoftHrtfStatus::Disabled),
+			s if s == ash.ALC_HRTF_ENABLED_SOFT? => Ok(SoftHrtfStatus::Enabled),
+			s if s == ash.ALC_HRTF_DENIED_SOFT? => Ok(SoftHrtfStatus::Denied),
+			s if s == ash.ALC_HRTF_REQUIRED_SOFT? => Ok(SoftHrtfStatus::Required),
+			s if s == ash.ALC_HRTF_HEADPHONES_DETECTED_SOFT? => Ok(SoftHrtfStatus::HeadphonesDetected),
+			s if s == ash.ALC_HRTF_UNSUPPORTED_FORMAT_SOFT? => Ok(SoftHrtfStatus::UnsupportedFormat),
+			s => Ok(SoftHrtfStatus::Unknown(s)),
+		})
 	}
 }
 
@@ -484,14 +569,14 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 	}
 
 
-	pub fn new_context(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AlcResult<Context> {
+	fn make_attrs_vec(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AlcResult<Vec<sys::ALCint>> {
 		self.alto.api.rent(move|exts| {
-			let sl = exts.ALC_SOFT_loopback()?;
+			let asl = exts.ALC_SOFT_loopback()?;
 
-			let mut attrs_vec = Vec::with_capacity(11);
+			let mut attrs_vec = Vec::with_capacity(15);
 			attrs_vec.extend(&[sys::ALC_FREQUENCY, freq]);
-			attrs_vec.extend(&[sl.ALC_FORMAT_CHANNELS_SOFT?, F::channels(&sl)?]);
-			attrs_vec.extend(&[sl.ALC_FORMAT_TYPE_SOFT?, F::sample_ty(&sl)?]);
+			attrs_vec.extend(&[asl.ALC_FORMAT_CHANNELS_SOFT?, F::channels(&asl)?]);
+			attrs_vec.extend(&[asl.ALC_FORMAT_TYPE_SOFT?, F::sample_ty(&asl)?]);
 			if let Some(attrs) = attrs {
 				if let Some(mono) = attrs.mono_sources {
 					attrs_vec.extend(&[sys::ALC_MONO_SOURCES, mono]);
@@ -499,14 +584,35 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 				if let Some(stereo) = attrs.stereo_sources {
 					attrs_vec.extend(&[sys::ALC_STEREO_SOURCES, stereo]);
 				}
+
+				if let Ok(ash) = self.exts.ALC_SOFT_HRTF() {
+					if let Some(hrtf) = attrs.soft_hrtf {
+						attrs_vec.extend(&[ash.ALC_HRTF_SOFT?, if hrtf { sys::ALC_TRUE } else { sys::ALC_FALSE } as sys::ALCint]);
+					}
+					if let Some(hrtf_id) = attrs.soft_hrtf_id {
+						attrs_vec.extend(&[ash.ALC_HRTF_ID_SOFT?, hrtf_id]);
+					}
+				}
 			}
 			attrs_vec.push(0);
-
-			let ctx = unsafe { self.alto.api.owner().alcCreateContext()(self.dev, attrs_vec.as_slice().as_ptr()) };
-			self.alto.get_error(self.dev)?;
-
-			Ok(unsafe { Context::new(self, &self.alto.api, &self.alto.ctx_lock, ctx) })
+			Ok(attrs_vec)
 		})
+	}
+
+
+	pub fn new_context(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AlcResult<Context> {
+		let attrs_vec = self.make_attrs_vec(freq, attrs)?;
+		let ctx = unsafe { self.alto.api.owner().alcCreateContext()(self.dev, attrs_vec.as_slice().as_ptr()) };
+		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, &self.alto.ctx_lock, ctx) })
+	}
+
+
+	pub fn soft_reset(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AlcResult<()> {
+		let ards = self.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
+
+		let attrs_vec = self.make_attrs_vec(freq, attrs);
+		unsafe { ards(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
+		self.alto.get_error(self.dev)
 	}
 }
 
@@ -522,6 +628,40 @@ impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
 	fn extensions(&self) -> &ext::AlcCache { &self.exts }
 	#[inline(always)]
 	fn connected(&self) -> AlcResult<bool> { Ok(true) }
+
+
+	fn enumerate_soft_hrtfs(&self) -> AlcResult<Vec<CString>> {
+		let ash = self.exts.ALC_SOFT_HRTF()?;
+
+		let mut num = 0;
+		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_NUM_HRTF_SPECIFIERS_SOFT?, 1, &mut num); }
+		self.alto.get_error(self.dev)?;
+
+		let mut spec_vec = Vec::new();
+		for i in 0 .. num {
+			unsafe {
+				let spec = ash.alcGetStringiSOFT?(self.dev, ash.ALC_HRTF_SPECIFIER_SOFT?, i) as *mut _;
+				spec_vec.push(self.alto.get_error(self.dev).map(|_| CString::from_raw(spec))?);
+			}
+		}
+		Ok(spec_vec)
+	}
+
+
+	fn soft_hrtf_status(&self) -> AlcResult<SoftHrtfStatus> {
+		let ash = self.exts.ALC_SOFT_HRTF()?;
+		let mut status = 0;
+		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut status); }
+		self.alto.get_error(self.dev).and_then(|_| match status {
+			s if s == ash.ALC_HRTF_DISABLED_SOFT? => Ok(SoftHrtfStatus::Disabled),
+			s if s == ash.ALC_HRTF_ENABLED_SOFT? => Ok(SoftHrtfStatus::Enabled),
+			s if s == ash.ALC_HRTF_DENIED_SOFT? => Ok(SoftHrtfStatus::Denied),
+			s if s == ash.ALC_HRTF_REQUIRED_SOFT? => Ok(SoftHrtfStatus::Required),
+			s if s == ash.ALC_HRTF_HEADPHONES_DETECTED_SOFT? => Ok(SoftHrtfStatus::HeadphonesDetected),
+			s if s == ash.ALC_HRTF_UNSUPPORTED_FORMAT_SOFT? => Ok(SoftHrtfStatus::UnsupportedFormat),
+			s => Ok(SoftHrtfStatus::Unknown(s)),
+		})
+	}
 }
 
 

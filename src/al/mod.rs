@@ -122,7 +122,7 @@ pub trait SourceTrait<'d> {
 
 	fn soft_sec_offset_latency(&self) -> AlResult<(f64, f64)>;
 
-	fn soft_sample_offset_latency(&self) -> AlResult<(i32, i32, i64)>;
+	fn soft_sample_offset_frac_latency(&self) -> AlResult<(i32, i32, i64)>;
 
 	fn soft_sec_length(&self) -> AlResult<f32>;
 
@@ -908,7 +908,7 @@ impl<'d: 'c, 'c> SourceTrait<'d> for Source<'d, 'c> {
 	}
 
 
-	fn soft_sample_offset_latency(&self) -> AlResult<(i32, i32, i64)> {
+	fn soft_sample_offset_frac_latency(&self) -> AlResult<(i32, i32, i64)> {
 		let mut offset_latency = [0, 0];
 		let assl = self.ctx.exts.AL_SOFT_source_latency()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1077,7 +1077,7 @@ impl<'d: 'c, 'c> SourceTrait<'d> for StaticSource<'d, 'c> {
 
 	fn soft_sec_offset_latency(&self) -> AlResult<(f64, f64)> { self.src.soft_sec_offset_latency() }
 
-	fn soft_sample_offset_latency(&self) -> AlResult<(i32, i32, i64)> { self.src.soft_sample_offset_latency() }
+	fn soft_sample_offset_frac_latency(&self) -> AlResult<(i32, i32, i64)> { self.src.soft_sample_offset_frac_latency() }
 
 	fn soft_sec_length(&self) -> AlResult<f32> { self.src.soft_sec_length() }
 
@@ -1203,7 +1203,7 @@ impl<'d: 'c, 'c> SourceTrait<'d> for StreamingSource<'d, 'c> {
 
 	fn soft_sec_offset_latency(&self) -> AlResult<(f64, f64)> { self.src.soft_sec_offset_latency() }
 
-	fn soft_sample_offset_latency(&self) -> AlResult<(i32, i32, i64)> { self.src.soft_sample_offset_latency() }
+	fn soft_sample_offset_frac_latency(&self) -> AlResult<(i32, i32, i64)> { self.src.soft_sample_offset_frac_latency() }
 
 	fn soft_sec_length(&self) -> AlResult<f32> { self.src.soft_sec_length() }
 

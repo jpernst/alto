@@ -17,6 +17,8 @@ mod format;
 pub use self::format::*;
 
 
+/// An error as reported by `alGetError`.
+/// These errors relate to listener, buffer, and source functions.
 #[derive(Debug)]
 pub enum AlError {
 	InvalidName,
@@ -34,14 +36,22 @@ pub enum AlError {
 pub type AlResult<T> = ::std::result::Result<T, AlError>;
 
 
+/// The shape of the volume curve for 3D positional audio.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum DistanceModel {
+	/// No distance rolloff.
 	None,
+	/// Gain is inversely proportional to distance.
 	Inverse,
+	/// Gain is inversely proportional to distance, but clamped at 1.0.
 	InverseClamped,
+	/// Gain rolls off linearly.
 	Linear,
+	/// Gain rolls off linearly, but clamps at 1.0.
 	LinearClamped,
+	/// Exponential rolloff.
 	Exponent,
+	/// Exponential rolloff with clamping.
 	ExponentClamped,
 }
 
@@ -56,88 +66,129 @@ pub struct Context<'d> {
 }
 
 
+/// An RAII lock that will suspend state updates while held.
+/// When this lock is droopped, the context will apply all pending updates.
 pub struct SuspendLock<'d: 'c, 'c>(&'c Context<'d>);
 
 
+/// A buffer containing audio data of any supported format.
 pub struct Buffer<'d: 'c, 'c> {
 	ctx: &'c Context<'d>,
 	buf: sys::ALuint, 
 }
 
 
+/// Capabilities common to both static and streaming sources.
 pub trait SourceTrait<'d> {
+	/// The context from which this source was created.
 	fn context(&self) -> &Context<'d>;
+	/// Raw handle as provided by OpenAL.
 	fn raw_source(&self) -> sys::ALuint;
 
+	/// Current playback state of the source.
 	fn state(&self) -> AlResult<SourceState>;
+	/// Begin playing audio, or resume playing if previously paused.
 	fn play(&mut self) -> AlResult<()>;
+	/// Pause playback while retaining playback position.
 	fn pause(&mut self) -> AlResult<()>;
+	/// Stop playback and reset playback to the beginning of the audio data.
 	fn stop(&mut self) -> AlResult<()>;
+	/// Reset playback to the beginning of the audio data.
 	fn rewind(&mut self) -> AlResult<()>;
 
+	/// Whether the source has a listener-relative position.
 	fn relative(&self) -> AlResult<bool>;
 	fn set_relative(&mut self, bool) -> AlResult<()>;
 
+	/// Whether this is a looping source.
 	fn looping(&self) -> AlResult<bool>;
 	fn set_looping(&mut self, bool) -> AlResult<()>;
 
+	/// Minimum gain that will be applied by the distance model.
 	fn min_gain(&self) -> AlResult<f32>;
 	fn set_min_gain(&mut self, f32) -> AlResult<()>;
 
+	/// Maximum gain that will be applied by the distance model.
 	fn max_gain(&self) -> AlResult<f32>;
 	fn set_max_gain(&mut self, f32) -> AlResult<()>;
 
+	/// Distance at which the source will have unmodified gain.
 	fn reference_distance(&self) -> AlResult<f32>;
 	fn set_reference_distance(&mut self, f32) -> AlResult<()>;
 
+	/// Rolloff factor of the distance model.
 	fn rolloff_factor(&self) -> AlResult<f32>;
 	fn set_rolloff_factor(&mut self, f32) -> AlResult<()>;
 
+	/// Distance beyond which the source will no longer attenuate.
 	fn max_distance(&self) -> AlResult<f32>;
 	fn set_max_distance(&mut self, f32) -> AlResult<()>;
 
+	/// Relative playback speed of the source.
 	fn pitch(&self) -> AlResult<f32>;
 	fn set_pitch(&mut self, f32) -> AlResult<()>;
 
+	/// Direction vector of the source.
 	fn direction<V: From<[f32; 3]>>(&self) -> AlResult<V>;
 	fn set_direction<V: Into<[f32; 3]>>(&mut self, V) -> AlResult<()>;
 
+	/// Angle from the direction vector within which the source will be fully heard.
 	fn cone_inner_angle(&self) -> AlResult<f32>;
 	fn set_cone_inner_angle(&mut self, f32) -> AlResult<()>;
 
+	/// Angle from the direction vector within which the source will be heard at all.
 	fn cone_outer_angle(&self) -> AlResult<f32>;
 	fn set_cone_outer_angle(&mut self, f32) -> AlResult<()>;
 
+	/// Gain factor to determine attenuation when the listener is within the outer cone but outiside the inner cone.
 	fn cone_outer_gain(&self) -> AlResult<f32>;
 	fn set_cone_outer_gain(&mut self, f32) -> AlResult<()>;
 
+	/// Read cursor position in seconds.
 	fn sec_offset(&self) -> AlResult<f32>;
 	fn set_sec_offset(&mut self, f32) -> AlResult<()>;
 
+	/// Read cursor position in samples.
 	fn sample_offset(&self) -> AlResult<sys::ALint>;
 	fn set_sample_offset(&mut self, sys::ALint) -> AlResult<()>;
 
+	/// Read cursor position in bytes.
 	fn byte_offset(&self) -> AlResult<sys::ALint>;
 	fn set_byte_offset(&mut self, sys::ALint) -> AlResult<()>;
 
+	/// A tuple of a playback position and the amount of time until that position is heard, in seconds.
+	/// Requires `AL_SOFT_source_latency`.
 	fn soft_sec_offset_latency(&self) -> AlResult<(f64, f64)>;
 
+	/// A tuple of a fixed point playback position in samples, and the time until that position is heard, in nanoseconds.
+	/// Requires `AL_SOFT_source_latency`.
 	fn soft_sample_offset_frac_latency(&self) -> AlResult<(i32, i32, i64)>;
 
+	/// Total length of the queued audio data in seconds.
+	/// Requires `AL_SOFT_source_length`.
 	fn soft_sec_length(&self) -> AlResult<f32>;
 
+	/// Total length of the queued audio data in samples.
+	/// Requires `AL_SOFT_source_length`.
 	fn soft_sample_length(&self) -> AlResult<sys::ALint>;
 
+	/// Total length of the queued audio data in bytes.
+	/// Requires `AL_SOFT_source_length`.
 	fn soft_byte_length(&self) -> AlResult<sys::ALint>;
 
+	/// Whether the audio data will be directly output to the corresponding output channels, bypassing any processing.
+	/// Requires `AL_SOFT_direct_channels`.
 	fn soft_direct_channels(&self) -> AlResult<bool>;
 	fn set_soft_direct_channels(&mut self, bool) -> AlResult<()>;
 
+	/// Distance model specific to this source.
+	/// Requires `AL_EXT_source_distance_model`.
 	fn distance_model(&self) -> AlResult<DistanceModel>;
 	fn set_distance_model(&mut self, DistanceModel) -> AlResult<()>;
 }
 
 
+/// Playstack state of a source.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum SourceState {
 	Initial,
@@ -153,12 +204,14 @@ struct Source<'d: 'c, 'c> {
 }
 
 
+/// A source that can play shared static buffer.
 pub struct StaticSource<'d: 'c, 'c> {
 	src: Source<'d, 'c>,
 	buf: Option<Arc<Buffer<'d, 'c>>>,
 }
 
 
+/// A source that plays a queue of owned buffers.
 pub struct StreamingSource<'d: 'c, 'c> {
 	src: Source<'d, 'c>,
 	bufs: VecDeque<Buffer<'d, 'c>>,
@@ -224,10 +277,13 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// The device from which this context was created.
 	pub fn device(&self) -> &(DeviceTrait + 'd) { self.dev }
+	/// Raw context pointer as provided by OpenAL.
 	pub fn raw_context(&self) -> *mut sys::ALCcontext { self.ctx }
 
 
+	/// Query presence of an extension.
 	pub fn is_extension_present(&self, ext: ext::Al) -> bool {
 		match ext {
 			ext::Al::ALaw => self.exts.AL_EXT_ALAW().is_ok(),
@@ -253,7 +309,7 @@ impl<'d> Context<'d> {
 	}
 
 
-	fn extensions(&self) -> &ext::AlCache { &self.exts }
+	pub fn extensions(&self) -> &ext::AlCache { &self.exts }
 
 
 	fn make_current(&self, set: bool) -> AlResult<Option<MutexGuard<()>>> {
@@ -269,6 +325,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Distance model applied to all sources from this context.
 	pub fn distance_model(&self) -> AlResult<DistanceModel> {
 		let _lock = self.make_current(true)?;
 		let model = unsafe { self.api.owner().alGetInteger()(sys::AL_DISTANCE_MODEL) };
@@ -300,6 +357,8 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Using per-source distance model settings.
+	/// Requires `AL_EXT_source_distance_model`.
 	pub fn using_source_distance_model(&self) -> AlResult<bool> {
 		let _lock = self.make_current(true)?;
 		let enabled = unsafe { self.api.owner().alIsEnabled()(self.exts.AL_EXT_source_distance_model()?.AL_SOURCE_DISTANCE_MODEL?) };
@@ -316,6 +375,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Doppler factor applied based on relative velocities.
 	pub fn doppler_factor(&self) -> AlResult<f32> {
 		let _lock = self.make_current(true)?;
 		let doppler = unsafe { self.api.owner().alGetFloat()(sys::AL_DOPPLER_FACTOR) };
@@ -328,6 +388,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Speed of sound, used for doppler calculations.
 	pub fn speed_of_sound(&self) -> AlResult<f32> {
 		let _lock = self.make_current(true)?;
 		let speed = unsafe { self.api.owner().alGetFloat()(sys::AL_SPEED_OF_SOUND) };
@@ -340,6 +401,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Global gain.
 	pub fn gain(&self) -> AlResult<f32> {
 		let mut gain = 0.0;
 		let _lock = self.make_current(true)?;
@@ -353,6 +415,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Position of the listener.
 	pub fn position<V: From<[f32; 3]>>(&self) -> AlResult<V> {
 		let mut pos = [0.0, 0.0, 0.0];
 		let _lock = self.make_current(true)?;
@@ -367,6 +430,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Velocity of the listener.
 	pub fn velocity<V: From<[f32; 3]>>(&self) -> AlResult<V> {
 		let mut vel = [0.0, 0.0, 0.0];
 		let _lock = self.make_current(true)?;
@@ -381,6 +445,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Orientation of the listener, consisting of a forward vector and an up vector.
 	pub fn orientation<V: From<[f32; 3]>>(&self) -> AlResult<(V, V)> {
 		let mut or = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]];
 		let _lock = self.make_current(true)?;
@@ -395,6 +460,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Create a new, empty buffer object.
 	pub fn new_buffer<'c>(&'c self) -> AlResult<Buffer<'d, 'c>> {
 		let mut buf = 0;
 		let _lock = self.make_current(true)?;
@@ -403,6 +469,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Create a new static source.
 	pub fn new_static_source(&self) -> AlResult<StaticSource> {
 		let mut src = 0;
 		let _lock = self.make_current(true)?;
@@ -411,6 +478,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Create a new streaming source.
 	pub fn new_streaming_source(&self) -> AlResult<StreamingSource> {
 		let mut src = 0;
 		let _lock = self.make_current(true)?;
@@ -419,6 +487,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Begin playing all specified sources simultaneously.
 	pub fn play_all<S, I>(&self, srcs: I) -> AlResult<()> where
 		S: SourceTrait<'d>,
 		I: Iterator,
@@ -433,6 +502,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Pause all specified sources simultaneously.
 	pub fn pause_all<S, I>(&self, srcs: I) -> AlResult<()> where
 		S: SourceTrait<'d>,
 		I: Iterator,
@@ -447,6 +517,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Stop all specified sources simultaneously.
 	pub fn stop_all<S, I>(&self, srcs: I) -> AlResult<()> where
 		S: SourceTrait<'d>,
 		I: Iterator,
@@ -461,6 +532,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Rewind all specified sources simultaneously.
 	pub fn rewind_all<S, I>(&self, srcs: I) -> AlResult<()> where
 		S: SourceTrait<'d>,
 		I: Iterator,
@@ -475,6 +547,10 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// Suspend state updates for the context, returning a guard object.
+	/// Until the guard object is dropped, any state changes for the context
+	/// are deferred. After the guard is dropped, all pending changes will
+	/// be applied simultaneously.
 	pub fn suspend<'c>(&'c self) -> AlcResult<SuspendLock<'d, 'c>> {
 		SuspendLock::new(self)
 	}
@@ -581,10 +657,13 @@ impl<'d: 'c, 'c> Drop for SuspendLock<'d, 'c> {
 
 
 impl<'d: 'c, 'c> Buffer<'d, 'c> {
+	/// Context from which this buffer was created.
 	pub fn context(&self) -> &Context<'d> { self.ctx }
+	/// Raw handle as provided by OpenAL.
 	pub fn raw_buffer(&self) -> sys::ALuint { self.buf }
 
 
+	/// Upload sound data from a slice of sample frames.
 	pub fn set_data<F: SampleFrame, R: AsRef<[F]>>(&mut self, data: R, freq: i32) -> AlResult<()> {
 		let data = data.as_ref();
 		let size = data.len() * mem::size_of::<F>();
@@ -604,6 +683,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
+	/// Sample-rate of the audio in the buffer.
 	pub fn frequency(&self) -> AlResult<sys::ALint> {
 		let mut freq = 0;
 		let _lock = self.ctx.make_current(true)?;
@@ -612,6 +692,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
+	/// Bit-depth of the audio in the buffer.
 	pub fn bits(&self) -> AlResult<sys::ALint> {
 		let mut bits = 0;
 		let _lock = self.ctx.make_current(true)?;
@@ -620,6 +701,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
+	/// Number of channels for the audio in the buffer.
 	pub fn channels(&self) -> AlResult<sys::ALint> {
 		let mut chans = 0;
 		let _lock = self.ctx.make_current(true)?;
@@ -628,6 +710,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
+	/// Size in bytes of the audio in the buffer.
 	pub fn size(&self) -> AlResult<sys::ALint> {
 		let mut size = 0;
 		let _lock = self.ctx.make_current(true)?;
@@ -636,6 +719,8 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
+	/// Loop points for the audio in the buffer, as a tuple of start and end samples.
+	/// Requires `ALC_SOFT_loop_points`.
 	pub fn soft_loop_points(&self) -> AlResult<(sys::ALint, sys::ALint)> {
 		let mut points = [0, 0];
 		let _lock = self.ctx.make_current(true)?;
@@ -1004,9 +1089,11 @@ impl<'d: 'c, 'c> Drop for Source<'d, 'c> {
 
 
 impl<'d: 'c, 'c> StaticSource<'d, 'c> {
+	/// The shared buffer currently associated with this source.
 	pub fn buffer(&self) -> Option<&Arc<Buffer<'d, 'c>>> { self.buf.as_ref() }
 
 
+	/// Associate a shared buffer with the source.
 	pub fn set_buffer(&mut self, buf: Option<Arc<Buffer<'d, 'c>>>) -> AlResult<()> {
 		{
 			let _lock = self.src.ctx.make_current(true)?;
@@ -1102,11 +1189,13 @@ impl<'d: 'c, 'c> Eq for StaticSource<'d, 'c> { }
 
 
 impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
+	/// Number of buffers currently queued in this stream.
 	pub fn buffers_queued(&self) -> AlResult<sys::ALint> {
 		Ok(self.bufs.len() as sys::ALint)
 	}
 
 
+	/// Number of buffers that have been fully processed by this stream.
 	pub fn buffers_processed(&self) -> AlResult<sys::ALint> {
 		let mut bufs = 0;
 		let _lock = self.src.ctx.make_current(true)?;
@@ -1115,6 +1204,7 @@ impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
 	}
 
 
+	/// Enqueue a buffer to the stream.
 	pub fn queue_buffer(&mut self, buf: Buffer<'d, 'c>) -> Result<(), (AlError, Buffer<'d, 'c>)> {
 		{
 			let _lock = match self.src.ctx.make_current(true) {
@@ -1133,6 +1223,7 @@ impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
 	}
 
 
+	/// Remove a processed buffer from the queue.
 	pub fn unqueue_buffer(&mut self) -> AlResult<Buffer<'d, 'c>> {
 		{
 			let mut buf = 0;

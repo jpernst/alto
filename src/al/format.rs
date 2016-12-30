@@ -4,6 +4,7 @@ use al::*;
 use ext;
 
 
+/// Audio formats supported by OpenAL.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Format {
 	Standard(StandardFormat),
@@ -20,6 +21,7 @@ pub enum Format {
 }
 
 
+/// Standard formats defined in the base specification.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum StandardFormat {
 	MonoU8,
@@ -29,6 +31,7 @@ pub enum StandardFormat {
 }
 
 
+/// Formats provided by `AL_EXT_ALAW`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtALawFormat {
 	Mono,
@@ -36,6 +39,7 @@ pub enum ExtALawFormat {
 }
 
 
+/// Formats provided by `AL_EXT_BFORMAT`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtBFormat {
 	B2DU8,
@@ -47,6 +51,7 @@ pub enum ExtBFormat {
 }
 
 
+/// Formats provided by `AL_EXT_double`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtDoubleFormat {
 	Mono,
@@ -54,6 +59,7 @@ pub enum ExtDoubleFormat {
 }
 
 
+/// Formats provided by `AL_EXT_float32`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtFloat32Format {
 	Mono,
@@ -61,6 +67,7 @@ pub enum ExtFloat32Format {
 }
 
 
+/// Formats provided by `AL_EXT_IMA4`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtIma4Format {
 	Mono,
@@ -68,6 +75,7 @@ pub enum ExtIma4Format {
 }
 
 
+/// Formats provided by `AL_EXT_MCFORMATS`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtMcFormat {
 	QuadU8,
@@ -88,6 +96,7 @@ pub enum ExtMcFormat {
 }
 
 
+/// Formats provided by `AL_EXT_MULAW`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtMuLawFormat {
 	Mono,
@@ -95,6 +104,7 @@ pub enum ExtMuLawFormat {
 }
 
 
+/// Formats provided by `AL_EXT_MULAW_BFORMAT`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtMuLawBFormat {
 	B2D,
@@ -102,6 +112,7 @@ pub enum ExtMuLawBFormat {
 }
 
 
+/// Formats provided by `AL_EXT_MULAW_MCFORMATS`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtMuLawMcFormat {
 	Mono,
@@ -114,6 +125,7 @@ pub enum ExtMuLawMcFormat {
 }
 
 
+/// Formats provided by `AL_SOFT_MSADPCM`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum SoftMsadpcmFormat {
 	Mono,
@@ -121,10 +133,17 @@ pub enum SoftMsadpcmFormat {
 }
 
 
+/// Implemented by structs that represent a frame of audio samples.
+/// A sample frame is a grouping of audio samples from each channel
+/// of an output format.
 pub unsafe trait SampleFrame: Copy {
+	/// Underlying sample type.
 	type Sample: Copy;
 
+
+	/// Length of the frame in samples.
 	fn len() -> usize;
+	/// The exact format described by this struct.
 	fn format() -> Format;
 }
 

@@ -1,10 +1,8 @@
 use std::mem;
 use std::sync::RwLock;
-use std::fmt;
-use std::error::Error as StdError;
 
 use rental::{self, RentRwLock};
-use ::sys::*;
+use sys::*;
 
 
 macro_rules! alc_ext {
@@ -22,7 +20,7 @@ macro_rules! alc_ext {
 		pub struct $cache<'a> {
 			api: &'a AlApi,
 			dev: *mut ALCdevice,
-			$($ext: RwLock<Option<ExtResult<$ext>>>,)*
+			$($ext: RwLock<Option<AlcExtResult<$ext>>>,)*
 		}
 
 
@@ -37,7 +35,7 @@ macro_rules! alc_ext {
 			}
 
 
-			$(pub fn $ext(&self) -> ExtResult<RentRwLock<Option<ExtResult<$ext>>, $ext>> {
+			$(pub fn $ext(&self) -> AlcExtResult<RentRwLock<Option<AlcExtResult<$ext>>, $ext>> {
 				if let Ok(mut ext) = self.$ext.try_write() {
 					if ext.is_none() {
 						*ext = Some($ext::load(&self.api, self.dev));
@@ -61,13 +59,13 @@ macro_rules! alc_ext {
 		#[allow(non_camel_case_types, non_snake_case)]
 		#[derive(Debug)]
 		pub struct $ext {
-			$(pub $const_: ExtResult<ALCenum>,)*
-			$(pub $fn_: ExtResult<$fn_ty>,)*
+			$(pub $const_: AlcExtResult<ALCenum>,)*
+			$(pub $fn_: AlcExtResult<$fn_ty>,)*
 		}
 
 
 		impl $ext {
-			pub fn load(api: &AlApi, dev: *mut ALCdevice) -> ExtResult<$ext> {
+			pub fn load(api: &AlApi, dev: *mut ALCdevice) -> AlcExtResult<$ext> {
 				unsafe { api.alcGetError()(dev); }
 				if unsafe { api.alcIsExtensionPresent()(dev, concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALCchar) } == ALC_TRUE {
 					Ok($ext{
@@ -76,7 +74,7 @@ macro_rules! alc_ext {
 							if unsafe { api.alcGetError()(dev) } == ALC_NO_ERROR {
 								Ok(e)
 							} else {
-								Err(ExtensionError)
+								Err(AlcExtensionError)
 							}
 						},)*
 						$($fn_: {
@@ -84,12 +82,12 @@ macro_rules! alc_ext {
 							if unsafe { api.alcGetError()(dev) } == ALC_NO_ERROR {
 								Ok(unsafe { mem::transmute(p) })
 							} else {
-								Err(ExtensionError)
+								Err(AlcExtensionError)
 							}
 						},)*
 					})
 				} else {
-					Err(ExtensionError)
+					Err(AlcExtensionError)
 				}
 			}
 		})*
@@ -111,7 +109,7 @@ macro_rules! al_ext {
 		#[allow(non_snake_case)]
 		pub struct $cache<'a> {
 			api: &'a AlApi,
-			$($ext: RwLock<Option<ExtResult<$ext>>>,)*
+			$($ext: RwLock<Option<AlExtResult<$ext>>>,)*
 		}
 
 
@@ -125,7 +123,7 @@ macro_rules! al_ext {
 			}
 
 
-			$(pub fn $ext(&self) -> ExtResult<RentRwLock<Option<ExtResult<$ext>>, $ext>> {
+			$(pub fn $ext(&self) -> AlExtResult<RentRwLock<Option<AlExtResult<$ext>>, $ext>> {
 				if let Ok(mut ext) = self.$ext.try_write() {
 					if ext.is_none() {
 						*ext = Some($ext::load(&self.api));
@@ -148,13 +146,13 @@ macro_rules! al_ext {
 		#[allow(non_camel_case_types, non_snake_case)]
 		#[derive(Debug)]
 		pub struct $ext {
-			$(pub $const_: ExtResult<ALenum>,)*
-			$(pub $fn_: ExtResult<$fn_ty>,)*
+			$(pub $const_: AlExtResult<ALenum>,)*
+			$(pub $fn_: AlExtResult<$fn_ty>,)*
 		}
 
 
 		impl $ext {
-			pub fn load(api: &AlApi) -> ExtResult<$ext> {
+			pub fn load(api: &AlApi) -> AlExtResult<$ext> {
 				unsafe { api.alGetError()(); }
 				if unsafe { api.alIsExtensionPresent()(concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALchar) } == AL_TRUE {
 					Ok($ext{
@@ -163,7 +161,7 @@ macro_rules! al_ext {
 							if unsafe { api.alGetError()() } == AL_NO_ERROR {
 								Ok(e)
 							} else {
-								Err(ExtensionError)
+								Err(AlExtensionError)
 							}
 						},)*
 						$($fn_: {
@@ -171,12 +169,12 @@ macro_rules! al_ext {
 							if unsafe { api.alGetError()() } == AL_NO_ERROR {
 								Ok(unsafe { mem::transmute(p) })
 							} else {
-								Err(ExtensionError)
+								Err(AlExtensionError)
 							}
 						},)*
 					})
 				} else {
-					Err(ExtensionError)
+					Err(AlExtensionError)
 				}
 			}
 		})*
@@ -184,11 +182,18 @@ macro_rules! al_ext {
 }
 
 
+#[doc(hidden)]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct ExtensionError;
+pub struct AlcExtensionError;
+#[doc(hidden)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct AlExtensionError;
 
 
-pub type ExtResult<T> = ::std::result::Result<T, ExtensionError>;
+#[doc(hidden)]
+pub type AlcExtResult<T> = ::std::result::Result<T, AlcExtensionError>;
+#[doc(hidden)]
+pub type AlExtResult<T> = ::std::result::Result<T, AlExtensionError>;
 
 
 #[derive(Copy, Clone, PartialEq, Hash, Eq, Debug)]
@@ -230,18 +235,6 @@ pub enum Al {
 	SoftSourceLatency,
 	SoftSourceLength,
 	SourceDistanceModel,
-}
-
-
-impl fmt::Display for ExtensionError {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "{}", self.description())
-	}
-}
-
-
-impl StdError for ExtensionError {
-	fn description(&self) -> &str { "Extension Not Present" }
 }
 
 

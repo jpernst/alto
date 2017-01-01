@@ -1,7 +1,15 @@
+use std::slice;
+
+use ::{AltoError, AltoResult};
 use sys;
 use alc::*;
 use al::*;
 use ext;
+
+
+pub trait AsBufferData<S: SampleFrame> {
+	fn as_buffer_data(&self) -> &[S];
+}
 
 
 /// Audio formats supported by OpenAL.
@@ -251,7 +259,7 @@ pub struct BFormat3D<S: Copy> {
 
 
 impl Format {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
 		match self {
 			Format::Standard(f) => Ok(f.into_raw()),
 			Format::ExtALaw(f) => f.into_raw(ctx),
@@ -282,8 +290,8 @@ impl StandardFormat {
 
 
 impl ExtALawFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
-		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
 			ExtALawFormat::Mono => Ok(ctx.extensions().AL_EXT_ALAW()?.AL_FORMAT_MONO_ALAW_EXT?),
 			ExtALawFormat::Stereo => Ok(ctx.extensions().AL_EXT_ALAW()?.AL_FORMAT_STEREO_ALAW_EXT?),
 		})
@@ -292,8 +300,8 @@ impl ExtALawFormat {
 
 
 impl ExtBFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
-		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
 			ExtBFormat::B2DU8 => Ok(ctx.extensions().AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_8?),
 			ExtBFormat::B2DI16 => Ok(ctx.extensions().AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_16?),
 			ExtBFormat::B2DF32 => Ok(ctx.extensions().AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_FLOAT32?),
@@ -306,8 +314,8 @@ impl ExtBFormat {
 
 
 impl ExtDoubleFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
-		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
 			ExtDoubleFormat::Mono => Ok(ctx.extensions().AL_EXT_double()?.AL_FORMAT_MONO_DOUBLE_EXT?),
 			ExtDoubleFormat::Stereo => Ok(ctx.extensions().AL_EXT_double()?.AL_FORMAT_STEREO_DOUBLE_EXT?),
 		})
@@ -316,8 +324,8 @@ impl ExtDoubleFormat {
 
 
 impl ExtFloat32Format {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
-		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
 			ExtFloat32Format::Mono => Ok(ctx.extensions().AL_EXT_float32()?.AL_FORMAT_MONO_FLOAT32?),
 			ExtFloat32Format::Stereo => Ok(ctx.extensions().AL_EXT_float32()?.AL_FORMAT_STEREO_FLOAT32?),
 		})
@@ -326,8 +334,8 @@ impl ExtFloat32Format {
 
 
 impl ExtIma4Format {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
-		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
 			ExtIma4Format::Mono => Ok(ctx.extensions().AL_EXT_IMA4()?.AL_FORMAT_MONO_IMA4?),
 			ExtIma4Format::Stereo => Ok(ctx.extensions().AL_EXT_IMA4()?.AL_FORMAT_STEREO_IMA4?),
 		})
@@ -336,8 +344,8 @@ impl ExtIma4Format {
 
 
 impl ExtMcFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
-		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
 			ExtMcFormat::QuadU8 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD8?),
 			ExtMcFormat::QuadI16 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD16?),
 			ExtMcFormat::QuadF32 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD32?),
@@ -359,8 +367,8 @@ impl ExtMcFormat {
 
 
 impl ExtMuLawFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
-		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
 			ExtMuLawFormat::Mono => Ok(ctx.extensions().AL_EXT_MULAW()?.AL_FORMAT_MONO_MULAW_EXT?),
 			ExtMuLawFormat::Stereo => Ok(ctx.extensions().AL_EXT_MULAW()?.AL_FORMAT_STEREO_MULAW_EXT?),
 		})
@@ -369,8 +377,8 @@ impl ExtMuLawFormat {
 
 
 impl ExtMuLawBFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
-		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
 			ExtMuLawBFormat::B2D => Ok(ctx.extensions().AL_EXT_MULAW_BFORMAT()?.AL_FORMAT_BFORMAT2D_MULAW?),
 			ExtMuLawBFormat::B3D => Ok(ctx.extensions().AL_EXT_MULAW_BFORMAT()?.AL_FORMAT_BFORMAT3D_MULAW?),
 		})
@@ -379,8 +387,8 @@ impl ExtMuLawBFormat {
 
 
 impl ExtMuLawMcFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
-		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
 			ExtMuLawMcFormat::Mono => Ok(ctx.extensions().AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_MONO_MULAW?),
 			ExtMuLawMcFormat::Stereo => Ok(ctx.extensions().AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_STEREO_MULAW?),
 			ExtMuLawMcFormat::Quad => Ok(ctx.extensions().AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_QUAD_MULAW?),
@@ -394,8 +402,8 @@ impl ExtMuLawMcFormat {
 
 
 impl SoftMsadpcmFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AlResult<sys::ALint> {
-		ctx.ok_or(AlError::ExtensionNotPresent).and_then(|ctx| match self {
+	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
 			SoftMsadpcmFormat::Mono => Ok(ctx.extensions().AL_SOFT_MSADPCM()?.AL_FORMAT_MONO_MSADPCM_SOFT?),
 			SoftMsadpcmFormat::Stereo => Ok(ctx.extensions().AL_SOFT_MSADPCM()?.AL_FORMAT_STEREO_MSADPCM_SOFT?),
 		})
@@ -663,101 +671,180 @@ unsafe impl SampleFrame for BFormat3D<MuLawSample> {
 
 unsafe impl LoopbackFrame for Mono<u8>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_MONO_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_UNSIGNED_BYTE_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_MONO_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_UNSIGNED_BYTE_SOFT?) }
 }
 unsafe impl LoopbackFrame for Mono<i16>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_MONO_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_SHORT_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_MONO_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_SHORT_SOFT?) }
 }
 unsafe impl LoopbackFrame for Mono<f32>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_MONO_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_FLOAT_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_MONO_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_FLOAT_SOFT?) }
 }
 
 
 unsafe impl LoopbackFrame for Stereo<u8>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_STEREO_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_UNSIGNED_BYTE_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_STEREO_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_UNSIGNED_BYTE_SOFT?) }
 }
 unsafe impl LoopbackFrame for Stereo<i16>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_STEREO_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_SHORT_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_STEREO_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_SHORT_SOFT?) }
 }
 unsafe impl LoopbackFrame for Stereo<f32>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_STEREO_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_FLOAT_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_STEREO_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_FLOAT_SOFT?) }
 }
 
 
 unsafe impl LoopbackFrame for McQuad<u8>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_QUAD_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_UNSIGNED_BYTE_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_QUAD_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_UNSIGNED_BYTE_SOFT?) }
 }
 unsafe impl LoopbackFrame for McQuad<i16>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_QUAD_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_SHORT_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_QUAD_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_SHORT_SOFT?) }
 }
 unsafe impl LoopbackFrame for McQuad<f32>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_QUAD_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_FLOAT_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_QUAD_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_FLOAT_SOFT?) }
 }
 
 
 unsafe impl LoopbackFrame for Mc51Chn<u8>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_5POINT1_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_UNSIGNED_BYTE_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_5POINT1_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_UNSIGNED_BYTE_SOFT?) }
 }
 unsafe impl LoopbackFrame for Mc51Chn<i16>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_5POINT1_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_SHORT_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_5POINT1_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_SHORT_SOFT?) }
 }
 unsafe impl LoopbackFrame for Mc51Chn<f32>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_5POINT1_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_FLOAT_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_5POINT1_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_FLOAT_SOFT?) }
 }
 
 
 unsafe impl LoopbackFrame for Mc61Chn<u8>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_6POINT1_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_UNSIGNED_BYTE_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_6POINT1_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_UNSIGNED_BYTE_SOFT?) }
 }
 unsafe impl LoopbackFrame for Mc61Chn<i16>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_6POINT1_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_SHORT_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_6POINT1_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_SHORT_SOFT?) }
 }
 unsafe impl LoopbackFrame for Mc61Chn<f32>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_6POINT1_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_FLOAT_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_6POINT1_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_FLOAT_SOFT?) }
 }
 
 
 unsafe impl LoopbackFrame for Mc71Chn<u8>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_7POINT1_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_UNSIGNED_BYTE_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_7POINT1_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_UNSIGNED_BYTE_SOFT?) }
 }
 unsafe impl LoopbackFrame for Mc71Chn<i16>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_7POINT1_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_SHORT_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_7POINT1_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_SHORT_SOFT?) }
 }
 unsafe impl LoopbackFrame for Mc71Chn<f32>
 {
-	fn channels(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_7POINT1_SOFT }
-	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint> { sl.ALC_FLOAT_SOFT }
+	fn channels(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_7POINT1_SOFT?) }
+	fn sample_ty(sl: &ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint> { Ok(sl.ALC_FLOAT_SOFT?) }
+}
+
+
+impl<T: AsRef<[F]>, F: SampleFrame> AsBufferData<F> for T {
+	fn as_buffer_data(&self) -> &[F] { self.as_ref() }
+}
+
+
+impl<S> AsBufferData<Mono<S>> for [S] where
+	S: Copy,
+	Mono<S>: SampleFrame,
+{
+	fn as_buffer_data(&self) -> &[Mono<S>] {
+		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Mono::<S>::len()) }
+	}
+}
+impl<S> AsBufferData<Stereo<S>> for [S] where
+	S: Copy,
+	Stereo<S>: SampleFrame,
+{
+	fn as_buffer_data(&self) -> &[Stereo<S>] {
+		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Stereo::<S>::len()) }
+	}
+}
+impl<S> AsBufferData<McRear<S>> for [S] where
+	S: Copy,
+	McRear<S>: SampleFrame,
+{
+	fn as_buffer_data(&self) -> &[McRear<S>] {
+		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / McRear::<S>::len()) }
+	}
+}
+impl<S> AsBufferData<McQuad<S>> for [S] where
+	S: Copy,
+	McQuad<S>: SampleFrame,
+{
+	fn as_buffer_data(&self) -> &[McQuad<S>] {
+		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / McQuad::<S>::len()) }
+	}
+}
+impl<S> AsBufferData<Mc51Chn<S>> for [S] where
+	S: Copy,
+	Mc51Chn<S>: SampleFrame,
+{
+	fn as_buffer_data(&self) -> &[Mc51Chn<S>] {
+		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Mc51Chn::<S>::len()) }
+	}
+}
+impl<S> AsBufferData<Mc61Chn<S>> for [S] where
+	S: Copy,
+	Mc61Chn<S>: SampleFrame,
+{
+	fn as_buffer_data(&self) -> &[Mc61Chn<S>] {
+		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Mc61Chn::<S>::len()) }
+	}
+}
+impl<S> AsBufferData<Mc71Chn<S>> for [S] where
+	S: Copy,
+	Mc71Chn<S>: SampleFrame,
+{
+	fn as_buffer_data(&self) -> &[Mc71Chn<S>] {
+		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Mc71Chn::<S>::len()) }
+	}
+}
+impl<S> AsBufferData<BFormat2D<S>> for [S] where
+	S: Copy,
+	BFormat2D<S>: SampleFrame,
+{
+	fn as_buffer_data(&self) -> &[BFormat2D<S>] {
+		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / BFormat2D::<S>::len()) }
+	}
+}
+impl<S> AsBufferData<BFormat3D<S>> for [S] where
+	S: Copy,
+	BFormat3D<S>: SampleFrame,
+{
+	fn as_buffer_data(&self) -> &[BFormat3D<S>] {
+		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / BFormat3D::<S>::len()) }
+	}
 }

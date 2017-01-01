@@ -5,9 +5,8 @@ use alto::DeviceTrait;
 
 fn main() {
 	let alto = alto::Alto::load_default().unwrap();
-	println!("{:?}", alto.enumerate_outputs());
+	println!("Using output: {:?}", alto.default_output().unwrap());
 
 	let dev = alto.open(None).unwrap();
-	println!("HRTFs: {:?}", dev.enumerate_soft_hrtfs());
-	println!("HRTF: {:?}", dev.soft_hrtf_status());
+	let ctx = dev.new_context(None);
 }

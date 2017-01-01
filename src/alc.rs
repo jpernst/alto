@@ -3,33 +3,14 @@ use std::ptr;
 use std::ffi::{CString, CStr};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::fmt;
-use std::error::Error as StdError;
-use std::io::{self, Write};
 use std::path::Path;
 use std::marker::PhantomData;
+use std::io::{self, Write};
 
-use ::sys;
-use ::al::*;
-use ::ext;
-
-
-/// An error as reported by `alcGetError`.
-/// These errors relate to device control and context creation.
-#[derive(Debug)]
-pub enum AlcError {
-	InvalidDevice,
-	InvalidContext,
-	InvalidEnum,
-	InvalidValue,
-	OutOfMemory,
-
-	UnsupportedVersion,
-	ExtensionNotPresent,
-	Al(AlError),
-	Io(io::Error),
-	UnknownError,
-}
+use ::{AltoError, AltoResult};
+use sys;
+use al::*;
+use ext;
 
 
 /// Attributes that may be supplied during context creation.
@@ -97,7 +78,6 @@ pub enum SoftHrtfStatus {
 }
 
 
-pub type AlcResult<T> = ::std::result::Result<T, AlcError>;
 
 
 rental!{
@@ -126,17 +106,15 @@ pub trait DeviceTrait {
 	fn specifier(&self) -> &CStr;
 	/// Raw handle as exposed by OpenAL.
 	fn raw_device(&self) -> *mut sys::ALCdevice;
-	/// Supported extensions.
-	fn extensions(&self) -> &ext::AlcCache;
 	/// Query the presence of an ALC extension.
 	fn is_extension_present(&self, ext::Alc) -> bool;
 	/// Polls the connection state.
 	/// If this ever returns false, then the device must be closed and reopened; it will not become true again.
-	fn connected(&self) -> AlcResult<bool>;
+	fn connected(&self) -> AltoResult<bool>;
 	/// Enumerate the supported HRTF functions.
-	fn enumerate_soft_hrtfs(&self) -> AlcResult<Vec<CString>>;
+	fn enumerate_soft_hrtfs(&self) -> AltoResult<Vec<CString>>;
 	/// Current HRTF mode.
-	fn soft_hrtf_status(&self) -> AlcResult<SoftHrtfStatus>;
+	fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus>;
 }
 
 
@@ -158,8 +136,8 @@ pub struct SoftPauseLock<'a: 'd, 'd>(&'d Device<'a>);
 
 /// A sample frame that is supported as a loopback device output format.
 pub unsafe trait LoopbackFrame: SampleFrame {
-	fn channels(&ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint>;
-	fn sample_ty(&ext::ALC_SOFT_loopback) -> ext::ExtResult<sys::ALint>;
+	fn channels(&ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint>;
+	fn sample_ty(&ext::ALC_SOFT_loopback) -> AltoResult<sys::ALint>;
 }
 
 
@@ -185,7 +163,7 @@ pub struct CaptureDevice<'a> {
 impl Alto {
 	/// Load the default OpenAL implementation for the platform.
 	/// This will prefer OpenAL-Soft if it is present, otherwise it will search for a generic implementation.
-	pub fn load_default() -> AlcResult<Alto> {
+	pub fn load_default() -> AltoResult<Alto> {
 		let api = Box::new(sys::AlApi::load_default()?);
 		Ok(Alto{
 			api: AlApi::new(api, |a| unsafe { ext::AlcNullCache::new(a, ptr::null_mut()) }),
@@ -195,7 +173,7 @@ impl Alto {
 
 
 	/// Loads a specific OpenAL implementation from a specififed path.
-	pub fn load<P: AsRef<Path>>(path: P) -> AlcResult<Alto> {
+	pub fn load<P: AsRef<Path>>(path: P) -> AltoResult<Alto> {
 		let api = Box::new(sys::AlApi::load(path)?);
 		Ok(Alto{
 			api: AlApi::new(api, |a| unsafe { ext::AlcNullCache::new(a, ptr::null_mut()) }),
@@ -204,7 +182,7 @@ impl Alto {
 	}
 
 
-	fn check_version(self) -> AlcResult<Alto> {
+	fn check_version(self) -> AltoResult<Alto> {
 		let mut major = 0;
 		unsafe { self.api.owner().alcGetIntegerv()(ptr::null_mut(), sys::ALC_MAJOR_VERSION, 1, &mut major); }
 		let mut minor = 0;
@@ -213,13 +191,13 @@ impl Alto {
 		if major == 1 && minor >= 1 {
 			Ok(self)
 		} else {
-			Err(AlcError::UnsupportedVersion)
+			Err(AltoError::AlcUnsupportedVersion)
 		}
 	}
 
 
 	/// Get the specifier of the default output device.
-	pub fn default_output(&self) -> AlcResult<CString> {
+	pub fn default_output(&self) -> AltoResult<CString> {
 		self.api.rent(|exts| {
 			let spec = if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
 				unsafe { CStr::from_ptr(self.api.owner().alcGetString()(ptr::null_mut(), ea.ALC_DEFAULT_ALL_DEVICES_SPECIFIER?)) }
@@ -232,14 +210,14 @@ impl Alto {
 
 
 	/// Get the specifier of the default capture device.
-	pub fn default_capture(&self) -> AlcResult<CString> {
+	pub fn default_capture(&self) -> AltoResult<CString> {
 		let spec = unsafe { CStr::from_ptr(self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)) };
 		self.get_error(ptr::null_mut()).map(|_| spec.to_owned())
 	}
 
 
 	/// Enumerate available audio outputs detected by the implementation.
-	pub fn enumerate_outputs(&self) -> AlcResult<Vec<CString>> {
+	pub fn enumerate_outputs(&self) -> AltoResult<Vec<CString>> {
 		self.api.rent(|exts| {
 			let spec = if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
 				unsafe { self.api.owner().alcGetString()(ptr::null_mut(), ea.ALC_ALL_DEVICES_SPECIFIER?) }
@@ -252,13 +230,13 @@ impl Alto {
 
 
 	/// Enumerate available audio inputs detected by the implementation.
-	pub fn enumerate_captures(&self) -> AlcResult<Vec<CString>> {
+	pub fn enumerate_captures(&self) -> AltoResult<Vec<CString>> {
 		let spec = unsafe { self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_CAPTURE_DEVICE_SPECIFIER) };
 		self.get_error(ptr::null_mut()).and_then(|_| Alto::parse_enum_spec(spec as *const u8))
 	}
 
 
-	fn parse_enum_spec(spec: *const u8) -> AlcResult<Vec<CString>> {
+	fn parse_enum_spec(spec: *const u8) -> AltoResult<Vec<CString>> {
 		let mut specs = Vec::with_capacity(0);
 
 		let mut i = 0;
@@ -277,7 +255,7 @@ impl Alto {
 
 
 	/// Open an audio device from a device specifier, or default if `None`.
-	pub fn open(&self, spec: Option<&CStr>) -> AlcResult<Device> {
+	pub fn open(&self, spec: Option<&CStr>) -> AltoResult<Device> {
 		let spec = if let Some(spec) = spec {
 			spec.to_owned()
 		} else {
@@ -288,7 +266,7 @@ impl Alto {
 		self.get_error(ptr::null_mut())?;
 
 		if dev == ptr::null_mut() {
-			Err(AlcError::InvalidDevice)
+			Err(AltoError::AlcInvalidDevice)
 		} else {
 			Ok(Device{
 				alto: self,
@@ -302,7 +280,7 @@ impl Alto {
 
 
 	/// Open a loopback device from a device specifier, or default if `None`.
-	pub fn open_loopback<F: LoopbackFrame>(&self, spec: Option<&CStr>) -> AlcResult<LoopbackDevice<F>> {
+	pub fn open_loopback<F: LoopbackFrame>(&self, spec: Option<&CStr>) -> AltoResult<LoopbackDevice<F>> {
 		self.api.rent(|exts| {
 			let sl = exts.ALC_SOFT_loopback()?;
 
@@ -316,7 +294,7 @@ impl Alto {
 			self.get_error(ptr::null_mut())?;
 
 			if dev == ptr::null_mut() {
-				Err(AlcError::InvalidDevice)
+				Err(AltoError::AlcInvalidDevice)
 			} else {
 				Ok(LoopbackDevice{
 					alto: self,
@@ -331,7 +309,7 @@ impl Alto {
 
 
 	/// Open a capture device from a device specifier, or default if `None`.
-	pub fn open_capture(&self, spec: Option<&CStr>, freq: sys::ALCuint, format: StandardFormat, size: sys::ALCsizei) -> AlcResult<CaptureDevice> {
+	pub fn open_capture(&self, spec: Option<&CStr>, freq: sys::ALCuint, format: StandardFormat, size: sys::ALCsizei) -> AltoResult<CaptureDevice> {
 		let spec = if let Some(spec) = spec {
 			spec.to_owned()
 		} else {
@@ -342,7 +320,7 @@ impl Alto {
 		self.get_error(ptr::null_mut())?;
 
 		if dev == ptr::null_mut() {
-			Err(AlcError::InvalidDevice)
+			Err(AltoError::AlcInvalidDevice)
 		} else {
 			Ok(CaptureDevice{alto: self, spec: spec, dev: dev})
 		}
@@ -350,72 +328,11 @@ impl Alto {
 
 
 	#[doc(hidden)]
-	pub fn get_error(&self, dev: *mut sys::ALCdevice) -> AlcResult<()> {
+	pub fn get_error(&self, dev: *mut sys::ALCdevice) -> AltoResult<()> {
 		match unsafe { self.api.owner().alcGetError()(dev)} {
 			sys::ALC_NO_ERROR => Ok(()),
-			e => Err(e.into()),
+			e => Err(AltoError::from_alc(e)),
 		}
-	}
-}
-
-
-impl fmt::Display for AlcError {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "{}", self.description())
-	}
-}
-
-
-impl StdError for AlcError {
-	fn description(&self) -> &str {
-		match *self {
-			AlcError::InvalidDevice => "ALC ERROR: Invalid Device",
-			AlcError::InvalidContext => "ALC ERROR: Invalid Context",
-			AlcError::InvalidEnum => "ALC ERROR: Invalid Enum",
-			AlcError::InvalidValue => "ALC ERROR: Invalid Value",
-			AlcError::OutOfMemory => "ALC ERROR: Invalid Memory",
-
-			AlcError::UnsupportedVersion => "ALC ERROR: Unsupported Version",
-			AlcError::ExtensionNotPresent => "ALC ERROR: Extension Not Present",
-			AlcError::Al(ref al) => al.description(),
-			AlcError::Io(ref io) => io.description(),
-			AlcError::UnknownError => "ALC ERROR: Unknown Error",
-		}
-	}
-}
-
-
-impl From<sys::ALCenum> for AlcError {
-	fn from(al: sys::ALCenum) -> AlcError {
-		match al {
-			sys::ALC_INVALID_DEVICE => AlcError::InvalidDevice,
-			sys::ALC_INVALID_CONTEXT => AlcError::InvalidContext,
-			sys::ALC_INVALID_ENUM => AlcError::InvalidEnum,
-			sys::ALC_INVALID_VALUE => AlcError::InvalidValue,
-			sys::ALC_OUT_OF_MEMORY => AlcError::OutOfMemory,
-			_ => AlcError::UnknownError,
-		}
-	}
-}
-
-
-impl From<AlError> for AlcError {
-	fn from(al: AlError) -> AlcError {
-		AlcError::Al(al)
-	}
-}
-
-
-impl From<ext::ExtensionError> for AlcError {
-	fn from(_: ext::ExtensionError) -> AlcError {
-		AlcError::ExtensionNotPresent
-	}
-}
-
-
-impl From<io::Error> for AlcError {
-	fn from(io: io::Error) -> AlcError {
-		AlcError::Io(io)
 	}
 }
 
@@ -429,7 +346,7 @@ impl Eq for DeviceTrait { }
 
 
 impl<'a> Device<'a> {
-	fn make_attrs_vec(&self, attrs: Option<ContextAttrs>) -> AlcResult<Vec<sys::ALCint>> {
+	fn make_attrs_vec(&self, attrs: Option<ContextAttrs>) -> AltoResult<Vec<sys::ALCint>> {
 		let mut attrs_vec = Vec::with_capacity(13);
 		if let Some(attrs) = attrs {
 			if let Some(freq) = attrs.frequency {
@@ -461,7 +378,7 @@ impl<'a> Device<'a> {
 
 
 	/// Create a new context from this device.
-	pub fn new_context(&self, attrs: Option<ContextAttrs>) -> AlcResult<Context> {
+	pub fn new_context(&self, attrs: Option<ContextAttrs>) -> AltoResult<Context> {
 		let attrs_vec = self.make_attrs_vec(attrs);
 
 		let ctx = unsafe { self.alto.api.owner().alcCreateContext()(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
@@ -471,14 +388,14 @@ impl<'a> Device<'a> {
 
 	/// Pause output of this device and return a lock.
 	/// Output will resume when this lock is dropped.
-	pub fn soft_pause<'d>(&'d self) -> AlcResult<SoftPauseLock<'a, 'd>> {
+	pub fn soft_pause<'d>(&'d self) -> AltoResult<SoftPauseLock<'a, 'd>> {
 		SoftPauseLock::new(self)
 	}
 
 
 	/// Attempt to reset the device with new attributes.
 	/// Requires the `ALC_SOFT_HRTF`.
-	pub fn soft_reset(&self, attrs: Option<ContextAttrs>) -> AlcResult<()> {
+	pub fn soft_reset(&self, attrs: Option<ContextAttrs>) -> AltoResult<()> {
 		let ards = self.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
 		let attrs_vec = self.make_attrs_vec(attrs);
 		unsafe { ards(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
@@ -494,8 +411,6 @@ impl<'a> DeviceTrait for Device<'a> {
 	fn specifier(&self) -> &CStr { &self.spec }
 	#[inline(always)]
 	fn raw_device(&self) -> *mut sys::ALCdevice { self.dev }
-	#[inline(always)]
-	fn extensions(&self) -> &ext::AlcCache { &self.exts }
 
 
 	fn is_extension_present(&self, ext: ext::Alc) -> bool {
@@ -509,14 +424,14 @@ impl<'a> DeviceTrait for Device<'a> {
 	}
 
 
-	fn connected(&self) -> AlcResult<bool> {
+	fn connected(&self) -> AltoResult<bool> {
 		let mut connected = 0;
 		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_DISCONNECT()?.ALC_CONNECTED?, 1, &mut connected); }
 		self.alto.get_error(self.dev).map(|_| connected == sys::ALC_TRUE as sys::ALCint)
 	}
 
 
-	fn enumerate_soft_hrtfs(&self) -> AlcResult<Vec<CString>> {
+	fn enumerate_soft_hrtfs(&self) -> AltoResult<Vec<CString>> {
 		let ash = self.exts.ALC_SOFT_HRTF()?;
 
 		let mut num = 0;
@@ -534,7 +449,7 @@ impl<'a> DeviceTrait for Device<'a> {
 	}
 
 
-	fn soft_hrtf_status(&self) -> AlcResult<SoftHrtfStatus> {
+	fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> {
 		let ash = self.exts.ALC_SOFT_HRTF()?;
 
 		let mut status = 0;
@@ -575,7 +490,7 @@ unsafe impl<'a> Sync for Device<'a> { }
 
 
 impl<'a: 'd, 'd> SoftPauseLock<'a, 'd> {
-	fn new(dev: &'d Device<'a>) -> AlcResult<SoftPauseLock<'a, 'd>> {
+	fn new(dev: &'d Device<'a>) -> AltoResult<SoftPauseLock<'a, 'd>> {
 		let adps = dev.exts.ALC_SOFT_pause_device()?.alcDevicePauseSOFT?;
 
 		let old = dev.pause_rc.fetch_add(1, Ordering::SeqCst);
@@ -613,7 +528,7 @@ impl<'a: 'd, 'd> Drop for SoftPauseLock<'a, 'd> {
 
 
 impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
-	fn make_attrs_vec(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AlcResult<Vec<sys::ALCint>> {
+	fn make_attrs_vec(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AltoResult<Vec<sys::ALCint>> {
 		self.alto.api.rent(move|exts| {
 			let asl = exts.ALC_SOFT_loopback()?;
 
@@ -645,7 +560,7 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 
 
 	/// Create a new context from this device.
-	pub fn new_context(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AlcResult<Context> {
+	pub fn new_context(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AltoResult<Context> {
 		let attrs_vec = self.make_attrs_vec(freq, attrs)?;
 		let ctx = unsafe { self.alto.api.owner().alcCreateContext()(self.dev, attrs_vec.as_slice().as_ptr()) };
 		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, &self.alto.ctx_lock, ctx) })
@@ -654,7 +569,7 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 
 	/// Attempt to reset the device with new attributes.
 	/// Requires the `ALC_SOFT_HRTF`.
-	pub fn soft_reset(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AlcResult<()> {
+	pub fn soft_reset(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AltoResult<()> {
 		let ards = self.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
 
 		let attrs_vec = self.make_attrs_vec(freq, attrs);
@@ -672,9 +587,7 @@ impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
 	#[inline(always)]
 	fn raw_device(&self) -> *mut sys::ALCdevice { self.dev }
 	#[inline(always)]
-	fn extensions(&self) -> &ext::AlcCache { &self.exts }
-	#[inline(always)]
-	fn connected(&self) -> AlcResult<bool> { Ok(true) }
+	fn connected(&self) -> AltoResult<bool> { Ok(true) }
 
 
 	fn is_extension_present(&self, ext: ext::Alc) -> bool {
@@ -688,7 +601,7 @@ impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
 	}
 
 
-	fn enumerate_soft_hrtfs(&self) -> AlcResult<Vec<CString>> {
+	fn enumerate_soft_hrtfs(&self) -> AltoResult<Vec<CString>> {
 		let ash = self.exts.ALC_SOFT_HRTF()?;
 
 		let mut num = 0;
@@ -706,7 +619,7 @@ impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
 	}
 
 
-	fn soft_hrtf_status(&self) -> AlcResult<SoftHrtfStatus> {
+	fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> {
 		let ash = self.exts.ALC_SOFT_HRTF()?;
 
 		let mut status = 0;

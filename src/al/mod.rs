@@ -248,7 +248,7 @@ impl<'d> Context<'d> {
 	fn make_current(&self, set: bool) -> AltoResult<Option<MutexGuard<()>>> {
 		self.api.rent(|exts| {
 			if let Ok(tlc) = exts.ALC_EXT_thread_local_context() {
-				unsafe { tlc.alcSetThreadContext.unwrap()(if set { self.ctx } else { ptr::null_mut() }); }
+				unsafe { tlc.alcSetThreadContext?(if set { self.ctx } else { ptr::null_mut() }); }
 				self.dev.alto().get_error(self.dev.raw_device()).map(|_| None)
 			} else {
 				unsafe { self.api.owner().alcMakeContextCurrent()(if set { self.ctx } else { ptr::null_mut() }); }
@@ -653,7 +653,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 
 
 	/// Loop points for the audio in the buffer, as a tuple of start and end samples.
-	/// Requires `ALC_SOFT_loop_points`.
+	/// Requires `AL_SOFT_loop_points`.
 	pub fn soft_loop_points(&self) -> AltoResult<(sys::ALint, sys::ALint)> {
 		let mut points = [0, 0];
 		let _lock = self.ctx.make_current(true)?;

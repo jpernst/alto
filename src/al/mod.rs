@@ -81,10 +81,6 @@ pub trait SourceTrait<'d> {
 	fn relative(&self) -> AltoResult<bool>;
 	fn set_relative(&mut self, bool) -> AltoResult<()>;
 
-	/// Whether this is a looping source.
-	fn looping(&self) -> AltoResult<bool>;
-	fn set_looping(&mut self, bool) -> AltoResult<()>;
-
 	/// Minimum gain that will be applied by the distance model.
 	fn min_gain(&self) -> AltoResult<f32>;
 	fn set_min_gain(&mut self, f32) -> AltoResult<()>;
@@ -738,19 +734,6 @@ impl<'d: 'c, 'c> SourceTrait<'d> for Source<'d, 'c> {
 	}
 
 
-	fn looping(&self) -> AltoResult<bool> {
-		let mut loop_ = 0;
-		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alGetSourcei()(self.src, sys::AL_LOOPING, &mut loop_); }
-		self.ctx.get_error().map(|_| loop_ == sys::AL_TRUE as sys::ALint)
-	}
-	fn set_looping(&mut self, loop_: bool) -> AltoResult<()> {
-		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcei()(self.src, sys::AL_LOOPING, if loop_ { sys::AL_TRUE } else { sys::AL_FALSE } as sys::ALint); }
-		self.ctx.get_error()
-	}
-
-
 	fn min_gain(&self) -> AltoResult<f32> {
 		let mut gain = 0.0;
 		let _lock = self.ctx.make_current(true)?;
@@ -1041,6 +1024,21 @@ impl<'d: 'c, 'c> StaticSource<'d, 'c> {
 		self.buf = buf;
 		Ok(())
 	}
+
+
+	pub fn looping(&self) -> AltoResult<bool> {
+		let mut loop_ = 0;
+		let _lock = self.src.ctx.make_current(true)?;
+		unsafe { self.src.ctx.api.owner().alGetSourcei()(self.src.src, sys::AL_LOOPING, &mut loop_); }
+		self.src.ctx.get_error().map(|_| loop_ == sys::AL_TRUE as sys::ALint)
+	}
+	pub fn set_looping(&mut self, loop_: bool) -> AltoResult<()> {
+		let _lock = self.src.ctx.make_current(true)?;
+		unsafe { self.src.ctx.api.owner().alSourcei()(self.src.src, sys::AL_LOOPING, if loop_ { sys::AL_TRUE } else { sys::AL_FALSE } as sys::ALint); }
+		self.src.ctx.get_error()
+	}
+
+
 }
 
 
@@ -1056,9 +1054,6 @@ impl<'d: 'c, 'c> SourceTrait<'d> for StaticSource<'d, 'c> {
 
 	fn relative(&self) -> AltoResult<bool> { self.src.relative() }
 	fn set_relative(&mut self, rel: bool) -> AltoResult<()> { self.src.set_relative(rel) }
-
-	fn looping(&self) -> AltoResult<bool> { self.src.looping() }
-	fn set_looping(&mut self, loop_: bool) -> AltoResult<()> { self.src.set_looping(loop_) }
 
 	fn min_gain(&self) -> AltoResult<f32> { self.src.min_gain() }
 	fn set_min_gain(&mut self, gain: f32) -> AltoResult<()> { self.src.set_min_gain(gain) }
@@ -1186,9 +1181,6 @@ impl<'d: 'c, 'c> SourceTrait<'d> for StreamingSource<'d, 'c> {
 
 	fn relative(&self) -> AltoResult<bool> { self.src.relative() }
 	fn set_relative(&mut self, rel: bool) -> AltoResult<()> { self.src.set_relative(rel) }
-
-	fn looping(&self) -> AltoResult<bool> { self.src.looping() }
-	fn set_looping(&mut self, loop_: bool) -> AltoResult<()> { self.src.set_looping(loop_) }
 
 	fn min_gain(&self) -> AltoResult<f32> { self.src.min_gain() }
 	fn set_min_gain(&mut self, gain: f32) -> AltoResult<()> { self.src.set_min_gain(gain) }

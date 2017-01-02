@@ -771,80 +771,93 @@ unsafe impl LoopbackFrame for Mc71Chn<f32>
 }
 
 
-impl<T: AsRef<[F]>, F: SampleFrame> AsBufferData<F> for T {
-	fn as_buffer_data(&self) -> &[F] { self.as_ref() }
-}
-
-
-impl<S> AsBufferData<Mono<S>> for [S] where
+impl<S, T> AsBufferData<Mono<S>> for T where
 	S: Copy,
+	T: AsRef<[S]>,
 	Mono<S>: SampleFrame,
 {
 	fn as_buffer_data(&self) -> &[Mono<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Mono::<S>::len()) }
+		let slice = self.as_ref();
+		unsafe { slice::from_raw_parts(slice.as_ptr() as *const _, slice.len() / Mono::<S>::len()) }
 	}
 }
-impl<S> AsBufferData<Stereo<S>> for [S] where
+impl<S, T> AsBufferData<Stereo<S>> for T where
 	S: Copy,
+	T: AsRef<[S]>,
 	Stereo<S>: SampleFrame,
 {
 	fn as_buffer_data(&self) -> &[Stereo<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Stereo::<S>::len()) }
+		let slice = self.as_ref();
+		unsafe { slice::from_raw_parts(slice.as_ptr() as *const _, slice.len() / Stereo::<S>::len()) }
 	}
 }
-impl<S> AsBufferData<McRear<S>> for [S] where
+impl<S, T> AsBufferData<McRear<S>> for T where
 	S: Copy,
+	T: AsRef<[S]>,
 	McRear<S>: SampleFrame,
 {
 	fn as_buffer_data(&self) -> &[McRear<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / McRear::<S>::len()) }
+		let slice = self.as_ref();
+		unsafe { slice::from_raw_parts(slice.as_ptr() as *const _, slice.len() / McRear::<S>::len()) }
 	}
 }
-impl<S> AsBufferData<McQuad<S>> for [S] where
+impl<S, T> AsBufferData<McQuad<S>> for T where
 	S: Copy,
+	T: AsRef<[S]>,
 	McQuad<S>: SampleFrame,
 {
 	fn as_buffer_data(&self) -> &[McQuad<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / McQuad::<S>::len()) }
+		let slice = self.as_ref();
+		unsafe { slice::from_raw_parts(slice.as_ptr() as *const _, slice.len() / McQuad::<S>::len()) }
 	}
 }
-impl<S> AsBufferData<Mc51Chn<S>> for [S] where
+impl<S, T> AsBufferData<Mc51Chn<S>> for T where
 	S: Copy,
+	T: AsRef<[S]>,
 	Mc51Chn<S>: SampleFrame,
 {
 	fn as_buffer_data(&self) -> &[Mc51Chn<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Mc51Chn::<S>::len()) }
+		let slice = self.as_ref();
+		unsafe { slice::from_raw_parts(slice.as_ptr() as *const _, slice.len() / Mc51Chn::<S>::len()) }
 	}
 }
-impl<S> AsBufferData<Mc61Chn<S>> for [S] where
+impl<S, T> AsBufferData<Mc61Chn<S>> for T where
 	S: Copy,
+	T: AsRef<[S]>,
 	Mc61Chn<S>: SampleFrame,
 {
 	fn as_buffer_data(&self) -> &[Mc61Chn<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Mc61Chn::<S>::len()) }
+		let slice = self.as_ref();
+		unsafe { slice::from_raw_parts(slice.as_ptr() as *const _, slice.len() / Mc61Chn::<S>::len()) }
 	}
 }
-impl<S> AsBufferData<Mc71Chn<S>> for [S] where
+impl<S, T> AsBufferData<Mc71Chn<S>> for T where
 	S: Copy,
+	T: AsRef<[S]>,
 	Mc71Chn<S>: SampleFrame,
 {
 	fn as_buffer_data(&self) -> &[Mc71Chn<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Mc71Chn::<S>::len()) }
+		let slice = self.as_ref();
+		unsafe { slice::from_raw_parts(slice.as_ptr() as *const _, slice.len() / Mc71Chn::<S>::len()) }
 	}
 }
-impl<S> AsBufferData<BFormat2D<S>> for [S] where
+impl<S, T> AsBufferData<BFormat2D<S>> for T where
 	S: Copy,
+	T: AsRef<[S]>,
 	BFormat2D<S>: SampleFrame,
 {
 	fn as_buffer_data(&self) -> &[BFormat2D<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / BFormat2D::<S>::len()) }
+		let slice = self.as_ref();
+		unsafe { slice::from_raw_parts(slice.as_ptr() as *const _, slice.len() / BFormat2D::<S>::len()) }
 	}
 }
-impl<S> AsBufferData<BFormat3D<S>> for [S] where
+impl<S, T> AsBufferData<BFormat3D<S>> for T where
 	S: Copy,
+	T: AsRef<[S]>,
 	BFormat3D<S>: SampleFrame,
 {
 	fn as_buffer_data(&self) -> &[BFormat3D<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / BFormat3D::<S>::len()) }
+		let slice = self.as_ref();
+		unsafe { slice::from_raw_parts(slice.as_ptr() as *const _, slice.len() / BFormat3D::<S>::len()) }
 	}
 }

@@ -405,11 +405,11 @@ impl<'a> Device<'a> {
 
 
 impl<'a> DeviceTrait for Device<'a> {
-	#[inline(always)]
+	#[inline]
 	fn alto(&self) -> &Alto { &self.alto }
-	#[inline(always)]
+	#[inline]
 	fn specifier(&self) -> &CStr { &self.spec }
-	#[inline(always)]
+	#[inline]
 	fn raw_device(&self) -> *mut sys::ALCdevice { self.dev }
 
 
@@ -580,13 +580,13 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 
 
 impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
-	#[inline(always)]
+	#[inline]
 	fn alto(&self) -> &Alto { &self.alto }
-	#[inline(always)]
+	#[inline]
 	fn specifier(&self) -> &CStr { &self.spec }
-	#[inline(always)]
+	#[inline]
 	fn raw_device(&self) -> *mut sys::ALCdevice { self.dev }
-	#[inline(always)]
+	#[inline]
 	fn connected(&self) -> AltoResult<bool> { Ok(true) }
 
 
@@ -661,13 +661,13 @@ unsafe impl<'a, F: LoopbackFrame> Sync for LoopbackDevice<'a, F> { }
 
 impl<'a> CaptureDevice<'a> {
 	/// Alto struct from which this device was opened.
-	#[inline(always)]
+	#[inline]
 	pub fn alto(&self) -> &Alto { &self.alto }
 	/// Specifier used to open this device.
-	#[inline(always)]
+	#[inline]
 	pub fn specifier(&self) -> &CStr { &self.spec }
 	/// Raw device handle as reported by OpenAL.
-	#[inline(always)]
+	#[inline]
 	pub fn raw_device(&self) -> *mut sys::ALCdevice { self.dev }
 }
 

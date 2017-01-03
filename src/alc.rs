@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::path::Path;
 use std::marker::PhantomData;
 use std::io::{self, Write};
+use std::mem;
 
 use ::{AltoError, AltoResult};
 use sys;
@@ -280,6 +281,7 @@ impl Alto {
 
 
 	/// Open a loopback device from a device specifier, or default if `None`.
+	/// Requires `ALC_SOFT_loopback`.
 	pub fn open_loopback<F: LoopbackFrame>(&self, spec: Option<&CStr>) -> AltoResult<LoopbackDevice<F>> {
 		self.api.rent(|exts| {
 			let sl = exts.ALC_SOFT_loopback()?;
@@ -564,6 +566,21 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 		let attrs_vec = self.make_attrs_vec(freq, attrs)?;
 		let ctx = unsafe { self.alto.api.owner().alcCreateContext()(self.dev, attrs_vec.as_slice().as_ptr()) };
 		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, &self.alto.ctx_lock, ctx) })
+	}
+
+
+	/// Render audio samples into a buffer.
+	/// Requires `ALC_SOFT_loopback`.
+	pub fn soft_render_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> AltoResult<()> {
+		let mut data = data.as_buffer_data_mut();
+		if sys::ALCsizei::max_value() as usize / mem::size_of::<F>() < data.len() { return Err(AltoError::AlInvalidValue) }
+
+		self.alto.api.rent(move|exts| {
+			let asl = exts.ALC_SOFT_loopback()?;
+
+			unsafe { asl.alcRenderSamplesSOFT?(self.dev, data.as_mut_ptr() as *mut _, data.len() as sys::ALCsizei); }
+			self.alto.get_error(self.dev)
+		})
 	}
 
 

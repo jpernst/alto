@@ -13,7 +13,7 @@ fn main() {
 
 	{
 		let mut buf = ctx.new_buffer().unwrap();
-		buf.set_data::<alto::Mono<i16>, Vec<_>>(SinWave::new(44_000 / 440, 0.25).render().take(44_000 / 440).collect(), 44_000).unwrap();
+		buf.set_data(SinWave::new(44_000 / 440, 0.25).render().take(44_000 / 440).collect::<Vec<_>>(), 44_000).unwrap();
 		let buf = Arc::new(buf);
 
 		let mut src = ctx.new_static_source().unwrap();
@@ -32,7 +32,7 @@ fn main() {
 		let mut src = ctx.new_streaming_source().unwrap();
 		for _ in 0 .. 5 {
 			let mut buf = ctx.new_buffer().unwrap();
-			buf.set_data::<alto::Mono<i16>, Vec<_>>(wave.render().take(44_000 / 10).collect(), 44_000).unwrap();
+			buf.set_data(wave.render().take(44_000 / 10).collect::<Vec<_>>(), 44_000).unwrap();
 			src.queue_buffer(buf).map_err(|e| e.0).unwrap();
 		}
 
@@ -43,7 +43,7 @@ fn main() {
 			while src.buffers_processed().unwrap() == 0 { }
 
 			let mut buf = src.unqueue_buffer().unwrap();
-			buf.set_data::<alto::Mono<i16>, Vec<_>>(wave.render().take(44_000 / 10).collect(), 44_000).unwrap();
+			buf.set_data(wave.render().take(44_000 / 10).collect::<Vec<_>>(), 44_000).unwrap();
 			src.queue_buffer(buf).map_err(|e| e.0).unwrap();
 		}
 
@@ -74,13 +74,13 @@ impl SinWave {
 
 
 impl<'w> Iterator for SinWaveRenderer<'w> {
-	type Item = i16;
+	type Item = Mono<i16>;
 
-	fn next(&mut self) -> Option<i16> {
+	fn next(&mut self) -> Option<Mono<i16>> {
 		let cursor = self.0.cursor;
 		self.0.cursor += 1;
 		if self.0.cursor == self.0.len { self.0.cursor = 0 }
 
-		Some(((cursor as f32 / self.0.len as f32 * 2.0 * std::f32::consts::PI).sin() * self.0.vol * std::i16::MAX as f32) as i16)
+		Some(Mono{center: ((cursor as f32 / self.0.len as f32 * 2.0 * std::f32::consts::PI).sin() * self.0.vol * std::i16::MAX as f32) as i16})
 	}
 }

@@ -154,10 +154,11 @@ pub struct LoopbackDevice<'a, F: LoopbackFrame> {
 
 /// A capture device from which audio data can be sampled.
 /// This is tyically an audio input as reported by the operating system.
-pub struct CaptureDevice<'a> {
+pub struct CaptureDevice<'a, F: StandardFrame> {
 	alto: &'a Alto,
 	spec: CString,
 	dev: *mut sys::ALCdevice,
+	marker: PhantomData<F>,
 }
 
 
@@ -311,20 +312,20 @@ impl Alto {
 
 
 	/// Open a capture device from a device specifier, or default if `None`.
-	pub fn open_capture<'s, S: Into<Option<&'s CStr>>>(&self, spec: S, freq: sys::ALCuint, format: StandardFormat, size: sys::ALCsizei) -> AltoResult<CaptureDevice> {
+	pub fn open_capture<'s, S: Into<Option<&'s CStr>>, F: StandardFrame>(&self, spec: S, freq: sys::ALCuint, len: sys::ALCsizei) -> AltoResult<CaptureDevice<F>> {
 		let spec = if let Some(spec) = spec.into() {
 			spec.to_owned()
 		} else {
 			self.default_output()?
 		};
 
-		let dev = unsafe { self.api.owner().alcCaptureOpenDevice()(spec.as_ptr(), freq, format.into_raw(), size) };
+		let dev = unsafe { self.api.owner().alcCaptureOpenDevice()(spec.as_ptr(), freq, F::format().into_raw(None)?, len) };
 		self.get_error(ptr::null_mut())?;
 
 		if dev == ptr::null_mut() {
 			Err(AltoError::AlcInvalidDevice)
 		} else {
-			Ok(CaptureDevice{alto: self, spec: spec, dev: dev})
+			Ok(CaptureDevice{alto: self, spec: spec, dev: dev, marker: PhantomData})
 		}
 	}
 
@@ -573,7 +574,7 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 	/// Requires `ALC_SOFT_loopback`.
 	pub fn soft_render_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> AltoResult<()> {
 		let mut data = data.as_buffer_data_mut();
-		if sys::ALCsizei::max_value() as usize / mem::size_of::<F>() < data.len() { return Err(AltoError::AlInvalidValue) }
+		if sys::ALCsizei::max_value() as usize / mem::size_of::<F>() < data.len() { return Err(AltoError::AlcInvalidValue) }
 
 		self.alto.api.rent(move|exts| {
 			let asl = exts.ALC_SOFT_loopback()?;
@@ -676,7 +677,7 @@ unsafe impl<'a, F: LoopbackFrame> Send for LoopbackDevice<'a, F> { }
 unsafe impl<'a, F: LoopbackFrame> Sync for LoopbackDevice<'a, F> { }
 
 
-impl<'a> CaptureDevice<'a> {
+impl<'a, F: StandardFrame> CaptureDevice<'a, F> {
 	/// Alto struct from which this device was opened.
 	#[inline]
 	pub fn alto(&self) -> &Alto { &self.alto }
@@ -686,15 +687,47 @@ impl<'a> CaptureDevice<'a> {
 	/// Raw device handle as reported by OpenAL.
 	#[inline]
 	pub fn raw_device(&self) -> *mut sys::ALCdevice { self.dev }
+
+
+	/// Start capturing samples
+	pub fn start(&mut self) -> AltoResult<()> {
+		unsafe { self.alto.api.owner().alcCaptureStart()(self.dev); }
+		self.alto.get_error(self.dev)
+	}
+
+
+	/// Stop capturing samples
+	pub fn stop(&mut self) -> AltoResult<()> {
+		unsafe { self.alto.api.owner().alcCaptureStop()(self.dev); }
+		self.alto.get_error(self.dev)
+	}
+
+
+	/// Number of pending samples
+	pub fn samples_len(&self) -> AltoResult<sys::ALCint> {
+		let mut samples = 0;
+		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, sys::ALC_CAPTURE_SAMPLES, 1, &mut samples); }
+		self.alto.get_error(self.dev).map(|_| samples)
+	}
+
+
+	/// Extract pending samples from the capture buffer
+	pub fn capture_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> AltoResult<()> {
+		let mut data = data.as_buffer_data_mut();
+		if data.len() > self.samples_len()? as usize { return Err(AltoError::AlcInvalidValue) }
+
+		unsafe { self.alto.api.owner().alcCaptureSamples()(self.dev, data.as_mut_ptr() as *mut _, data.len() as sys::ALCsizei); }
+		self.alto.get_error(self.dev)
+	}
 }
 
 
-impl<'a> PartialEq for CaptureDevice<'a> {
-	fn eq(&self, other: &CaptureDevice<'a>) -> bool {
+impl<'a, F: StandardFrame> PartialEq for CaptureDevice<'a, F> {
+	fn eq(&self, other: &CaptureDevice<'a, F>) -> bool {
 		self.dev == other.dev
 	}
 }
-impl<'a> Eq for CaptureDevice<'a> { }
+impl<'a, F: StandardFrame> Eq for CaptureDevice<'a, F> { }
 
 
-unsafe impl<'a> Send for CaptureDevice<'a> { }
+unsafe impl<'a, F: StandardFrame> Send for CaptureDevice<'a, F> { }

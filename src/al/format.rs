@@ -152,6 +152,10 @@ pub unsafe trait SampleFrame: Copy {
 }
 
 
+/// Implemented for sample frames specified by the base standard.
+pub unsafe trait StandardFrame: SampleFrame { }
+
+
 pub trait AsBufferData<F: SampleFrame> {
 	fn as_buffer_data(&self) -> &[F];
 }
@@ -673,6 +677,12 @@ unsafe impl SampleFrame for BFormat3D<MuLawSample> {
 	#[inline(always)] fn len() -> usize { 4 }
 	#[inline(always)] fn format() -> Format { Format::ExtMuLawBFormat(ExtMuLawBFormat::B3D) }
 }
+
+
+unsafe impl StandardFrame for Mono<u8> { }
+unsafe impl StandardFrame for Mono<i16> { }
+unsafe impl StandardFrame for Stereo<u8> { }
+unsafe impl StandardFrame for Stereo<i16> { }
 
 
 unsafe impl LoopbackFrame for Mono<u8>

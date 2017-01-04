@@ -1014,7 +1014,9 @@ impl<'d: 'c, 'c> StaticSource<'d, 'c> {
 
 
 	/// Associate a shared buffer with the source.
-	pub fn set_buffer(&mut self, buf: Option<Arc<Buffer<'d, 'c>>>) -> AltoResult<()> {
+	pub fn set_buffer<B: Into<Option<Arc<Buffer<'d, 'c>>>>>(&mut self, buf: B) -> AltoResult<()> {
+		let buf = buf.into();
+
 		{
 			let _lock = self.src.ctx.make_current(true)?;
 			unsafe { self.src.ctx.api.owner().alSourcei()(self.src.src, sys::AL_BUFFER, if let Some(ref buf) = buf { buf.buf as sys::ALint } else { 0 }); }

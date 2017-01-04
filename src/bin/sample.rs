@@ -17,7 +17,7 @@ fn main() {
 		let buf = Arc::new(buf);
 
 		let mut src = ctx.new_static_source().unwrap();
-		src.set_buffer(Some(buf)).unwrap();
+		src.set_buffer(buf).unwrap();
 		src.set_looping(true).unwrap();
 
 		println!("Playing static 440hz sine wave...");

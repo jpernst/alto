@@ -256,8 +256,8 @@ impl Alto {
 
 
 	/// Open an audio device from a device specifier, or default if `None`.
-	pub fn open(&self, spec: Option<&CStr>) -> AltoResult<Device> {
-		let spec = if let Some(spec) = spec {
+	pub fn open<'s, S: Into<Option<&'s CStr>>>(&self, spec: S) -> AltoResult<Device> {
+		let spec = if let Some(spec) = spec.into() {
 			spec.to_owned()
 		} else {
 			self.default_output()?
@@ -282,11 +282,11 @@ impl Alto {
 
 	/// Open a loopback device from a device specifier, or default if `None`.
 	/// Requires `ALC_SOFT_loopback`.
-	pub fn open_loopback<F: LoopbackFrame>(&self, spec: Option<&CStr>) -> AltoResult<LoopbackDevice<F>> {
+	pub fn open_loopback<'s, S: Into<Option<&'s CStr>>, F: LoopbackFrame>(&self, spec: S) -> AltoResult<LoopbackDevice<F>> {
 		self.api.rent(|exts| {
 			let sl = exts.ALC_SOFT_loopback()?;
 
-			let spec = if let Some(spec) = spec {
+			let spec = if let Some(spec) = spec.into() {
 				spec.to_owned()
 			} else {
 				self.default_output()?
@@ -311,8 +311,8 @@ impl Alto {
 
 
 	/// Open a capture device from a device specifier, or default if `None`.
-	pub fn open_capture(&self, spec: Option<&CStr>, freq: sys::ALCuint, format: StandardFormat, size: sys::ALCsizei) -> AltoResult<CaptureDevice> {
-		let spec = if let Some(spec) = spec {
+	pub fn open_capture<'s, S: Into<Option<&'s CStr>>>(&self, spec: S, freq: sys::ALCuint, format: StandardFormat, size: sys::ALCsizei) -> AltoResult<CaptureDevice> {
+		let spec = if let Some(spec) = spec.into() {
 			spec.to_owned()
 		} else {
 			self.default_output()?
@@ -380,8 +380,8 @@ impl<'a> Device<'a> {
 
 
 	/// Create a new context from this device.
-	pub fn new_context(&self, attrs: Option<ContextAttrs>) -> AltoResult<Context> {
-		let attrs_vec = self.make_attrs_vec(attrs);
+	pub fn new_context<A: Into<Option<ContextAttrs>>>(&self, attrs: A) -> AltoResult<Context> {
+		let attrs_vec = self.make_attrs_vec(attrs.into());
 
 		let ctx = unsafe { self.alto.api.owner().alcCreateContext()(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
 		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, &self.alto.ctx_lock, ctx) })
@@ -397,9 +397,9 @@ impl<'a> Device<'a> {
 
 	/// Attempt to reset the device with new attributes.
 	/// Requires the `ALC_SOFT_HRTF`.
-	pub fn soft_reset(&self, attrs: Option<ContextAttrs>) -> AltoResult<()> {
+	pub fn soft_reset<A: Into<Option<ContextAttrs>>>(&self, attrs: A) -> AltoResult<()> {
 		let ards = self.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
-		let attrs_vec = self.make_attrs_vec(attrs);
+		let attrs_vec = self.make_attrs_vec(attrs.into());
 		unsafe { ards(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
 		self.alto.get_error(self.dev)
 	}
@@ -530,7 +530,7 @@ impl<'a: 'd, 'd> Drop for SoftPauseLock<'a, 'd> {
 
 
 impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
-	fn make_attrs_vec(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AltoResult<Vec<sys::ALCint>> {
+	fn make_attrs_vec<A: Into<Option<LoopbackAttrs>>>(&self, freq: sys::ALCint, attrs: A) -> AltoResult<Vec<sys::ALCint>> {
 		self.alto.api.rent(move|exts| {
 			let asl = exts.ALC_SOFT_loopback()?;
 
@@ -538,7 +538,7 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 			attrs_vec.extend(&[sys::ALC_FREQUENCY, freq]);
 			attrs_vec.extend(&[asl.ALC_FORMAT_CHANNELS_SOFT?, F::channels(&asl)?]);
 			attrs_vec.extend(&[asl.ALC_FORMAT_TYPE_SOFT?, F::sample_ty(&asl)?]);
-			if let Some(attrs) = attrs {
+			if let Some(attrs) = attrs.into() {
 				if let Some(mono) = attrs.mono_sources {
 					attrs_vec.extend(&[sys::ALC_MONO_SOURCES, mono]);
 				}
@@ -562,8 +562,8 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 
 
 	/// Create a new context from this device.
-	pub fn new_context(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AltoResult<Context> {
-		let attrs_vec = self.make_attrs_vec(freq, attrs)?;
+	pub fn new_context<A: Into<Option<LoopbackAttrs>>>(&self, freq: sys::ALCint, attrs: A) -> AltoResult<Context> {
+		let attrs_vec = self.make_attrs_vec(freq, attrs.into())?;
 		let ctx = unsafe { self.alto.api.owner().alcCreateContext()(self.dev, attrs_vec.as_slice().as_ptr()) };
 		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, &self.alto.ctx_lock, ctx) })
 	}
@@ -586,10 +586,10 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 
 	/// Attempt to reset the device with new attributes.
 	/// Requires the `ALC_SOFT_HRTF`.
-	pub fn soft_reset(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AltoResult<()> {
+	pub fn soft_reset<A: Into<Option<LoopbackAttrs>>>(&self, freq: sys::ALCint, attrs: A) -> AltoResult<()> {
 		let ards = self.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
 
-		let attrs_vec = self.make_attrs_vec(freq, attrs);
+		let attrs_vec = self.make_attrs_vec(freq, attrs.into());
 		unsafe { ards(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
 		self.alto.get_error(self.dev)
 	}

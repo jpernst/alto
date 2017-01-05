@@ -689,21 +689,21 @@ impl<'a, F: StandardFrame> CaptureDevice<'a, F> {
 	pub fn raw_device(&self) -> *mut sys::ALCdevice { self.dev }
 
 
-	/// Start capturing samples
+	/// Start capturing samples.
 	pub fn start(&mut self) -> AltoResult<()> {
 		unsafe { self.alto.api.owner().alcCaptureStart()(self.dev); }
 		self.alto.get_error(self.dev)
 	}
 
 
-	/// Stop capturing samples
+	/// Stop capturing samples.
 	pub fn stop(&mut self) -> AltoResult<()> {
 		unsafe { self.alto.api.owner().alcCaptureStop()(self.dev); }
 		self.alto.get_error(self.dev)
 	}
 
 
-	/// Number of pending samples
+	/// Number of pending samples.
 	pub fn samples_len(&self) -> AltoResult<sys::ALCint> {
 		let mut samples = 0;
 		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, sys::ALC_CAPTURE_SAMPLES, 1, &mut samples); }
@@ -711,7 +711,7 @@ impl<'a, F: StandardFrame> CaptureDevice<'a, F> {
 	}
 
 
-	/// Extract pending samples from the capture buffer
+	/// Extract pending samples from the capture buffer.
 	pub fn capture_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> AltoResult<()> {
 		let mut data = data.as_buffer_data_mut();
 		if data.len() > self.samples_len()? as usize { return Err(AltoError::AlcInvalidValue) }

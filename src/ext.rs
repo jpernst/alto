@@ -1,5 +1,6 @@
 use std::mem;
 use std::sync::RwLock;
+use std::ptr;
 
 use rental::{self, RentRwLock};
 use sys::*;
@@ -71,15 +72,21 @@ macro_rules! alc_ext {
 					Ok($ext{
 						$($const_: {
 							let e = unsafe { api.alcGetEnumValue()(dev, concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALCchar) };
-							if unsafe { api.alcGetError()(dev) } == ALC_NO_ERROR {
+							if e != 0 && unsafe { api.alcGetError()(dev) } == ALC_NO_ERROR {
 								Ok(e)
 							} else {
-								Err(AlcExtensionError)
+								// Workaround for missing symbols in OpenAL-Soft
+								match stringify!($const_) {
+									"AL_EFFECTSLOT_EFFECT" => Ok(1),
+									"AL_EFFECTSLOT_GAIN" => Ok(2),
+									"AL_EFFECTSLOT_AUXILIARY_SEND_AUTO" => Ok(3),
+									_ => Err(AlcExtensionError),
+								}
 							}
 						},)*
 						$($fn_: {
 							let p = unsafe { api.alcGetProcAddress()(dev, concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALCchar) };
-							if unsafe { api.alcGetError()(dev) } == ALC_NO_ERROR {
+							if p != ptr::null_mut() && unsafe { api.alcGetError()(dev) } == ALC_NO_ERROR {
 								Ok(unsafe { mem::transmute(p) })
 							} else {
 								Err(AlcExtensionError)
@@ -158,7 +165,7 @@ macro_rules! al_ext {
 					Ok($ext{
 						$($const_: {
 							let e = unsafe { api.alGetEnumValue()(concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALchar) };
-							if unsafe { api.alGetError()() } == AL_NO_ERROR {
+							if e != 0 && unsafe { api.alGetError()() } == AL_NO_ERROR {
 								Ok(e)
 							} else {
 								Err(AlExtensionError)
@@ -166,7 +173,7 @@ macro_rules! al_ext {
 						},)*
 						$($fn_: {
 							let p = unsafe { api.alGetProcAddress()(concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALchar) };
-							if unsafe { api.alGetError()() } == AL_NO_ERROR {
+							if p != ptr::null_mut() && unsafe { api.alGetError()() } == AL_NO_ERROR {
 								Ok(unsafe { mem::transmute(p) })
 							} else {
 								Err(AlExtensionError)
@@ -295,7 +302,149 @@ alc_ext! {
 
 
 	pub ext ALC_EXT_EFX {
-		// TODO
+		pub const AL_EFFECTSLOT_EFFECT,
+		pub const AL_EFFECTSLOT_GAIN,
+		pub const AL_EFFECTSLOT_AUXILIARY_SEND_AUTO,
+
+		pub const AL_EFFECT_TYPE,
+		pub const AL_EFFECT_REVERB,
+		pub const AL_REVERB_DENSITY,
+		pub const AL_REVERB_DIFFUSION,
+		pub const AL_REVERB_GAIN,
+		pub const AL_REVERB_GAINHF,
+		pub const AL_REVERB_DECAY_TIME,
+		pub const AL_REVERB_DECAY_HFRATIO,
+		pub const AL_REVERB_REFLECTIONS_GAIN,
+		pub const AL_REVERB_REFLECTIONS_DELAY,
+		pub const AL_REVERB_LATE_REVERB_GAIN,
+		pub const AL_REVERB_LATE_REVERB_DELAY,
+		pub const AL_REVERB_AIR_ABSORPTION_GAINHF,
+		pub const AL_REVERB_ROOM_ROLLOFF_FACTOR,
+		pub const AL_REVERB_DECAY_HFLIMIT,
+		pub const AL_EFFECT_CHORUS,
+		pub const AL_CHORUS_PHASE,
+		pub const AL_CHORUS_RATE,
+		pub const AL_CHORUS_DEPTH,
+		pub const AL_CHORUS_FEEDBACK,
+		pub const AL_CHORUS_DELAY,
+		pub const AL_EFFECT_DISTORTION,
+		pub const AL_DISTORTION_EDGE,
+		pub const AL_DISTORTION_GAIN,
+		pub const AL_DISTORTION_LOWPASS_CUTOFF,
+		pub const AL_DISTORTION_EQCENTER,
+		pub const AL_DISTORTION_EQBANDWIDTH,
+		pub const AL_EFFECT_ECHO,
+		pub const AL_ECHO_DELAY,
+		pub const AL_ECHO_LRDELAY,
+		pub const AL_ECHO_DAMPING,
+		pub const AL_ECHO_FEEDBACK,
+		pub const AL_ECHO_SPREAD,
+		pub const AL_EFFECT_FLANGER,
+		pub const AL_FLANGER_WAVEFORM,
+		pub const AL_FLANGER_PHASE,
+		pub const AL_FLANGER_RATE,
+		pub const AL_FLANGER_DEPTH,
+		pub const AL_FLANGER_FEEDBACK,
+		pub const AL_FLANGER_DELAY,
+		pub const AL_EFFECT_FREQUENCY_SHIFTER,
+		pub const AL_FREQUENCY_SHIFTER_FREQUENCY,
+		pub const AL_FREQUENCY_SHIFTER_LEFT_DIRECTION,
+		pub const AL_FREQUENCY_SHIFTER_RIGHT_DIRECTION,
+		pub const AL_EFFECT_VOCAL_MORPHER,
+		pub const AL_VOCAL_MORPHER_PHONEMEA,
+		pub const AL_VOCAL_MORPHER_PHONEMEB,
+		pub const AL_VOCAL_MORPHER_PHONEMEA_COARSE_TUNING,
+		pub const AL_VOCAL_MORPHER_PHONEMEB_COARSE_TUNING,
+		pub const AL_VOCAL_MORPHER_WAVEFORM,
+		pub const AL_VOCAL_MORPHER_RATE,
+		pub const AL_EFFECT_PITCH_SHIFTER,
+		pub const AL_PITCH_SHIFTER_COARSE_TUNE,
+		pub const AL_PITCH_SHIFTER_FINE_TUNE,
+		pub const AL_EFFECT_RING_MODULATOR,
+		pub const AL_RING_MODULATOR_FREQUENCY,
+		pub const AL_RING_MODULATOR_HIGHPASS_CUTOFF,
+		pub const AL_RING_MODULATOR_WAVEFORM,
+		pub const AL_EFFECT_AUTOWAH,
+		pub const AL_AUTOWAH_ATTACK_TIME,
+		pub const AL_AUTOWAH_RELEASE_TIME,
+		pub const AL_AUTOWAH_PEAK_GAIN,
+		pub const AL_EFFECT_COMPRESSOR,
+		pub const AL_COMPRESSOR_ONOFF,
+		pub const AL_EFFECT_EQUALIZER,
+		pub const AL_EQUALIZER_LOW_GAIN,
+		pub const AL_EQUALIZER_LOW_CUTOFF,
+		pub const AL_EQUALIZER_MID1_GAIN,
+		pub const AL_EQUALIZER_MID1_CENTER,
+		pub const AL_EQUALIZER_MID1_WIDTH,
+		pub const AL_EQUALIZER_MID2_GAIN,
+		pub const AL_EQUALIZER_MID2_CENTER,
+		pub const AL_EQUALIZER_MID2_WIDTH,
+		pub const AL_EQUALIZER_HIGH_GAIN,
+		pub const AL_EQUALIZER_HIGH_CUTOFF,
+
+		pub const AL_FILTER_TYPE,
+		pub const AL_FILTER_LOWPASS,
+		pub const AL_LOWPASS_GAIN,
+		pub const AL_LOWPASS_GAINHF,
+		pub const AL_FILTER_HIGHPASS,
+		pub const AL_HIGHPASS_GAIN,
+		pub const AL_HIGHPASS_GAINLF,
+		pub const AL_FILTER_BANDPASS,
+		pub const AL_BANDPASS_GAIN,
+		pub const AL_BANDPASS_GAINLF,
+		pub const AL_BANDPASS_GAINHF,
+
+		pub const AL_DIRECT_FILTER,
+		pub const AL_AUXILIARY_SEND_FILTER,
+		pub const AL_AIR_ABSORPTION_FACTOR,
+		pub const AL_ROOM_ROLLOFF_FACTOR,
+		pub const AL_CONE_OUTER_GAINHF,
+		pub const AL_DIRECT_FILTER_GAINHF_AUTO,
+		pub const AL_AUXILIARY_SEND_FILTER_GAIN_AUTO,
+		pub const AL_AUXILIARY_SEND_FILTER_GAINHF_AUTO,
+
+		pub const AL_METERS_PER_UNIT,
+
+		pub const ALC_EFX_MAJOR_VERSION,
+		pub const ALC_EFX_MINOR_VERSION,
+		pub const ALC_MAX_AUXILIARY_SENDS,
+
+
+		pub fn alGenAuxiliaryEffectSlots: unsafe extern "C" fn(n: ALsizei, auxiliaryeffectslots: *mut ALuint),
+		pub fn alDeleteAuxiliaryEffectSlots: unsafe extern "C" fn(n: ALsizei, auxiliaryeffectslots: *mut ALuint),
+		pub fn alIsAuxiliaryEffectSlot: unsafe extern "C" fn(auxiliaryeffectslot: ALuint),
+		pub fn alAuxiliaryEffectSloti: unsafe extern "C" fn(auxiliaryeffectslot: ALuint, param: ALenum, iValue: ALint),
+		pub fn alAuxiliaryEffectSlotiv: unsafe extern "C" fn(auxiliaryeffectslot: ALuint, param: ALenum, piValues: *mut ALint),
+		pub fn alAuxiliaryEffectSlotf: unsafe extern "C" fn(auxiliaryeffectslot: ALuint, param: ALenum, flValue: ALfloat),
+		pub fn alAuxiliaryEffectSlotfv: unsafe extern "C" fn(auxiliaryeffectslot: ALuint, param: ALenum, pflValues: *mut ALfloat),
+		pub fn alGetAuxiliaryEffectSloti: unsafe extern "C" fn(auxiliaryeffectslot: ALuint, param: ALenum, piValue: *mut ALint),
+		pub fn alGetAuxiliaryEffectSlotiv: unsafe extern "C" fn(auxiliaryeffectslot: ALuint, param: ALenum, piValues: *mut ALint),
+		pub fn alGetAuxiliaryEffectSlotf: unsafe extern "C" fn(auxiliaryeffectslot: ALuint, param: ALenum, pflValue: *mut ALfloat),
+		pub fn alGetAuxiliaryEffectSlotfv: unsafe extern "C" fn(auxiliaryeffectslot: ALuint, param: ALenum, pflValues: *mut ALfloat),
+
+		pub fn alGenEffects: unsafe extern "C" fn(n: ALsizei, effects: *mut ALuint),
+		pub fn alDeleteEffects: unsafe extern "C" fn(n: ALsizei, effects: *mut ALuint),
+		pub fn alIsEffect: unsafe extern "C" fn(effect: ALuint),
+		pub fn alEffecti: unsafe extern "C" fn(effect: ALuint, param: ALenum, iValue: ALint),
+		pub fn alEffectiv: unsafe extern "C" fn(effect: ALuint, param: ALenum, piValues: *mut ALint),
+		pub fn alEffectf: unsafe extern "C" fn(effect: ALuint, param: ALenum, flValue: ALfloat),
+		pub fn alEffectfv: unsafe extern "C" fn(effect: ALuint, param: ALenum, pflValues: *mut ALfloat),
+		pub fn alGetEffecti: unsafe extern "C" fn(effect: ALuint, param: ALenum, piValue: *mut ALint),
+		pub fn alGetEffectiv: unsafe extern "C" fn(effect: ALuint, param: ALenum, piValues: *mut ALint),
+		pub fn alGetEffectf: unsafe extern "C" fn(effect: ALuint, param: ALenum, pflValue: *mut ALfloat),
+		pub fn alGetEffectfv: unsafe extern "C" fn(effect: ALuint, param: ALenum, pflValues: *mut ALfloat),
+
+		pub fn alGenFilters: unsafe extern "C" fn(n: ALsizei, filters: *mut ALuint),
+		pub fn alDeleteFilters: unsafe extern "C" fn(n: ALsizei, filters: *mut ALuint),
+		pub fn alIsFilter: unsafe extern "C" fn(filter: ALuint),
+		pub fn alFilteri: unsafe extern "C" fn(filter: ALuint, param: ALenum, iValue: ALint),
+		pub fn alFilteriv: unsafe extern "C" fn(filter: ALuint, param: ALenum, piValues: *mut ALint),
+		pub fn alFilterf: unsafe extern "C" fn(filter: ALuint, param: ALenum, flValue: ALfloat),
+		pub fn alFilterfv: unsafe extern "C" fn(filter: ALuint, param: ALenum, pflValues: *mut ALfloat),
+		pub fn alGetFilteri: unsafe extern "C" fn(filter: ALuint, param: ALenum, piValue: *mut ALint),
+		pub fn alGetFilteriv: unsafe extern "C" fn(filter: ALuint, param: ALenum, piValues: *mut ALint),
+		pub fn alGetFilterf: unsafe extern "C" fn(filter: ALuint, param: ALenum, pflValue: *mut ALfloat),
+		pub fn alGetFilterfv: unsafe extern "C" fn(filter: ALuint, param: ALenum, pflValues: *mut ALfloat),
 	}
 
 

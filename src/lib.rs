@@ -16,6 +16,8 @@
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
+extern crate enum_primitive;
+#[macro_use]
 extern crate rental;
 extern crate al_sys;
 
@@ -33,6 +35,10 @@ pub use al::*;
 
 
 pub mod ext;
+
+
+mod efx;
+pub use efx::*;
 
 
 pub mod sys {

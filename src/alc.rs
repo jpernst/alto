@@ -100,15 +100,17 @@ pub struct Alto {
 
 
 /// Common capabilities expoed by both real and loopback devices.
-pub trait DeviceTrait {
+pub unsafe trait DeviceTrait {
 	/// Alto instance from which this device was opened.
 	fn alto(&self) -> &Alto;
 	/// Specifier string used to open this device.
 	fn specifier(&self) -> &CStr;
 	/// Raw handle as exposed by OpenAL.
-	fn raw_device(&self) -> *mut sys::ALCdevice;
+	fn as_raw(&self) -> *mut sys::ALCdevice;
 	/// Query the presence of an ALC extension.
 	fn is_extension_present(&self, ext::Alc) -> bool;
+	#[doc(hidden)]
+	fn extensions(&self) -> &ext::AlcCache;
 	/// Polls the connection state.
 	/// If this ever returns false, then the device must be closed and reopened; it will not become true again.
 	fn connected(&self) -> AltoResult<bool>;
@@ -342,7 +344,7 @@ impl Alto {
 
 impl<'a> PartialEq for (DeviceTrait + 'a) {
 	fn eq(&self, other: &(DeviceTrait + 'a)) -> bool {
-		self.raw_device() == other.raw_device()
+		self.as_raw() == other.as_raw()
 	}
 }
 impl Eq for DeviceTrait { }
@@ -407,13 +409,13 @@ impl<'a> Device<'a> {
 }
 
 
-impl<'a> DeviceTrait for Device<'a> {
+unsafe impl<'a> DeviceTrait for Device<'a> {
 	#[inline]
 	fn alto(&self) -> &Alto { &self.alto }
 	#[inline]
 	fn specifier(&self) -> &CStr { &self.spec }
 	#[inline]
-	fn raw_device(&self) -> *mut sys::ALCdevice { self.dev }
+	fn as_raw(&self) -> *mut sys::ALCdevice { self.dev }
 
 
 	fn is_extension_present(&self, ext: ext::Alc) -> bool {
@@ -425,6 +427,9 @@ impl<'a> DeviceTrait for Device<'a> {
 			ext::Alc::SoftPauseDevice => self.exts.ALC_SOFT_pause_device().is_ok(),
 		}
 	}
+
+
+	fn extensions(&self) -> &ext::AlcCache { &self.exts }
 
 
 	fn connected(&self) -> AltoResult<bool> {
@@ -597,13 +602,13 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 }
 
 
-impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
+unsafe impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
 	#[inline]
 	fn alto(&self) -> &Alto { &self.alto }
 	#[inline]
 	fn specifier(&self) -> &CStr { &self.spec }
 	#[inline]
-	fn raw_device(&self) -> *mut sys::ALCdevice { self.dev }
+	fn as_raw(&self) -> *mut sys::ALCdevice { self.dev }
 	#[inline]
 	fn connected(&self) -> AltoResult<bool> { Ok(true) }
 
@@ -617,6 +622,9 @@ impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
 			ext::Alc::SoftPauseDevice => self.exts.ALC_SOFT_pause_device().is_ok(),
 		}
 	}
+
+
+	fn extensions(&self) -> &ext::AlcCache { &self.exts }
 
 
 	fn enumerate_soft_hrtfs(&self) -> AltoResult<Vec<CString>> {
@@ -686,7 +694,7 @@ impl<'a, F: StandardFrame> CaptureDevice<'a, F> {
 	pub fn specifier(&self) -> &CStr { &self.spec }
 	/// Raw device handle as reported by OpenAL.
 	#[inline]
-	pub fn raw_device(&self) -> *mut sys::ALCdevice { self.dev }
+	pub fn as_raw(&self) -> *mut sys::ALCdevice { self.dev }
 
 
 	/// Start capturing samples.

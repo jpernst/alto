@@ -1,7 +1,7 @@
 [package]
 name = "alto"
 description = "Idiomatic interface for OpenAL 1.1 and extensions (EFX support is WIP)"
-version = "0.2.4"
+version = "0.3.0"
 authors = ["jpernst"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/jpernst/alto.git"
@@ -11,5 +11,6 @@ keywords = ["openal", "al", "sound", "audio"]
 [dependencies]
 rental = "0.3.2"
 lazy_static = "0.2.1"
+enum_primitive = "0.1.0"
 al-sys = "0.3.1"
 

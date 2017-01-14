@@ -15,6 +15,7 @@ use ext;
 
 
 /// Attributes that may be supplied during context creation.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Default, Debug)]
 pub struct ContextAttrs {
 	/// Output sampling rate of the audio.
 	pub frequency: Option<sys::ALCint>,
@@ -29,10 +30,13 @@ pub struct ContextAttrs {
 	/// The ID of the HRTF specifier to be used.
 	/// This should be the index of a specifier as retrieved from [`enumerate_soft_hrtfs`](trait.DeviceTrait.html#tymethod.enumerate_soft_hrtfs).
 	pub soft_hrtf_id: Option<sys::ALCint>,
+	/// Hint for the maximum number of auxiliary sends that will be used on any source.
+	pub max_auxiliary_sends: Option<sys::ALCint>,
 }
 
 
 /// Attributes that may be supplied during context creation from a loopback device.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Default, Debug)]
 pub struct LoopbackAttrs {
 	/// Hint for number of mono sources that will be created.
 	pub mono_sources: Option<sys::ALCint>,
@@ -42,6 +46,8 @@ pub struct LoopbackAttrs {
 	pub soft_hrtf: Option<bool>,
 	/// The ID of the HRTF specifier to be used.
 	pub soft_hrtf_id: Option<sys::ALCint>,
+	/// Hint for the maximum number of auxiliary sends that will be used on any source.
+	pub max_auxiliary_sends: Option<sys::ALCint>,
 }
 
 
@@ -118,6 +124,8 @@ pub unsafe trait DeviceTrait {
 	fn enumerate_soft_hrtfs(&self) -> AltoResult<Vec<CString>>;
 	/// Current HRTF mode.
 	fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus>;
+	/// Maximum number of auxiliary sends that can be hooked up from a source.
+	fn max_auxiliary_sends(&self) -> AltoResult<sys::ALCint>;
 }
 
 
@@ -352,7 +360,7 @@ impl Eq for DeviceTrait { }
 
 impl<'a> Device<'a> {
 	fn make_attrs_vec(&self, attrs: Option<ContextAttrs>) -> AltoResult<Vec<sys::ALCint>> {
-		let mut attrs_vec = Vec::with_capacity(13);
+		let mut attrs_vec = Vec::with_capacity(15);
 		if let Some(attrs) = attrs {
 			if let Some(freq) = attrs.frequency {
 				attrs_vec.extend(&[sys::ALC_FREQUENCY, freq]);
@@ -373,6 +381,12 @@ impl<'a> Device<'a> {
 				}
 				if let Some(hrtf_id) = attrs.soft_hrtf_id {
 					attrs_vec.extend(&[ash.ALC_HRTF_ID_SOFT?, hrtf_id]);
+				}
+			}
+
+			if let Ok(efx) = self.exts.ALC_EXT_EFX() {
+				if let Some(max_sends) = attrs.max_auxiliary_sends {
+					attrs_vec.extend(&[efx.ALC_MAX_AUXILIARY_SENDS?, max_sends]);
 				}
 			}
 
@@ -433,21 +447,21 @@ unsafe impl<'a> DeviceTrait for Device<'a> {
 
 
 	fn connected(&self) -> AltoResult<bool> {
-		let mut connected = 0;
-		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_DISCONNECT()?.ALC_CONNECTED?, 1, &mut connected); }
-		self.alto.get_error(self.dev).map(|_| connected == sys::ALC_TRUE as sys::ALCint)
+		let mut value = 0;
+		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_DISCONNECT()?.ALC_CONNECTED?, 1, &mut value); }
+		self.alto.get_error(self.dev).map(|_| value == sys::ALC_TRUE as sys::ALCint)
 	}
 
 
 	fn enumerate_soft_hrtfs(&self) -> AltoResult<Vec<CString>> {
 		let ash = self.exts.ALC_SOFT_HRTF()?;
 
-		let mut num = 0;
-		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_NUM_HRTF_SPECIFIERS_SOFT?, 1, &mut num); }
+		let mut value = 0;
+		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_NUM_HRTF_SPECIFIERS_SOFT?, 1, &mut value); }
 		self.alto.get_error(self.dev)?;
 
 		let mut spec_vec = Vec::new();
-		for i in 0 .. num {
+		for i in 0 .. value {
 			unsafe {
 				let spec = ash.alcGetStringiSOFT?(self.dev, ash.ALC_HRTF_SPECIFIER_SOFT?, i) as *mut _;
 				spec_vec.push(self.alto.get_error(self.dev).map(|_| CString::from_raw(spec))?);
@@ -460,9 +474,9 @@ unsafe impl<'a> DeviceTrait for Device<'a> {
 	fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> {
 		let ash = self.exts.ALC_SOFT_HRTF()?;
 
-		let mut status = 0;
-		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut status); }
-		self.alto.get_error(self.dev).and_then(|_| match status {
+		let mut value = 0;
+		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut value); }
+		self.alto.get_error(self.dev).and_then(|_| match value {
 			s if s == ash.ALC_HRTF_DISABLED_SOFT? => Ok(SoftHrtfStatus::Disabled),
 			s if s == ash.ALC_HRTF_ENABLED_SOFT? => Ok(SoftHrtfStatus::Enabled),
 			s if s == ash.ALC_HRTF_DENIED_SOFT? => Ok(SoftHrtfStatus::Denied),
@@ -471,6 +485,13 @@ unsafe impl<'a> DeviceTrait for Device<'a> {
 			s if s == ash.ALC_HRTF_UNSUPPORTED_FORMAT_SOFT? => Ok(SoftHrtfStatus::UnsupportedFormat),
 			s => Ok(SoftHrtfStatus::Unknown(s)),
 		})
+	}
+
+
+	fn max_auxiliary_sends(&self) -> AltoResult<sys::ALCint> {
+		let mut value = 0;
+		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_EFX()?.ALC_MAX_AUXILIARY_SENDS?, 1, &mut value); }
+		self.alto.get_error(self.dev).map(|_| value)
 	}
 }
 
@@ -540,7 +561,7 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 		self.alto.api.rent(move|exts| {
 			let asl = exts.ALC_SOFT_loopback()?;
 
-			let mut attrs_vec = Vec::with_capacity(15);
+			let mut attrs_vec = Vec::with_capacity(17);
 			attrs_vec.extend(&[sys::ALC_FREQUENCY, freq]);
 			attrs_vec.extend(&[asl.ALC_FORMAT_CHANNELS_SOFT?, F::channels(&asl)?]);
 			attrs_vec.extend(&[asl.ALC_FORMAT_TYPE_SOFT?, F::sample_ty(&asl)?]);
@@ -558,6 +579,12 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 					}
 					if let Some(hrtf_id) = attrs.soft_hrtf_id {
 						attrs_vec.extend(&[ash.ALC_HRTF_ID_SOFT?, hrtf_id]);
+					}
+				}
+
+				if let Ok(efx) = self.exts.ALC_EXT_EFX() {
+					if let Some(max_sends) = attrs.max_auxiliary_sends {
+						attrs_vec.extend(&[efx.ALC_MAX_AUXILIARY_SENDS?, max_sends]);
 					}
 				}
 			}
@@ -591,7 +618,7 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 
 
 	/// Attempt to reset the device with new attributes.
-	/// Requires the `ALC_SOFT_HRTF`.
+	/// Requires `ALC_SOFT_HRTF`.
 	pub fn soft_reset<A: Into<Option<LoopbackAttrs>>>(&self, freq: sys::ALCint, attrs: A) -> AltoResult<()> {
 		let ards = self.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
 
@@ -630,12 +657,12 @@ unsafe impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
 	fn enumerate_soft_hrtfs(&self) -> AltoResult<Vec<CString>> {
 		let ash = self.exts.ALC_SOFT_HRTF()?;
 
-		let mut num = 0;
-		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_NUM_HRTF_SPECIFIERS_SOFT?, 1, &mut num); }
+		let mut value = 0;
+		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_NUM_HRTF_SPECIFIERS_SOFT?, 1, &mut value); }
 		self.alto.get_error(self.dev)?;
 
 		let mut spec_vec = Vec::new();
-		for i in 0 .. num {
+		for i in 0 .. value {
 			unsafe {
 				let spec = ash.alcGetStringiSOFT?(self.dev, ash.ALC_HRTF_SPECIFIER_SOFT?, i) as *mut _;
 				spec_vec.push(self.alto.get_error(self.dev).map(|_| CString::from_raw(spec))?);
@@ -648,9 +675,9 @@ unsafe impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
 	fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> {
 		let ash = self.exts.ALC_SOFT_HRTF()?;
 
-		let mut status = 0;
-		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut status); }
-		self.alto.get_error(self.dev).and_then(|_| match status {
+		let mut value = 0;
+		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut value); }
+		self.alto.get_error(self.dev).and_then(|_| match value {
 			s if s == ash.ALC_HRTF_DISABLED_SOFT? => Ok(SoftHrtfStatus::Disabled),
 			s if s == ash.ALC_HRTF_ENABLED_SOFT? => Ok(SoftHrtfStatus::Enabled),
 			s if s == ash.ALC_HRTF_DENIED_SOFT? => Ok(SoftHrtfStatus::Denied),
@@ -659,6 +686,13 @@ unsafe impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
 			s if s == ash.ALC_HRTF_UNSUPPORTED_FORMAT_SOFT? => Ok(SoftHrtfStatus::UnsupportedFormat),
 			s => Ok(SoftHrtfStatus::Unknown(s)),
 		})
+	}
+
+
+	fn max_auxiliary_sends(&self) -> AltoResult<sys::ALCint> {
+		let mut value = 0;
+		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_EFX()?.ALC_MAX_AUXILIARY_SENDS?, 1, &mut value); }
+		self.alto.get_error(self.dev).map(|_| value)
 	}
 }
 

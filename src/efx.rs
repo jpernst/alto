@@ -37,7 +37,8 @@ pub struct ChorusEffect<'d: 'c, 'c> {
 
 
 enum_from_primitive! {
-	#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+	#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+	#[repr(C)]
 	pub enum ChorusWaveform {
 		Sinusoid = 0,
 		Triangle,
@@ -64,7 +65,8 @@ pub struct FlangerEffect<'d: 'c, 'c> {
 
 
 enum_from_primitive! {
-	#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+	#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+	#[repr(C)]
 	pub enum FlangerWaveform {
 		Sinusoid = 0,
 		Triangle,
@@ -79,7 +81,8 @@ pub struct FrequencyShifterEffect<'d: 'c, 'c> {
 
 
 enum_from_primitive! {
-	#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+	#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+	#[repr(C)]
 	pub enum FrequencyShifterDirection {
 		Down = 0,
 		Up,
@@ -95,7 +98,8 @@ pub struct VocalMorpherEffect<'d: 'c, 'c> {
 
 
 enum_from_primitive! {
-	#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+	#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+	#[repr(C)]
 	pub enum VocalMorpherPhoneme {
 		A = 0,
 		E,
@@ -132,9 +136,10 @@ enum_from_primitive! {
 
 
 enum_from_primitive! {
-	#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+	#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+	#[repr(C)]
 	pub enum VocalMorpherWaveform {
-		Sinusoid,
+		Sinusoid = 0,
 		Triangle,
 		Sawtooth,
 	}
@@ -154,7 +159,8 @@ pub struct RingModulatorEffect<'d: 'c, 'c> {
 
 
 enum_from_primitive! {
-	#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+	#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+	#[repr(C)]
 	pub enum RingModulatorWaveform {
 		Sinusoid = 0,
 		Sawtooth,
@@ -228,6 +234,12 @@ impl<'d: 'c, 'c> AuxEffectSlot<'d, 'c> {
 		unsafe { efx.alAuxiliaryEffectSloti?(self.slot, efx.AL_EFFECTSLOT_EFFECT?, value.as_raw() as sys::ALint); }
 		self.ctx.get_error()
 	}
+	pub fn clear_effect(&mut self) -> AltoResult<()> {
+		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = self.ctx.make_current(true)?;
+		unsafe { efx.alAuxiliaryEffectSloti?(self.slot, efx.AL_EFFECTSLOT_EFFECT?, 0); }
+		self.ctx.get_error()
+	}
 
 
 	pub fn gain(&self) -> AltoResult<f32> {
@@ -257,6 +269,21 @@ impl<'d: 'c, 'c> AuxEffectSlot<'d, 'c> {
 		let _lock = self.ctx.make_current(true)?;
 		unsafe { efx.alAuxiliaryEffectSloti?(self.slot, efx.AL_EFFECTSLOT_AUXILIARY_SEND_AUTO?, if value { sys::AL_TRUE } else { sys::AL_FALSE } as sys::ALint); }
 		self.ctx.get_error()
+	}
+}
+
+
+impl<'d: 'c, 'c> Drop for AuxEffectSlot<'d, 'c> {
+	fn drop(&mut self) {
+		let efx = self.ctx.device().extensions().ALC_EXT_EFX().unwrap();
+		if let Ok(_lock) = self.ctx.make_current(true) {
+			unsafe { efx.alDeleteAuxiliaryEffectSlots.unwrap()(1, &mut self.slot as *mut sys::ALuint); }
+			if let Err(_) = self.ctx.get_error() {
+				let _ = writeln!(io::stderr(), "ALTO ERROR: `alDeleteAuxiliaryEffectSlots` failed in AuxEffectSlot drop");
+			}
+		} else {
+			let _ = writeln!(io::stderr(), "ALTO ERROR: `alcMakeContextCurrent` failed in AuxEffectSlot drop");
+		}
 	}
 }
 

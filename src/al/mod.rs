@@ -1136,6 +1136,11 @@ impl<'d: 'c, 'c> StaticSource<'d, 'c> {
 	/// Associate a shared buffer with the source.
 	pub fn set_buffer<B: Into<Option<Arc<Buffer<'d, 'c>>>>>(&mut self, buf: B) -> AltoResult<()> {
 		let buf = buf.into();
+		if let Some(ref buf) = buf {
+			if buf.ctx.device().as_raw() != self.src.ctx.device().as_raw() {
+				return Err(AltoError::AlInvalidValue);
+			}
+		}
 
 		{
 			let _lock = self.src.ctx.make_current(true)?;
@@ -1276,11 +1281,16 @@ impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
 	/// Enqueue a buffer to the stream.
 	pub fn queue_buffer(&mut self, buf: Buffer<'d, 'c>) -> Result<(), (AltoError, Buffer<'d, 'c>)> {
 		{
+			if buf.ctx.device().as_raw() != self.src.ctx.device().as_raw() {
+				return Err((AltoError::AlInvalidValue, buf));
+			}
 			let _lock = match self.src.ctx.make_current(true) {
 				Ok(lock) => lock,
 				Err(e) => return Err((e, buf)),
 			};
+
 			unsafe { self.src.ctx.api.owner().alSourceQueueBuffers()(self.src.src, 1, &buf.buf); }
+
 			match self.src.ctx.get_error() {
 				Ok(_) => (),
 				Err(e) => return Err((e, buf)),

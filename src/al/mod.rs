@@ -214,22 +214,28 @@ pub enum SourceState {
 }
 
 
-struct Source<'d: 'c, 'c> {
+struct SourceImpl<'d: 'c, 'c> {
 	ctx: &'c Context<'d>,
 	src: sys::ALuint,
 }
 
 
+pub enum Source<'d: 'c, 'c> {
+	Static(StaticSource<'d, 'c>),
+	Streaming(StreamingSource<'d, 'c>),
+}
+
+
 /// A source that can play shared static buffer.
 pub struct StaticSource<'d: 'c, 'c> {
-	src: Source<'d, 'c>,
+	src: SourceImpl<'d, 'c>,
 	buf: Option<Arc<Buffer<'d, 'c>>>,
 }
 
 
 /// A source that plays a queue of owned buffers.
 pub struct StreamingSource<'d: 'c, 'c> {
-	src: Source<'d, 'c>,
+	src: SourceImpl<'d, 'c>,
 	bufs: VecDeque<Buffer<'d, 'c>>,
 }
 
@@ -464,7 +470,7 @@ impl<'d> Context<'d> {
 		let _lock = self.make_current(true)?;
 		let mut src = 0;
 		unsafe { self.api.owner().alGenSources()(1, &mut src as *mut sys::ALuint); }
-		self.get_error().map(|_| StaticSource{src: Source{ctx: self, src: src}, buf: None})
+		self.get_error().map(|_| StaticSource{src: SourceImpl{ctx: self, src: src}, buf: None})
 	}
 
 
@@ -473,7 +479,7 @@ impl<'d> Context<'d> {
 		let _lock = self.make_current(true)?;
 		let mut src = 0;
 		unsafe { self.api.owner().alGenSources()(1, &mut src as *mut sys::ALuint); }
-		self.get_error().map(|_| StreamingSource{src: Source{ctx: self, src: src}, bufs: VecDeque::new()})
+		self.get_error().map(|_| StreamingSource{src: SourceImpl{ctx: self, src: src}, bufs: VecDeque::new()})
 	}
 
 
@@ -739,7 +745,7 @@ impl<'d: 'c, 'c> Drop for Buffer<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> SourceTrait<'d> for Source<'d, 'c> {
+unsafe impl<'d: 'c, 'c> SourceTrait<'d> for SourceImpl<'d, 'c> {
 	fn context(&self) -> &Context<'d> { self.ctx }
 	fn as_raw(&self) -> sys::ALuint { self.src }
 
@@ -1166,7 +1172,7 @@ unsafe impl<'d: 'c, 'c> SourceTrait<'d> for Source<'d, 'c> {
 }
 
 
-impl<'d: 'c, 'c> Drop for Source<'d, 'c> {
+impl<'d: 'c, 'c> Drop for SourceImpl<'d, 'c> {
 	fn drop(&mut self) {
 		if let Ok(_lock) = self.ctx.make_current(true) {
 			unsafe { self.ctx.api.owner().alDeleteSources()(1, &mut self.src as *mut sys::ALuint); }
@@ -1177,6 +1183,110 @@ impl<'d: 'c, 'c> Drop for Source<'d, 'c> {
 			let _ = writeln!(io::stderr(), "ALTO ERROR: `alcMakeContextCurrent` failed in Source drop");
 		}
 	}
+}
+
+
+unsafe impl<'d: 'c, 'c> SourceTrait<'d> for Source<'d, 'c> {
+	fn context(&self) -> &Context<'d> { match *self { Source::Static(ref src) => src.context(), Source::Streaming(ref src) => src.context() } }
+	fn as_raw(&self) -> sys::ALuint { match *self { Source::Static(ref src) => src.as_raw(), Source::Streaming(ref src) => src.as_raw() } }
+
+	fn state(&self) -> AltoResult<SourceState> { match *self { Source::Static(ref src) => src.state(), Source::Streaming(ref src) => src.state() } }
+	fn play(&mut self) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.play(), Source::Streaming(ref mut src) => src.play() } }
+	fn pause(&mut self) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.pause(), Source::Streaming(ref mut src) => src.pause() } }
+	fn stop(&mut self) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.stop(), Source::Streaming(ref mut src) => src.stop() } }
+	fn rewind(&mut self) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.rewind(), Source::Streaming(ref mut src) => src.rewind() } }
+
+	fn relative(&self) -> AltoResult<bool> { match *self { Source::Static(ref src) => src.relative(), Source::Streaming(ref src) => src.relative() } }
+	fn set_relative(&mut self, value: bool) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_relative(value), Source::Streaming(ref mut src) => src.set_relative(value) } }
+
+	fn gain(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.gain(), Source::Streaming(ref src) => src.gain() } }
+	fn set_gain(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_gain(value), Source::Streaming(ref mut src) => src.set_gain(value) } }
+
+	fn min_gain(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.min_gain(), Source::Streaming(ref src) => src.min_gain() } }
+	fn set_min_gain(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_min_gain(value), Source::Streaming(ref mut src) => src.set_min_gain(value) } }
+
+	fn max_gain(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.max_gain(), Source::Streaming(ref src) => src.max_gain() } }
+	fn set_max_gain(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_max_gain(value), Source::Streaming(ref mut src) => src.set_max_gain(value) } }
+
+	fn reference_distance(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.reference_distance(), Source::Streaming(ref src) => src.reference_distance() } }
+	fn set_reference_distance(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_reference_distance(value), Source::Streaming(ref mut src) => src.set_reference_distance(value) } }
+
+	fn rolloff_factor(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.rolloff_factor(), Source::Streaming(ref src) => src.rolloff_factor() } }
+	fn set_rolloff_factor(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_rolloff_factor(value), Source::Streaming(ref mut src) => src.set_rolloff_factor(value) } }
+
+	fn max_distance(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.max_distance(), Source::Streaming(ref src) => src.max_distance() } }
+	fn set_max_distance(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_max_distance(value), Source::Streaming(ref mut src) => src.set_max_distance(value) } }
+
+	fn pitch(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.pitch(), Source::Streaming(ref src) => src.pitch() } }
+	fn set_pitch(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_pitch(value), Source::Streaming(ref mut src) => src.set_pitch(value) } }
+
+	fn position<V: From<[f32; 3]>>(&self) -> AltoResult<V> { match *self { Source::Static(ref src) => src.position(), Source::Streaming(ref src) => src.position() } }
+	fn set_position<V: Into<[f32; 3]>>(&mut self, value: V) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_position(value), Source::Streaming(ref mut src) => src.set_position(value) } }
+
+	fn velocity<V: From<[f32; 3]>>(&self) -> AltoResult<V> { match *self { Source::Static(ref src) => src.velocity(), Source::Streaming(ref src) => src.velocity() } }
+	fn set_velocity<V: Into<[f32; 3]>>(&mut self, value: V) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_velocity(value), Source::Streaming(ref mut src) => src.set_velocity(value) } }
+
+	fn direction<V: From<[f32; 3]>>(&self) -> AltoResult<V> { match *self { Source::Static(ref src) => src.direction(), Source::Streaming(ref src) => src.direction() } }
+	fn set_direction<V: Into<[f32; 3]>>(&mut self, value: V) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_direction(value), Source::Streaming(ref mut src) => src.set_direction(value) } }
+
+	fn cone_inner_angle(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.cone_inner_angle(), Source::Streaming(ref src) => src.cone_inner_angle() } }
+	fn set_cone_inner_angle(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_cone_inner_angle(value), Source::Streaming(ref mut src) => src.set_cone_inner_angle(value) } }
+
+	fn cone_outer_angle(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.cone_outer_angle(), Source::Streaming(ref src) => src.cone_outer_angle() } }
+	fn set_cone_outer_angle(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_cone_outer_angle(value), Source::Streaming(ref mut src) => src.set_cone_outer_angle(value) } }
+
+	fn cone_outer_gain(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.cone_outer_gain(), Source::Streaming(ref src) => src.cone_outer_gain() } }
+	fn set_cone_outer_gain(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_cone_outer_gain(value), Source::Streaming(ref mut src) => src.set_cone_outer_gain(value) } }
+
+	fn sec_offset(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.sec_offset(), Source::Streaming(ref src) => src.sec_offset() } }
+	fn set_sec_offset(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_sec_offset(value), Source::Streaming(ref mut src) => src.set_sec_offset(value) } }
+
+	fn sample_offset(&self) -> AltoResult<sys::ALint> { match *self { Source::Static(ref src) => src.sample_offset(), Source::Streaming(ref src) => src.sample_offset() } }
+	fn set_sample_offset(&mut self, value: sys::ALint) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_sample_offset(value), Source::Streaming(ref mut src) => src.set_sample_offset(value) } }
+
+	fn byte_offset(&self) -> AltoResult<sys::ALint> { match *self { Source::Static(ref src) => src.byte_offset(), Source::Streaming(ref src) => src.byte_offset() } }
+	fn set_byte_offset(&mut self, value: sys::ALint) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_byte_offset(value), Source::Streaming(ref mut src) => src.set_byte_offset(value) } }
+
+	fn soft_sec_offset_latency(&self) -> AltoResult<(f64, f64)> { match *self { Source::Static(ref src) => src.soft_sec_offset_latency(), Source::Streaming(ref src) => src.soft_sec_offset_latency() } }
+
+	fn soft_sample_offset_frac_latency(&self) -> AltoResult<(i32, i32, i64)> { match *self { Source::Static(ref src) => src.soft_sample_offset_frac_latency(), Source::Streaming(ref src) => src.soft_sample_offset_frac_latency() } }
+
+	fn soft_sec_length(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.soft_sec_length(), Source::Streaming(ref src) => src.soft_sec_length() } }
+
+	fn soft_sample_length(&self) -> AltoResult<sys::ALint> { match *self { Source::Static(ref src) => src.soft_sample_length(), Source::Streaming(ref src) => src.soft_sample_length() } }
+
+	fn soft_byte_length(&self) -> AltoResult<sys::ALint> { match *self { Source::Static(ref src) => src.soft_byte_length(), Source::Streaming(ref src) => src.soft_byte_length() } }
+
+	fn soft_direct_channels(&self) -> AltoResult<bool> { match *self { Source::Static(ref src) => src.soft_direct_channels(), Source::Streaming(ref src) => src.soft_direct_channels() } }
+	fn set_soft_direct_channels(&mut self, value: bool) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_soft_direct_channels(value), Source::Streaming(ref mut src) => src.set_soft_direct_channels(value) } }
+
+	fn distance_model(&self) -> AltoResult<DistanceModel> { match *self { Source::Static(ref src) => src.distance_model(), Source::Streaming(ref src) => src.distance_model() } }
+	fn set_distance_model(&mut self, value: DistanceModel) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_distance_model(value), Source::Streaming(ref mut src) => src.set_distance_model(value) } }
+
+	fn set_direct_filter<F: FilterTrait<'d>>(&mut self, value: &F) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_direct_filter(value), Source::Streaming(ref mut src) => src.set_direct_filter(value) } }
+	fn clear_direct_filter(&mut self) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.clear_direct_filter(), Source::Streaming(ref mut src) => src.clear_direct_filter() } }
+
+	fn air_absorption_factor(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.air_absorption_factor(), Source::Streaming(ref src) => src.air_absorption_factor() } }
+	fn set_air_absorption_factor(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_air_absorption_factor(value), Source::Streaming(ref mut src) => src.set_air_absorption_factor(value) } }
+
+	fn room_rolloff_factor(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.room_rolloff_factor(), Source::Streaming(ref src) => src.room_rolloff_factor() } }
+	fn set_room_rolloff_factor(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_room_rolloff_factor(value), Source::Streaming(ref mut src) => src.set_room_rolloff_factor(value) } }
+
+	fn cone_outer_gainhf(&self) -> AltoResult<f32> { match *self { Source::Static(ref src) => src.cone_outer_gainhf(), Source::Streaming(ref src) => src.cone_outer_gainhf() } }
+	fn set_cone_outer_gainhf(&mut self, value: f32) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_cone_outer_gainhf(value), Source::Streaming(ref mut src) => src.set_cone_outer_gainhf(value) } }
+
+	fn direct_filter_gainhf_auto(&self) -> AltoResult<bool> { match *self { Source::Static(ref src) => src.direct_filter_gainhf_auto(), Source::Streaming(ref src) => src.direct_filter_gainhf_auto() } }
+	fn set_direct_filter_gainhf_auto(&mut self, value: bool) -> AltoResult<()> { match *self { Source::Static(ref mut src) => src.set_direct_filter_gainhf_auto(value), Source::Streaming(ref mut src) => src.set_direct_filter_gainhf_auto(value) } }
+}
+
+
+impl<'d: 'c, 'c> From<StaticSource<'d, 'c>> for Source<'d, 'c> {
+	fn from(src: StaticSource<'d, 'c>) -> Source<'d, 'c> { Source::Static(src) }
+}
+
+
+impl<'d: 'c, 'c> From<StreamingSource<'d, 'c>> for Source<'d, 'c> {
+	fn from(src: StreamingSource<'d, 'c>) -> Source<'d, 'c> { Source::Streaming(src) }
 }
 
 

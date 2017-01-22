@@ -17,7 +17,6 @@ mod format;
 pub use self::format::*;
 
 
-
 /// The shape of the gain curve for 3D positional audio.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum DistanceModel {
@@ -83,6 +82,10 @@ pub unsafe trait SourceTrait<'d> {
 	fn set_relative(&mut self, bool) -> AltoResult<()>;
 
 	/// Minimum gain that will be applied by the distance model.
+	fn gain(&self) -> AltoResult<f32>;
+	fn set_gain(&mut self, f32) -> AltoResult<()>;
+
+	/// Minimum gain that will be applied by the distance model.
 	fn min_gain(&self) -> AltoResult<f32>;
 	fn set_min_gain(&mut self, f32) -> AltoResult<()>;
 
@@ -105,6 +108,14 @@ pub unsafe trait SourceTrait<'d> {
 	/// Relative playback speed of the source.
 	fn pitch(&self) -> AltoResult<f32>;
 	fn set_pitch(&mut self, f32) -> AltoResult<()>;
+
+	/// Velocity vector of the source.
+	fn position<V: From<[f32; 3]>>(&self) -> AltoResult<V>;
+	fn set_position<V: Into<[f32; 3]>>(&mut self, V) -> AltoResult<()>;
+
+	/// Velocity vector of the source.
+	fn velocity<V: From<[f32; 3]>>(&self) -> AltoResult<V>;
+	fn set_velocity<V: Into<[f32; 3]>>(&mut self, V) -> AltoResult<()>;
 
 	/// Direction vector of the source.
 	fn direction<V: From<[f32; 3]>>(&self) -> AltoResult<V>;
@@ -780,6 +791,19 @@ unsafe impl<'d: 'c, 'c> SourceTrait<'d> for Source<'d, 'c> {
 	}
 
 
+	fn gain(&self) -> AltoResult<f32> {
+		let _lock = self.ctx.make_current(true)?;
+		let mut value = 0.0;
+		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, sys::AL_GAIN, &mut value); }
+		self.ctx.get_error().map(|_| value)
+	}
+	fn set_gain(&mut self, value: f32) -> AltoResult<()> {
+		let _lock = self.ctx.make_current(true)?;
+		unsafe { self.ctx.api.owner().alSourcef()(self.src, sys::AL_GAIN, value); }
+		self.ctx.get_error()
+	}
+
+
 	fn min_gain(&self) -> AltoResult<f32> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
@@ -854,6 +878,34 @@ unsafe impl<'d: 'c, 'c> SourceTrait<'d> for Source<'d, 'c> {
 	fn set_pitch(&mut self, value: f32) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
 		unsafe { self.ctx.api.owner().alSourcef()(self.src, sys::AL_PITCH, value); }
+		self.ctx.get_error()
+	}
+
+
+	fn position<V: From<[f32; 3]>>(&self) -> AltoResult<V> {
+		let _lock = self.ctx.make_current(true)?;
+		let mut value = [0.0, 0.0, 0.0];
+		unsafe { self.ctx.api.owner().alGetSourcefv()(self.src, sys::AL_POSITION, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
+		self.ctx.get_error().map(|_| value.into())
+	}
+	fn set_position<V: Into<[f32; 3]>>(&mut self, value: V) -> AltoResult<()> {
+		let _lock = self.ctx.make_current(true)?;
+		let value = value.into();
+		unsafe { self.ctx.api.owner().alSourcefv()(self.src, sys::AL_POSITION, &value as *const [f32; 3] as *const sys::ALfloat); }
+		self.ctx.get_error()
+	}
+
+
+	fn velocity<V: From<[f32; 3]>>(&self) -> AltoResult<V> {
+		let _lock = self.ctx.make_current(true)?;
+		let mut value = [0.0, 0.0, 0.0];
+		unsafe { self.ctx.api.owner().alGetSourcefv()(self.src, sys::AL_VELOCITY, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
+		self.ctx.get_error().map(|_| value.into())
+	}
+	fn set_velocity<V: Into<[f32; 3]>>(&mut self, value: V) -> AltoResult<()> {
+		let _lock = self.ctx.make_current(true)?;
+		let value = value.into();
+		unsafe { self.ctx.api.owner().alSourcefv()(self.src, sys::AL_VELOCITY, &value as *const [f32; 3] as *const sys::ALfloat); }
 		self.ctx.get_error()
 	}
 
@@ -1182,6 +1234,9 @@ unsafe impl<'d: 'c, 'c> SourceTrait<'d> for StaticSource<'d, 'c> {
 	fn relative(&self) -> AltoResult<bool> { self.src.relative() }
 	fn set_relative(&mut self, value: bool) -> AltoResult<()> { self.src.set_relative(value) }
 
+	fn gain(&self) -> AltoResult<f32> { self.src.gain() }
+	fn set_gain(&mut self, value: f32) -> AltoResult<()> { self.src.set_gain(value) }
+
 	fn min_gain(&self) -> AltoResult<f32> { self.src.min_gain() }
 	fn set_min_gain(&mut self, value: f32) -> AltoResult<()> { self.src.set_min_gain(value) }
 
@@ -1199,6 +1254,12 @@ unsafe impl<'d: 'c, 'c> SourceTrait<'d> for StaticSource<'d, 'c> {
 
 	fn pitch(&self) -> AltoResult<f32> { self.src.pitch() }
 	fn set_pitch(&mut self, value: f32) -> AltoResult<()> { self.src.set_pitch(value) }
+
+	fn position<V: From<[f32; 3]>>(&self) -> AltoResult<V> { self.src.position() }
+	fn set_position<V: Into<[f32; 3]>>(&mut self, value: V) -> AltoResult<()> { self.src.set_position(value) }
+
+	fn velocity<V: From<[f32; 3]>>(&self) -> AltoResult<V> { self.src.velocity() }
+	fn set_velocity<V: Into<[f32; 3]>>(&mut self, value: V) -> AltoResult<()> { self.src.set_velocity(value) }
 
 	fn direction<V: From<[f32; 3]>>(&self) -> AltoResult<V> { self.src.direction() }
 	fn set_direction<V: Into<[f32; 3]>>(&mut self, value: V) -> AltoResult<()> { self.src.set_direction(value) }
@@ -1329,6 +1390,9 @@ unsafe impl<'d: 'c, 'c> SourceTrait<'d> for StreamingSource<'d, 'c> {
 	fn relative(&self) -> AltoResult<bool> { self.src.relative() }
 	fn set_relative(&mut self, value: bool) -> AltoResult<()> { self.src.set_relative(value) }
 
+	fn gain(&self) -> AltoResult<f32> { self.src.gain() }
+	fn set_gain(&mut self, value: f32) -> AltoResult<()> { self.src.set_gain(value) }
+
 	fn min_gain(&self) -> AltoResult<f32> { self.src.min_gain() }
 	fn set_min_gain(&mut self, value: f32) -> AltoResult<()> { self.src.set_min_gain(value) }
 
@@ -1346,6 +1410,12 @@ unsafe impl<'d: 'c, 'c> SourceTrait<'d> for StreamingSource<'d, 'c> {
 
 	fn pitch(&self) -> AltoResult<f32> { self.src.pitch() }
 	fn set_pitch(&mut self, value: f32) -> AltoResult<()> { self.src.set_pitch(value) }
+
+	fn position<V: From<[f32; 3]>>(&self) -> AltoResult<V> { self.src.position() }
+	fn set_position<V: Into<[f32; 3]>>(&mut self, value: V) -> AltoResult<()> { self.src.set_position(value) }
+
+	fn velocity<V: From<[f32; 3]>>(&self) -> AltoResult<V> { self.src.velocity() }
+	fn set_velocity<V: Into<[f32; 3]>>(&mut self, value: V) -> AltoResult<()> { self.src.set_velocity(value) }
 
 	fn direction<V: From<[f32; 3]>>(&self) -> AltoResult<V> { self.src.direction() }
 	fn set_direction<V: Into<[f32; 3]>>(&mut self, value: V) -> AltoResult<()> { self.src.set_direction(value) }

@@ -49,6 +49,12 @@ fn main() {
 
 		while src.buffers_processed().unwrap() < 5 { }
 	}
+
+//	{
+//		let slot = ctx.new_aux_effect_slot().unwrap();
+//		let reverb: ReverbEffect = ctx.new_effect().unwrap();
+//	}
+
 }
 
 

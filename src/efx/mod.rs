@@ -1,3 +1,4 @@
+use std::sync::Weak;
 use std::io::{self, Write};
 use enum_primitive::FromPrimitive;
 
@@ -6,13 +7,22 @@ use sys;
 use al;
 
 
+mod presets;
+
+pub use self::presets::*;
+
+
 pub struct AuxEffectSlot<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	slot: sys::ALuint,
+	inputs: Vec<Weak<al::SourceImpl<'d, 'c>>>,
 }
 
 
-pub unsafe trait EffectTrait<'d> {
+pub unsafe trait EffectTrait<'d: 'c, 'c>: Sized {
+	#[doc(hidden)]
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<Self>;
+
 	fn context(&self) -> &al::Context<'d>;
 	fn as_raw(&self) -> sys::ALuint;
 }
@@ -187,7 +197,10 @@ pub struct EqualizerEffect<'d: 'c, 'c> {
 }
 
 
-pub unsafe trait FilterTrait<'d> {
+pub unsafe trait FilterTrait<'d: 'c, 'c>: Sized {
+	#[doc(hidden)]
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<Self>;
+
 	fn context(&self) -> &al::Context<'d>;
 	fn as_raw(&self) -> sys::ALuint;
 }
@@ -212,13 +225,24 @@ pub struct BandpassFilter<'d: 'c, 'c> {
 
 
 impl<'d: 'c, 'c> AuxEffectSlot<'d, 'c> {
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<AuxEffectSlot<'d, 'c>> {
+	#[doc(hidden)]
+	pub fn new(ctx: &'c al::Context<'d>) -> AltoResult<AuxEffectSlot<'d, 'c>> {
 		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = ctx.make_current(true)?;
 		let mut slot = 0;
-		efx.alGenAuxiliaryEffectSlots?(1, &mut slot);
+		unsafe { efx.alGenAuxiliaryEffectSlots?(1, &mut slot); }
 		ctx.get_error()?;
-		Ok(AuxEffectSlot{ctx: ctx, slot: slot})
+		Ok(AuxEffectSlot{ctx: ctx, slot: slot, inputs: Vec::new()})
+	}
+
+
+	#[doc(hidden)]
+	pub fn add_input(&mut self, src: Weak<al::SourceImpl<'d, 'c>>) {
+		if self.inputs.len() == self.inputs.capacity() {
+			self.inputs.retain(|s| s.upgrade().is_some());
+		}
+
+		self.inputs.push(src);
 	}
 
 
@@ -228,7 +252,7 @@ impl<'d: 'c, 'c> AuxEffectSlot<'d, 'c> {
 	pub fn as_raw(&self) -> sys::ALuint { self.slot }
 
 
-	pub fn set_effect<E: EffectTrait<'d>>(&mut self, value: &E) -> AltoResult<()> {
+	pub fn set_effect<E: EffectTrait<'d, 'c>>(&mut self, value: &E) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
 		unsafe { efx.alAuxiliaryEffectSloti?(self.slot, efx.AL_EFFECTSLOT_EFFECT?, value.as_raw() as sys::ALint); }
@@ -277,6 +301,14 @@ impl<'d: 'c, 'c> Drop for AuxEffectSlot<'d, 'c> {
 	fn drop(&mut self) {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX().unwrap();
 		if let Ok(_lock) = self.ctx.make_current(true) {
+			for src in self.inputs.drain(..) {
+				if let Some(src) = src.upgrade() {
+					if let Err(_) = src.clear_auxiliary_effect_slot(self.slot) {
+						let _ = writeln!(io::stderr(), "ALTO ERROR: `alSourceiv(AL_AUXILIARY_SEND_FILTER)` failed in AuxEffectSlot drop");
+					}
+				}
+			}
+
 			unsafe { efx.alDeleteAuxiliaryEffectSlots.unwrap()(1, &mut self.slot as *mut sys::ALuint); }
 			if let Err(_) = self.ctx.get_error() {
 				let _ = writeln!(io::stderr(), "ALTO ERROR: `alDeleteAuxiliaryEffectSlots` failed in AuxEffectSlot drop");
@@ -288,7 +320,19 @@ impl<'d: 'c, 'c> Drop for AuxEffectSlot<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> EffectTrait<'d> for EaxReverbEffect<'d, 'c> {
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for EaxReverbEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<EaxReverbEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = EaxReverbEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_EAXREVERB?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -297,19 +341,6 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d> for EaxReverbEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<EaxReverbEffect<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut effect = 0;
-		efx.alGenEffects?(1, &mut effect);
-		ctx.get_error()?;
-		let effect = EaxReverbEffect{ctx: ctx, effect: effect};
-		efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_EAXREVERB?);
-		ctx.get_error().map(|_| effect)
-	}
-
-
 	pub fn density(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -671,7 +702,19 @@ impl<'d: 'c, 'c> Drop for EaxReverbEffect<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> EffectTrait<'d> for ReverbEffect<'d, 'c> {
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for ReverbEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<ReverbEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = ReverbEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_REVERB?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -680,19 +723,6 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d> for ReverbEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<ReverbEffect<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut effect = 0;
-		efx.alGenEffects?(1, &mut effect);
-		ctx.get_error()?;
-		let effect = ReverbEffect{ctx: ctx, effect: effect};
-		efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_REVERB?);
-		ctx.get_error().map(|_| effect)
-	}
-
-
 	pub fn density(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -904,7 +934,19 @@ impl<'d: 'c, 'c> Drop for ReverbEffect<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> EffectTrait<'d> for ChorusEffect<'d, 'c> {
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for ChorusEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<ChorusEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = ChorusEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_CHORUS?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -913,19 +955,6 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d> for ChorusEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> ChorusEffect<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<ChorusEffect<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut effect = 0;
-		efx.alGenEffects?(1, &mut effect);
-		ctx.get_error()?;
-		let effect = ChorusEffect{ctx: ctx, effect: effect};
-		efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_CHORUS?);
-		ctx.get_error().map(|_| effect)
-	}
-
-
 	pub fn waveform(&self) -> AltoResult<ChorusWaveform> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1032,7 +1061,19 @@ impl<'d: 'c, 'c> Drop for ChorusEffect<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> EffectTrait<'d> for DistortionEffect<'d, 'c> {
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for DistortionEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<DistortionEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = DistortionEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_DISTORTION?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -1041,19 +1082,6 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d> for DistortionEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> DistortionEffect<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<DistortionEffect<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut effect = 0;
-		efx.alGenEffects?(1, &mut effect);
-		ctx.get_error()?;
-		let effect = DistortionEffect{ctx: ctx, effect: effect};
-		efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_DISTORTION?);
-		ctx.get_error().map(|_| effect)
-	}
-
-
 	pub fn edge(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1130,7 +1158,19 @@ impl<'d: 'c, 'c> Drop for DistortionEffect<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> EffectTrait<'d> for EchoEffect<'d, 'c> {
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for EchoEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<EchoEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = EchoEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_ECHO?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -1139,19 +1179,6 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d> for EchoEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> EchoEffect<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<EchoEffect<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut effect = 0;
-		efx.alGenEffects?(1, &mut effect);
-		ctx.get_error()?;
-		let effect = EchoEffect{ctx: ctx, effect: effect};
-		efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_ECHO?);
-		ctx.get_error().map(|_| effect)
-	}
-
-
 	pub fn delay(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1243,7 +1270,19 @@ impl<'d: 'c, 'c> Drop for EchoEffect<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> EffectTrait<'d> for FlangerEffect<'d, 'c> {
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for FlangerEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<FlangerEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = FlangerEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_FLANGER?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -1252,19 +1291,6 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d> for FlangerEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> FlangerEffect<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<FlangerEffect<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut effect = 0;
-		efx.alGenEffects?(1, &mut effect);
-		ctx.get_error()?;
-		let effect = FlangerEffect{ctx: ctx, effect: effect};
-		efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_FLANGER?);
-		ctx.get_error().map(|_| effect)
-	}
-
-
 	pub fn waveform(&self) -> AltoResult<FlangerWaveform> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1371,7 +1397,19 @@ impl<'d: 'c, 'c> Drop for FlangerEffect<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> EffectTrait<'d> for FrequencyShifterEffect<'d, 'c> {
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for FrequencyShifterEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<FrequencyShifterEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = FrequencyShifterEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_FREQUENCY_SHIFTER?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -1380,19 +1418,6 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d> for FrequencyShifterEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> FrequencyShifterEffect<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<FrequencyShifterEffect<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut effect = 0;
-		efx.alGenEffects?(1, &mut effect);
-		ctx.get_error()?;
-		let effect = FrequencyShifterEffect{ctx: ctx, effect: effect};
-		efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_FREQUENCY_SHIFTER?);
-		ctx.get_error().map(|_| effect)
-	}
-
-
 	pub fn frequency(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1454,7 +1479,19 @@ impl<'d: 'c, 'c> Drop for FrequencyShifterEffect<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> EffectTrait<'d> for VocalMorpherEffect<'d, 'c> {
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for VocalMorpherEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<VocalMorpherEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = VocalMorpherEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_VOCAL_MORPHER?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -1463,19 +1500,6 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d> for VocalMorpherEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> VocalMorpherEffect<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<VocalMorpherEffect<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut effect = 0;
-		efx.alGenEffects?(1, &mut effect);
-		ctx.get_error()?;
-		let effect = VocalMorpherEffect{ctx: ctx, effect: effect};
-		efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_VOCAL_MORPHER?);
-		ctx.get_error().map(|_| effect)
-	}
-
-
 	pub fn phonemea(&self) -> AltoResult<VocalMorpherPhoneme> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1582,7 +1606,19 @@ impl<'d: 'c, 'c> Drop for VocalMorpherEffect<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> EffectTrait<'d> for PitchShifterEffect<'d, 'c> {
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for PitchShifterEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<PitchShifterEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = PitchShifterEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_PITCH_SHIFTER?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -1591,19 +1627,6 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d> for PitchShifterEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> PitchShifterEffect<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<PitchShifterEffect<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut effect = 0;
-		efx.alGenEffects?(1, &mut effect);
-		ctx.get_error()?;
-		let effect = PitchShifterEffect{ctx: ctx, effect: effect};
-		efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_PITCH_SHIFTER?);
-		ctx.get_error().map(|_| effect)
-	}
-
-
 	pub fn coarse_tune(&self) -> AltoResult<sys::ALint> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1650,7 +1673,19 @@ impl<'d: 'c, 'c> Drop for PitchShifterEffect<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> EffectTrait<'d> for RingModulatorEffect<'d, 'c> {
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for RingModulatorEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<RingModulatorEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = RingModulatorEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_RING_MODULATOR?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -1659,19 +1694,6 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d> for RingModulatorEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> RingModulatorEffect<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<RingModulatorEffect<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut effect = 0;
-		efx.alGenEffects?(1, &mut effect);
-		ctx.get_error()?;
-		let effect = RingModulatorEffect{ctx: ctx, effect: effect};
-		efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_RING_MODULATOR?);
-		ctx.get_error().map(|_| effect)
-	}
-
-
 	pub fn frequency(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1733,7 +1755,19 @@ impl<'d: 'c, 'c> Drop for RingModulatorEffect<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> EffectTrait<'d> for AutowahEffect<'d, 'c> {
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for AutowahEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<AutowahEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = AutowahEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_AUTOWAH?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -1742,19 +1776,6 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d> for AutowahEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> AutowahEffect<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<AutowahEffect<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut effect = 0;
-		efx.alGenEffects?(1, &mut effect);
-		ctx.get_error()?;
-		let effect = AutowahEffect{ctx: ctx, effect: effect};
-		efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_AUTOWAH?);
-		ctx.get_error().map(|_| effect)
-	}
-
-
 	pub fn attack_time(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1831,7 +1852,19 @@ impl<'d: 'c, 'c> Drop for AutowahEffect<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> EffectTrait<'d> for CompressorEffect<'d, 'c> {
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for CompressorEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<CompressorEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = CompressorEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_COMPRESSOR?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -1840,19 +1873,6 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d> for CompressorEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> CompressorEffect<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<CompressorEffect<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut effect = 0;
-		efx.alGenEffects?(1, &mut effect);
-		ctx.get_error()?;
-		let effect = CompressorEffect{ctx: ctx, effect: effect};
-		efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_COMPRESSOR?);
-		ctx.get_error().map(|_| effect)
-	}
-
-
 	pub fn onoff(&self) -> AltoResult<bool> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1884,7 +1904,19 @@ impl<'d: 'c, 'c> Drop for CompressorEffect<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> EffectTrait<'d> for EqualizerEffect<'d, 'c> {
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for EqualizerEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<EqualizerEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = EqualizerEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_EQUALIZER?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -1893,19 +1925,6 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d> for EqualizerEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<EqualizerEffect<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut effect = 0;
-		efx.alGenEffects?(1, &mut effect);
-		ctx.get_error()?;
-		let effect = EqualizerEffect{ctx: ctx, effect: effect};
-		efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, efx.AL_EFFECT_EQUALIZER?);
-		ctx.get_error().map(|_| effect)
-	}
-
-
 	pub fn low_gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2072,7 +2091,19 @@ impl<'d: 'c, 'c> Drop for EqualizerEffect<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> FilterTrait<'d> for LowpassFilter<'d, 'c> {
+unsafe impl<'d: 'c, 'c> FilterTrait<'d, 'c> for LowpassFilter<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<LowpassFilter<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut filter = 0;
+		unsafe { efx.alGenFilters?(1, &mut filter); }
+		ctx.get_error()?;
+		let filter = LowpassFilter{ctx: ctx, filter: filter};
+		unsafe { efx.alFilteri?(filter.as_raw(), efx.AL_FILTER_TYPE?, efx.AL_FILTER_LOWPASS?); }
+		ctx.get_error().map(|_| filter)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -2081,19 +2112,6 @@ unsafe impl<'d: 'c, 'c> FilterTrait<'d> for LowpassFilter<'d, 'c> {
 
 
 impl<'d: 'c, 'c> LowpassFilter<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<LowpassFilter<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut filter = 0;
-		efx.alGenFilters?(1, &mut filter);
-		ctx.get_error()?;
-		let filter = LowpassFilter{ctx: ctx, filter: filter};
-		efx.alFilteri?(filter.as_raw(), efx.AL_FILTER_TYPE?, efx.AL_FILTER_LOWPASS?);
-		ctx.get_error().map(|_| filter)
-	}
-
-
 	pub fn gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2140,7 +2158,19 @@ impl<'d: 'c, 'c> Drop for LowpassFilter<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> FilterTrait<'d> for HighpassFilter<'d, 'c> {
+unsafe impl<'d: 'c, 'c> FilterTrait<'d, 'c> for HighpassFilter<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<HighpassFilter<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut filter = 0;
+		unsafe { efx.alGenFilters?(1, &mut filter); }
+		ctx.get_error()?;
+		let filter = HighpassFilter{ctx: ctx, filter: filter};
+		unsafe { efx.alFilteri?(filter.as_raw(), efx.AL_FILTER_TYPE?, efx.AL_FILTER_HIGHPASS?); }
+		ctx.get_error().map(|_| filter)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -2149,19 +2179,6 @@ unsafe impl<'d: 'c, 'c> FilterTrait<'d> for HighpassFilter<'d, 'c> {
 
 
 impl<'d: 'c, 'c> HighpassFilter<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<HighpassFilter<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut filter = 0;
-		efx.alGenFilters?(1, &mut filter);
-		ctx.get_error()?;
-		let filter = HighpassFilter{ctx: ctx, filter: filter};
-		efx.alFilteri?(filter.as_raw(), efx.AL_FILTER_TYPE?, efx.AL_FILTER_HIGHPASS?);
-		ctx.get_error().map(|_| filter)
-	}
-
-
 	pub fn gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2208,7 +2225,19 @@ impl<'d: 'c, 'c> Drop for HighpassFilter<'d, 'c> {
 }
 
 
-unsafe impl<'d: 'c, 'c> FilterTrait<'d> for BandpassFilter<'d, 'c> {
+unsafe impl<'d: 'c, 'c> FilterTrait<'d, 'c> for BandpassFilter<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<BandpassFilter<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let _lock = ctx.make_current(true)?;
+		let mut filter = 0;
+		unsafe { efx.alGenFilters?(1, &mut filter); }
+		ctx.get_error()?;
+		let filter = BandpassFilter{ctx: ctx, filter: filter};
+		unsafe { efx.alFilteri?(filter.as_raw(), efx.AL_FILTER_TYPE?, efx.AL_FILTER_BANDPASS?); }
+		ctx.get_error().map(|_| filter)
+	}
+
+
 	#[inline]
 	fn context(&self) -> &al::Context<'d> { self.ctx }
 	#[inline]
@@ -2217,19 +2246,6 @@ unsafe impl<'d: 'c, 'c> FilterTrait<'d> for BandpassFilter<'d, 'c> {
 
 
 impl<'d: 'c, 'c> BandpassFilter<'d, 'c> {
-	#[doc(hidden)]
-	pub unsafe fn new(ctx: &'c al::Context<'d>) -> AltoResult<BandpassFilter<'d, 'c>> {
-		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
-		let _lock = ctx.make_current(true)?;
-		let mut filter = 0;
-		efx.alGenFilters?(1, &mut filter);
-		ctx.get_error()?;
-		let filter = BandpassFilter{ctx: ctx, filter: filter};
-		efx.alFilteri?(filter.as_raw(), efx.AL_FILTER_TYPE?, efx.AL_FILTER_BANDPASS?);
-		ctx.get_error().map(|_| filter)
-	}
-
-
 	pub fn gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;

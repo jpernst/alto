@@ -208,6 +208,9 @@ impl Alto {
 	}
 
 
+	pub fn raw_api(&self) -> &AlApi { &self.api }
+
+
 	/// Get the specifier of the default output device.
 	pub fn default_output(&self) -> AltoResult<CString> {
 		self.api.rent(|exts| {

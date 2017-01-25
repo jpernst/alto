@@ -2177,7 +2177,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for DedicatedLowFrequencyEffect<'d, 
 
 
 impl<'d: 'c, 'c> DedicatedLowFrequencyEffect<'d, 'c> {
-	pub fn dedicated_gain(&self) -> AltoResult<f32> {
+	pub fn gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let d = self.ctx.device().extensions().ALC_EXT_DEDICATED()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2185,7 +2185,7 @@ impl<'d: 'c, 'c> DedicatedLowFrequencyEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, d.AL_EFFECT_DEDICATED_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
-	pub fn set_dedicated_gain(&mut self, value: f32) -> AltoResult<()> {
+	pub fn set_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let d = self.ctx.device().extensions().ALC_EXT_DEDICATED()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2232,7 +2232,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for DedicatedDialogueEffect<'d, 'c> 
 
 
 impl<'d: 'c, 'c> DedicatedDialogueEffect<'d, 'c> {
-	pub fn dedicated_gain(&self) -> AltoResult<f32> {
+	pub fn gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let d = self.ctx.device().extensions().ALC_EXT_DEDICATED()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2240,7 +2240,7 @@ impl<'d: 'c, 'c> DedicatedDialogueEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, d.AL_EFFECT_DEDICATED_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
-	pub fn set_dedicated_gain(&mut self, value: f32) -> AltoResult<()> {
+	pub fn set_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let d = self.ctx.device().extensions().ALC_EXT_DEDICATED()?;
 		let _lock = self.ctx.make_current(true)?;

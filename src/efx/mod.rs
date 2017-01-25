@@ -197,6 +197,18 @@ pub struct EqualizerEffect<'d: 'c, 'c> {
 }
 
 
+pub struct DedicatedLowFrequencyEffect<'d: 'c, 'c> {
+	ctx: &'c al::Context<'d>,
+	effect: sys::ALuint,
+}
+
+
+pub struct DedicatedDialogueEffect<'d: 'c, 'c> {
+	ctx: &'c al::Context<'d>,
+	effect: sys::ALuint,
+}
+
+
 pub unsafe trait FilterTrait<'d: 'c, 'c>: Sized {
 	#[doc(hidden)]
 	fn new(ctx: &'c al::Context<'d>) -> AltoResult<Self>;
@@ -2138,6 +2150,116 @@ impl<'d: 'c, 'c> Drop for EqualizerEffect<'d, 'c> {
 			}
 		} else {
 			let _ = writeln!(io::stderr(), "ALTO ERROR: `alcMakeContextCurrent` failed in EqualizerEffect drop");
+		}
+	}
+}
+
+
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for DedicatedLowFrequencyEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<DedicatedLowFrequencyEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let d = ctx.device().extensions().ALC_EXT_DEDICATED()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = DedicatedLowFrequencyEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, d.AL_EFFECT_DEDICATED_LOW_FREQUENCY_EFFECT?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
+	#[inline]
+	fn context(&self) -> &al::Context<'d> { self.ctx }
+	#[inline]
+	fn as_raw(&self) -> sys::ALuint { self.effect }
+}
+
+
+impl<'d: 'c, 'c> DedicatedLowFrequencyEffect<'d, 'c> {
+	pub fn dedicated_gain(&self) -> AltoResult<f32> {
+		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
+		let d = self.ctx.device().extensions().ALC_EXT_DEDICATED()?;
+		let _lock = self.ctx.make_current(true)?;
+		let mut value = 0.0;
+		unsafe { efx.alGetEffectf?(self.effect, d.AL_EFFECT_DEDICATED_GAIN?, &mut value); }
+		self.ctx.get_error().map(|_| value)
+	}
+	pub fn set_dedicated_gain(&mut self, value: f32) -> AltoResult<()> {
+		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
+		let d = self.ctx.device().extensions().ALC_EXT_DEDICATED()?;
+		let _lock = self.ctx.make_current(true)?;
+		unsafe { efx.alEffectf?(self.effect, d.AL_EFFECT_DEDICATED_GAIN?, value); }
+		self.ctx.get_error()
+	}
+}
+
+
+impl<'d: 'c, 'c> Drop for DedicatedLowFrequencyEffect<'d, 'c> {
+	fn drop(&mut self) {
+		let efx = self.ctx.device().extensions().ALC_EXT_EFX().unwrap();
+		if let Ok(_lock) = self.ctx.make_current(true) {
+			unsafe { efx.alDeleteEffects.unwrap()(1, &mut self.effect as *mut sys::ALuint); }
+			if let Err(_) = self.ctx.get_error() {
+				let _ = writeln!(io::stderr(), "ALTO ERROR: `alDeleteEffects` failed in DedicatedLowFrequencyEffect drop");
+			}
+		} else {
+			let _ = writeln!(io::stderr(), "ALTO ERROR: `alcMakeContextCurrent` failed in DedicatedLowFrequencyEffect drop");
+		}
+	}
+}
+
+
+unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for DedicatedDialogueEffect<'d, 'c> {
+	fn new(ctx: &'c al::Context<'d>) -> AltoResult<DedicatedDialogueEffect<'d, 'c>> {
+		let efx = ctx.device().extensions().ALC_EXT_EFX()?;
+		let d = ctx.device().extensions().ALC_EXT_DEDICATED()?;
+		let _lock = ctx.make_current(true)?;
+		let mut effect = 0;
+		unsafe { efx.alGenEffects?(1, &mut effect); }
+		ctx.get_error()?;
+		let effect = DedicatedDialogueEffect{ctx: ctx, effect: effect};
+		unsafe { efx.alEffecti?(effect.as_raw(), efx.AL_EFFECT_TYPE?, d.AL_EFFECT_DEDICATED_DIALOGUE?); }
+		ctx.get_error().map(|_| effect)
+	}
+
+
+	#[inline]
+	fn context(&self) -> &al::Context<'d> { self.ctx }
+	#[inline]
+	fn as_raw(&self) -> sys::ALuint { self.effect }
+}
+
+
+impl<'d: 'c, 'c> DedicatedDialogueEffect<'d, 'c> {
+	pub fn dedicated_gain(&self) -> AltoResult<f32> {
+		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
+		let d = self.ctx.device().extensions().ALC_EXT_DEDICATED()?;
+		let _lock = self.ctx.make_current(true)?;
+		let mut value = 0.0;
+		unsafe { efx.alGetEffectf?(self.effect, d.AL_EFFECT_DEDICATED_GAIN?, &mut value); }
+		self.ctx.get_error().map(|_| value)
+	}
+	pub fn set_dedicated_gain(&mut self, value: f32) -> AltoResult<()> {
+		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
+		let d = self.ctx.device().extensions().ALC_EXT_DEDICATED()?;
+		let _lock = self.ctx.make_current(true)?;
+		unsafe { efx.alEffectf?(self.effect, d.AL_EFFECT_DEDICATED_GAIN?, value); }
+		self.ctx.get_error()
+	}
+}
+
+
+impl<'d: 'c, 'c> Drop for DedicatedDialogueEffect<'d, 'c> {
+	fn drop(&mut self) {
+		let efx = self.ctx.device().extensions().ALC_EXT_EFX().unwrap();
+		if let Ok(_lock) = self.ctx.make_current(true) {
+			unsafe { efx.alDeleteEffects.unwrap()(1, &mut self.effect as *mut sys::ALuint); }
+			if let Err(_) = self.ctx.get_error() {
+				let _ = writeln!(io::stderr(), "ALTO ERROR: `alDeleteEffects` failed in DedicatedDialogueEffect drop");
+			}
+		} else {
+			let _ = writeln!(io::stderr(), "ALTO ERROR: `alcMakeContextCurrent` failed in DedicatedDialogueEffect drop");
 		}
 	}
 }

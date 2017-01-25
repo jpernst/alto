@@ -5,9 +5,14 @@ use alto::*;
 
 
 fn main() {
-	let alto = Alto::load_default().unwrap();
-	println!("Using output: {:?}", alto.default_output().unwrap());
+	let alto = if let Ok(alto) = Alto::load_default() {
+		alto
+	} else {
+		println!("No OpenAL implementation present!");
+		return;
+	};
 
+	println!("Using output: {:?}", alto.default_output().unwrap());
 	let dev = alto.open(None).unwrap();
 	let ctx = dev.new_context(None).unwrap();
 

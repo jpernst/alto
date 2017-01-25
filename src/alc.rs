@@ -17,20 +17,12 @@ use ext;
 /// Attributes that may be supplied during context creation.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Default, Debug)]
 pub struct ContextAttrs {
-	/// Output sampling rate of the audio.
 	pub frequency: Option<sys::ALCint>,
-	/// Refresh rate of the internal mixer, in Hz.
 	pub refresh: Option<sys::ALCint>,
-	/// Hint for number of mono sources that will be created.
 	pub mono_sources: Option<sys::ALCint>,
-	/// Hint for number of stereo sources that will be created.
 	pub stereo_sources: Option<sys::ALCint>,
-	/// Whether HRTF is desired.
 	pub soft_hrtf: Option<bool>,
-	/// The ID of the HRTF specifier to be used.
-	/// This should be the index of a specifier as retrieved from [`enumerate_soft_hrtfs`](trait.DeviceTrait.html#tymethod.enumerate_soft_hrtfs).
 	pub soft_hrtf_id: Option<sys::ALCint>,
-	/// Hint for the maximum number of auxiliary sends that will be used on any source.
 	pub max_auxiliary_sends: Option<sys::ALCint>,
 }
 
@@ -38,15 +30,10 @@ pub struct ContextAttrs {
 /// Attributes that may be supplied during context creation from a loopback device.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Default, Debug)]
 pub struct LoopbackAttrs {
-	/// Hint for number of mono sources that will be created.
 	pub mono_sources: Option<sys::ALCint>,
-	/// Hint for number of stereo sources that will be created.
 	pub stereo_sources: Option<sys::ALCint>,
-	/// Whether HRTF is desired.
 	pub soft_hrtf: Option<bool>,
-	/// The ID of the HRTF specifier to be used.
 	pub soft_hrtf_id: Option<sys::ALCint>,
-	/// Hint for the maximum number of auxiliary sends that will be used on any source.
 	pub max_auxiliary_sends: Option<sys::ALCint>,
 }
 
@@ -113,24 +100,16 @@ pub unsafe trait DeviceTrait {
 	fn specifier(&self) -> &CStr;
 	/// Raw handle as exposed by OpenAL.
 	fn as_raw(&self) -> *mut sys::ALCdevice;
-	/// Query the presence of an ALC extension.
 	fn is_extension_present(&self, ext::Alc) -> bool;
 	#[doc(hidden)]
 	fn extensions(&self) -> &ext::AlcCache;
-	/// Polls the connection state.
-	/// If this ever returns false, then the device must be closed and reopened; it will not become true again.
 	fn connected(&self) -> AltoResult<bool>;
-	/// Enumerate the supported HRTF functions.
 	fn enumerate_soft_hrtfs(&self) -> AltoResult<Vec<CString>>;
-	/// Current HRTF mode.
 	fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus>;
-	/// Maximum number of auxiliary sends that can be hooked up from a source.
 	fn max_auxiliary_sends(&self) -> AltoResult<sys::ALCint>;
 }
 
 
-/// An audio device as exposed by the OpenAL implementation.
-/// This will typically be a device endpoint as reported by the operating system.
 pub struct Device<'a> {
 	alto: &'a Alto,
 	spec: CString,
@@ -211,7 +190,6 @@ impl Alto {
 	pub fn raw_api(&self) -> &AlApi { &self.api }
 
 
-	/// Get the specifier of the default output device.
 	pub fn default_output(&self) -> AltoResult<CString> {
 		self.api.rent(|exts| {
 			let spec = if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
@@ -224,14 +202,12 @@ impl Alto {
 	}
 
 
-	/// Get the specifier of the default capture device.
 	pub fn default_capture(&self) -> AltoResult<CString> {
 		let spec = unsafe { CStr::from_ptr(self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)) };
 		self.get_error(ptr::null_mut()).map(|_| spec.to_owned())
 	}
 
 
-	/// Enumerate available audio outputs detected by the implementation.
 	pub fn enumerate_outputs(&self) -> AltoResult<Vec<CString>> {
 		self.api.rent(|exts| {
 			let spec = if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
@@ -244,7 +220,6 @@ impl Alto {
 	}
 
 
-	/// Enumerate available audio inputs detected by the implementation.
 	pub fn enumerate_captures(&self) -> AltoResult<Vec<CString>> {
 		let spec = unsafe { self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_CAPTURE_DEVICE_SPECIFIER) };
 		self.get_error(ptr::null_mut()).and_then(|_| Alto::parse_enum_spec(spec as *const u8))
@@ -269,7 +244,6 @@ impl Alto {
 	}
 
 
-	/// Open an audio device from a device specifier, or default if `None`.
 	pub fn open<'s, S: Into<Option<&'s CStr>>>(&self, spec: S) -> AltoResult<Device> {
 		let spec = if let Some(spec) = spec.into() {
 			spec.to_owned()
@@ -294,8 +268,6 @@ impl Alto {
 	}
 
 
-	/// Open a loopback device from a device specifier, or default if `None`.
-	/// Requires `ALC_SOFT_loopback`.
 	pub fn open_loopback<'s, S: Into<Option<&'s CStr>>, F: LoopbackFrame>(&self, spec: S) -> AltoResult<LoopbackDevice<F>> {
 		self.api.rent(|exts| {
 			let sl = exts.ALC_SOFT_loopback()?;
@@ -324,7 +296,6 @@ impl Alto {
 	}
 
 
-	/// Open a capture device from a device specifier, or default if `None`.
 	pub fn open_capture<'s, S: Into<Option<&'s CStr>>, F: StandardFrame>(&self, spec: S, freq: sys::ALCuint, len: sys::ALCsizei) -> AltoResult<CaptureDevice<F>> {
 		let spec = if let Some(spec) = spec.into() {
 			spec.to_owned()
@@ -399,7 +370,6 @@ impl<'a> Device<'a> {
 	}
 
 
-	/// Create a new context from this device.
 	pub fn new_context<A: Into<Option<ContextAttrs>>>(&self, attrs: A) -> AltoResult<Context> {
 		let attrs_vec = self.make_attrs_vec(attrs.into());
 
@@ -408,15 +378,11 @@ impl<'a> Device<'a> {
 	}
 
 
-	/// Pause output of this device and return a lock.
-	/// Output will resume when this lock is dropped.
 	pub fn soft_pause<'d>(&'d self) -> AltoResult<SoftPauseLock<'a, 'd>> {
 		SoftPauseLock::new(self)
 	}
 
 
-	/// Attempt to reset the device with new attributes.
-	/// Requires the `ALC_SOFT_HRTF`.
 	pub fn soft_reset<A: Into<Option<ContextAttrs>>>(&self, attrs: A) -> AltoResult<()> {
 		let ards = self.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
 		let attrs_vec = self.make_attrs_vec(attrs.into());
@@ -597,7 +563,6 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 	}
 
 
-	/// Create a new context from this device.
 	pub fn new_context<A: Into<Option<LoopbackAttrs>>>(&self, freq: sys::ALCint, attrs: A) -> AltoResult<Context> {
 		let attrs_vec = self.make_attrs_vec(freq, attrs.into())?;
 		let ctx = unsafe { self.alto.api.owner().alcCreateContext()(self.dev, attrs_vec.as_slice().as_ptr()) };
@@ -605,8 +570,6 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 	}
 
 
-	/// Render audio samples into a buffer.
-	/// Requires `ALC_SOFT_loopback`.
 	pub fn soft_render_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> AltoResult<()> {
 		let mut data = data.as_buffer_data_mut();
 		if sys::ALCsizei::max_value() as usize / mem::size_of::<F>() < data.len() { return Err(AltoError::AlcInvalidValue) }
@@ -620,8 +583,6 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 	}
 
 
-	/// Attempt to reset the device with new attributes.
-	/// Requires `ALC_SOFT_HRTF`.
 	pub fn soft_reset<A: Into<Option<LoopbackAttrs>>>(&self, freq: sys::ALCint, attrs: A) -> AltoResult<()> {
 		let ards = self.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
 
@@ -734,21 +695,18 @@ impl<'a, F: StandardFrame> CaptureDevice<'a, F> {
 	pub fn as_raw(&self) -> *mut sys::ALCdevice { self.dev }
 
 
-	/// Start capturing samples.
 	pub fn start(&mut self) -> AltoResult<()> {
 		unsafe { self.alto.api.owner().alcCaptureStart()(self.dev); }
 		self.alto.get_error(self.dev)
 	}
 
 
-	/// Stop capturing samples.
 	pub fn stop(&mut self) -> AltoResult<()> {
 		unsafe { self.alto.api.owner().alcCaptureStop()(self.dev); }
 		self.alto.get_error(self.dev)
 	}
 
 
-	/// Number of pending samples.
 	pub fn samples_len(&self) -> AltoResult<sys::ALCint> {
 		let mut samples = 0;
 		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, sys::ALC_CAPTURE_SAMPLES, 1, &mut samples); }
@@ -756,7 +714,6 @@ impl<'a, F: StandardFrame> CaptureDevice<'a, F> {
 	}
 
 
-	/// Extract pending samples from the capture buffer.
 	pub fn capture_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> AltoResult<()> {
 		let mut data = data.as_buffer_data_mut();
 		if data.len() > self.samples_len()? as usize { return Err(AltoError::AlcInvalidValue) }

@@ -19,22 +19,14 @@ mod format;
 pub use self::format::*;
 
 
-/// The shape of the gain curve for 3D positional audio.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum DistanceModel {
-	/// No distance rolloff.
 	None,
-	/// Gain is inversely proportional to distance.
 	Inverse,
-	/// Gain is inversely proportional to distance, but clamped at 1.0.
 	InverseClamped,
-	/// Gain rolls off linearly.
 	Linear,
-	/// Gain rolls off linearly, but clamps at 1.0.
 	LinearClamped,
-	/// Exponential rolloff.
 	Exponent,
-	/// Exponential rolloff, but clamped at 1.0.
 	ExponentClamped,
 }
 
@@ -54,7 +46,6 @@ pub struct Context<'d> {
 pub struct SuspendLock<'d: 'c, 'c>(&'c Context<'d>);
 
 
-/// A buffer containing audio data of any supported format.
 pub struct Buffer<'d: 'c, 'c> {
 	ctx: &'c Context<'d>,
 	buf: sys::ALuint, 
@@ -68,155 +59,100 @@ pub unsafe trait SourceTrait<'d: 'c, 'c> {
 	/// Raw handle as provided by OpenAL.
 	fn as_raw(&self) -> sys::ALuint;
 
-	/// Current playback state of the source.
 	fn state(&self) -> AltoResult<SourceState>;
-	/// Begin playing audio, or resume playing if previously paused.
 	fn play(&mut self) -> AltoResult<()>;
-	/// Pause playback while retaining playback position.
 	fn pause(&mut self) -> AltoResult<()>;
-	/// Stop playback and reset playback to the beginning of the audio data.
 	fn stop(&mut self) -> AltoResult<()>;
-	/// Reset playback to the beginning of the audio data.
 	fn rewind(&mut self) -> AltoResult<()>;
 
-	/// Whether the source has a listener-relative position.
 	fn relative(&self) -> AltoResult<bool>;
 	fn set_relative(&mut self, bool) -> AltoResult<()>;
 
-	/// Minimum gain that will be applied by the distance model.
 	fn gain(&self) -> AltoResult<f32>;
 	fn set_gain(&mut self, f32) -> AltoResult<()>;
 
-	/// Minimum gain that will be applied by the distance model.
 	fn min_gain(&self) -> AltoResult<f32>;
 	fn set_min_gain(&mut self, f32) -> AltoResult<()>;
 
-	/// Maximum gain that will be applied by the distance model.
 	fn max_gain(&self) -> AltoResult<f32>;
 	fn set_max_gain(&mut self, f32) -> AltoResult<()>;
 
-	/// Distance at which the source will have unmodified gain.
 	fn reference_distance(&self) -> AltoResult<f32>;
 	fn set_reference_distance(&mut self, f32) -> AltoResult<()>;
 
-	/// Rolloff factor of the distance model.
 	fn rolloff_factor(&self) -> AltoResult<f32>;
 	fn set_rolloff_factor(&mut self, f32) -> AltoResult<()>;
 
-	/// Distance beyond which the source will no longer attenuate.
 	fn max_distance(&self) -> AltoResult<f32>;
 	fn set_max_distance(&mut self, f32) -> AltoResult<()>;
 
-	/// Relative playback speed of the source.
 	fn pitch(&self) -> AltoResult<f32>;
 	fn set_pitch(&mut self, f32) -> AltoResult<()>;
 
-	/// Velocity vector of the source.
 	fn position<V: From<[f32; 3]>>(&self) -> AltoResult<V>;
 	fn set_position<V: Into<[f32; 3]>>(&mut self, V) -> AltoResult<()>;
 
-	/// Velocity vector of the source.
 	fn velocity<V: From<[f32; 3]>>(&self) -> AltoResult<V>;
 	fn set_velocity<V: Into<[f32; 3]>>(&mut self, V) -> AltoResult<()>;
 
-	/// Direction vector of the source.
 	fn direction<V: From<[f32; 3]>>(&self) -> AltoResult<V>;
 	fn set_direction<V: Into<[f32; 3]>>(&mut self, V) -> AltoResult<()>;
 
-	/// Angle from the direction vector within which the source will be fully heard.
 	fn cone_inner_angle(&self) -> AltoResult<f32>;
 	fn set_cone_inner_angle(&mut self, f32) -> AltoResult<()>;
 
-	/// Angle from the direction vector within which the source will be heard at all.
 	fn cone_outer_angle(&self) -> AltoResult<f32>;
 	fn set_cone_outer_angle(&mut self, f32) -> AltoResult<()>;
 
-	/// Gain factor to determine attenuation when the listener is within the outer cone but outiside the inner cone.
 	fn cone_outer_gain(&self) -> AltoResult<f32>;
 	fn set_cone_outer_gain(&mut self, f32) -> AltoResult<()>;
 
-	/// Read cursor position in seconds.
 	fn sec_offset(&self) -> AltoResult<f32>;
 	fn set_sec_offset(&mut self, f32) -> AltoResult<()>;
 
-	/// Read cursor position in samples.
 	fn sample_offset(&self) -> AltoResult<sys::ALint>;
 	fn set_sample_offset(&mut self, sys::ALint) -> AltoResult<()>;
 
-	/// Read cursor position in bytes.
 	fn byte_offset(&self) -> AltoResult<sys::ALint>;
 	fn set_byte_offset(&mut self, sys::ALint) -> AltoResult<()>;
 
-	/// A tuple of a playback position and the amount of time until that position is heard, in seconds.
-	/// Requires `AL_SOFT_source_latency`.
 	fn soft_sec_offset_latency(&self) -> AltoResult<(f64, f64)>;
 
-	/// A tuple of a fixed point playback position in samples, and the time until that position is heard, in nanoseconds.
-	/// Requires `AL_SOFT_source_latency`.
 	fn soft_sample_offset_frac_latency(&self) -> AltoResult<(i32, i32, i64)>;
 
-	/// Total length of the queued audio data in seconds.
-	/// Requires `AL_SOFT_source_length`.
 	fn soft_sec_length(&self) -> AltoResult<f32>;
 
-	/// Total length of the queued audio data in samples.
-	/// Requires `AL_SOFT_source_length`.
 	fn soft_sample_length(&self) -> AltoResult<sys::ALint>;
 
-	/// Total length of the queued audio data in bytes.
-	/// Requires `AL_SOFT_source_length`.
 	fn soft_byte_length(&self) -> AltoResult<sys::ALint>;
 
-	/// Whether the audio data will be directly output to the corresponding output channels, bypassing any processing.
-	/// Requires `AL_SOFT_direct_channels`.
 	fn soft_direct_channels(&self) -> AltoResult<bool>;
 	fn set_soft_direct_channels(&mut self, bool) -> AltoResult<()>;
 
-	/// Distance model specific to this source.
-	/// Requires `AL_EXT_source_distance_model`.
 	fn distance_model(&self) -> AltoResult<DistanceModel>;
 	fn set_distance_model(&mut self, DistanceModel) -> AltoResult<()>;
 
-	/// Sets the filter to apply to the source's dry signal.
-	/// Requires `AL_EXT_EFX`.
 	fn set_direct_filter<F: FilterTrait<'d, 'c>>(&mut self, value: &F) -> AltoResult<()>;
-	/// Clears the filter to apply to the source's dry signal.
-	/// Requires `AL_EXT_EFX`.
 	fn clear_direct_filter(&mut self) -> AltoResult<()>;
 
-	/// Sets the effect to connect to an auxiliary send.
-	/// Requires `AL_EXT_EFX`.
 	fn set_auxiliary_send(&mut self, send: sys::ALint, value: &mut AuxEffectSlot<'d, 'c>) -> AltoResult<()>;
-	/// Sets the effect and filter to connect to an auxiliary send.
-	/// Requires `AL_EXT_EFX`.
 	fn set_auxiliary_send_filter<F: FilterTrait<'d, 'c>>(&mut self, send: sys::ALint, slot: &mut AuxEffectSlot<'d, 'c>, filter: &F) -> AltoResult<()>;
-	/// Clears the effect connected to an auxiliary send.
-	/// Requires `AL_EXT_EFX`.
 	fn clear_auxiliary_send(&mut self, send: sys::ALint) -> AltoResult<()>;
 
-	/// Amount of high-frequency attenuation applied based on distance to listener.
-	/// Requires `AL_EXT_EFX`.
 	fn air_absorption_factor(&self) -> AltoResult<f32>;
 	fn set_air_absorption_factor(&mut self, f32) -> AltoResult<()>;
 
-	/// Attenuation of reflected sound in reverb effect, specific to this source.
-	/// Requires `AL_EXT_EFX`.
 	fn room_rolloff_factor(&self) -> AltoResult<f32>;
 	fn set_room_rolloff_factor(&mut self, f32) -> AltoResult<()>;
 
-	/// High frequency attenuation when outside of the directed done.
-	/// Requires `AL_EXT_EFX`.
 	fn cone_outer_gainhf(&self) -> AltoResult<f32>;
 	fn set_cone_outer_gainhf(&mut self, f32) -> AltoResult<()>;
 
-	/// Enable directional filtering for this source.
-	/// Requires `AL_EXT_EFX`.
 	fn direct_filter_gainhf_auto(&self) -> AltoResult<bool>;
 	fn set_direct_filter_gainhf_auto(&mut self, bool) -> AltoResult<()>;
 }
 
 
-/// Playstack state of a source.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum SourceState {
 	Initial,
@@ -268,7 +204,6 @@ impl<'d> Context<'d> {
 	pub fn as_raw(&self) -> *mut sys::ALCcontext { self.ctx }
 
 
-	/// Query presence of an extension.
 	pub fn is_extension_present(&self, ext: ext::Al) -> bool {
 		match ext {
 			ext::Al::ALaw => self.exts.AL_EXT_ALAW().is_ok(),
@@ -312,7 +247,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Distance model applied to all sources from this context.
 	pub fn distance_model(&self) -> AltoResult<DistanceModel> {
 		let _lock = self.make_current(true)?;
 		let value = unsafe { self.api.owner().alGetInteger()(sys::AL_DISTANCE_MODEL) };
@@ -344,8 +278,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Using per-source distance model settings.
-	/// Requires `AL_EXT_source_distance_model`.
 	pub fn using_source_distance_model(&self) -> AltoResult<bool> {
 		let _lock = self.make_current(true)?;
 		let value = unsafe { self.api.owner().alIsEnabled()(self.exts.AL_EXT_source_distance_model()?.AL_SOURCE_DISTANCE_MODEL?) };
@@ -362,7 +294,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Doppler factor applied based on relative velocities.
 	pub fn doppler_factor(&self) -> AltoResult<f32> {
 		let _lock = self.make_current(true)?;
 		let value = unsafe { self.api.owner().alGetFloat()(sys::AL_DOPPLER_FACTOR) };
@@ -375,7 +306,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Speed of sound, used for doppler calculations.
 	pub fn speed_of_sound(&self) -> AltoResult<f32> {
 		let _lock = self.make_current(true)?;
 		let value = unsafe { self.api.owner().alGetFloat()(sys::AL_SPEED_OF_SOUND) };
@@ -388,7 +318,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Global gain.
 	pub fn gain(&self) -> AltoResult<f32> {
 		let _lock = self.make_current(true)?;
 		let mut value = 0.0;
@@ -402,7 +331,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Position of the listener.
 	pub fn position<V: From<[f32; 3]>>(&self) -> AltoResult<V> {
 		let _lock = self.make_current(true)?;
 		let mut value = [0.0, 0.0, 0.0];
@@ -417,7 +345,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Velocity of the listener.
 	pub fn velocity<V: From<[f32; 3]>>(&self) -> AltoResult<V> {
 		let _lock = self.make_current(true)?;
 		let mut value = [0.0, 0.0, 0.0];
@@ -432,7 +359,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Orientation of the listener, consisting of a forward vector and an up vector.
 	pub fn orientation<V: From<[f32; 3]>>(&self) -> AltoResult<(V, V)> {
 		let _lock = self.make_current(true)?;
 		let mut value = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]];
@@ -447,8 +373,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Meters per unit for environmental effects.
-	/// Requires `ALC_EXT_EFX`.
 	pub fn meters_per_unit(&self) -> AltoResult<f32> {
 		let efx = self.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.make_current(true)?;
@@ -464,7 +388,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Create a new, empty buffer object.
 	pub fn new_buffer<'c>(&'c self) -> AltoResult<Buffer<'d, 'c>> {
 		Buffer::new(self)
 	}
@@ -482,7 +405,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Begin playing all specified sources simultaneously.
 	pub fn play_all<'c, S, I>(&self, srcs: I) -> AltoResult<()> where
 		'd: 'c,
 		S: SourceTrait<'d, 'c>,
@@ -498,7 +420,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Pause all specified sources simultaneously.
 	pub fn pause_all<'c, S, I>(&self, srcs: I) -> AltoResult<()> where
 		'd: 'c,
 		S: SourceTrait<'d, 'c>,
@@ -514,7 +435,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Stop all specified sources simultaneously.
 	pub fn stop_all<'c, S, I>(&self, srcs: I) -> AltoResult<()> where
 		'd: 'c,
 		S: SourceTrait<'d, 'c>,
@@ -530,7 +450,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Rewind all specified sources simultaneously.
 	pub fn rewind_all<'c, S, I>(&self, srcs: I) -> AltoResult<()> where
 		'd: 'c,
 		S: SourceTrait<'d, 'c>,
@@ -546,10 +465,6 @@ impl<'d> Context<'d> {
 	}
 
 
-	/// Suspend state updates for the context, returning a guard object.
-	/// Until the guard object is dropped, any state changes for the context
-	/// are deferred. After the guard is dropped, all pending changes will
-	/// be applied simultaneously.
 	pub fn suspend<'c>(&'c self) -> AltoResult<SuspendLock<'d, 'c>> {
 		SuspendLock::new(self)
 	}
@@ -686,7 +601,6 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	pub fn as_raw(&self) -> sys::ALuint { self.buf }
 
 
-	/// Upload sound data from a slice of sample frames.
 	pub fn set_data<F: SampleFrame, R: AsBufferData<F>>(&mut self, data: R, freq: i32) -> AltoResult<()> {
 		let data = data.as_buffer_data();
 		let size = data.len() * mem::size_of::<F>();
@@ -706,7 +620,6 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
-	/// Sample-rate of the audio in the buffer.
 	pub fn frequency(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
@@ -715,7 +628,6 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
-	/// Bit-depth of the audio in the buffer.
 	pub fn bits(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
@@ -724,7 +636,6 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
-	/// Number of channels for the audio in the buffer.
 	pub fn channels(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
@@ -733,7 +644,6 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
-	/// Size in bytes of the audio in the buffer.
 	pub fn size(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
@@ -742,8 +652,6 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
-	/// Loop points for the audio in the buffer, as a tuple of start and end samples.
-	/// Requires `AL_SOFT_loop_points`.
 	pub fn soft_loop_points(&self) -> AltoResult<(sys::ALint, sys::ALint)> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = [0, 0];
@@ -1290,11 +1198,9 @@ impl<'d: 'c, 'c> StaticSource<'d, 'c> {
 	}
 
 
-	/// The shared buffer currently associated with this source.
 	pub fn buffer(&self) -> Option<&Arc<Buffer<'d, 'c>>> { self.buf.as_ref() }
 
 
-	/// Associate a shared buffer with the source.
 	pub fn set_buffer(&mut self, buf: Arc<Buffer<'d, 'c>>) -> AltoResult<()> {
 		if buf.ctx.device().as_raw() != self.src.ctx.device().as_raw() {
 			return Err(AltoError::AlInvalidValue);
@@ -1454,13 +1360,11 @@ impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
 	}
 
 
-	/// Number of buffers currently queued in this stream.
 	pub fn buffers_queued(&self) -> AltoResult<sys::ALint> {
 		Ok(self.bufs.len() as sys::ALint)
 	}
 
 
-	/// Number of buffers that have been fully processed by this stream.
 	pub fn buffers_processed(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.src.ctx.make_current(true)?;
 		let mut value = 0;
@@ -1469,7 +1373,6 @@ impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
 	}
 
 
-	/// Enqueue a buffer to the stream.
 	pub fn queue_buffer(&mut self, buf: Buffer<'d, 'c>) -> Result<(), (AltoError, Buffer<'d, 'c>)> {
 		{
 			if buf.ctx.device().as_raw() != self.src.ctx.device().as_raw() {
@@ -1493,7 +1396,6 @@ impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
 	}
 
 
-	/// Remove a processed buffer from the queue.
 	pub fn unqueue_buffer(&mut self) -> AltoResult<Buffer<'d, 'c>> {
 		{
 			let _lock = self.src.ctx.make_current(true)?;

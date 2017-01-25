@@ -11,6 +11,18 @@ fn main() {
 	let dev = alto.open(None).unwrap();
 	let ctx = dev.new_context(None).unwrap();
 
+	let mut slot = if dev.is_extension_present(alto::ext::Alc::Efx) {
+		println!("Using EFX reverb");
+		let mut slot = ctx.new_aux_effect_slot().unwrap();
+		let mut reverb: EaxReverbEffect = ctx.new_effect().unwrap();
+		reverb.set_preset(&alto::REVERB_PRESET_GENERIC).unwrap();
+		slot.set_effect(&reverb).unwrap();
+		Some(slot)
+	} else {
+		println!("EFX not present");
+		None
+	};
+
 	{
 		let mut buf = ctx.new_buffer().unwrap();
 		buf.set_data(SinWave::new(44_000 / 440, 0.25).render().take(44_000 / 440).collect::<Vec<_>>(), 44_000).unwrap();
@@ -19,6 +31,9 @@ fn main() {
 		let mut src = ctx.new_static_source().unwrap();
 		src.set_buffer(buf).unwrap();
 		src.set_looping(true).unwrap();
+		if let Some(ref mut slot) = slot {
+			src.set_auxiliary_send(0, slot).unwrap();
+		}
 
 		println!("Playing static 440hz sine wave...");
 		src.play().unwrap();
@@ -26,10 +41,15 @@ fn main() {
 		std::thread::sleep(std::time::Duration::new(2, 0));
 	}
 
+	std::thread::sleep(std::time::Duration::new(1, 0));
+
 	{
 		let mut wave = SinWave::new(44_000 / 220, 0.25);
 
 		let mut src = ctx.new_streaming_source().unwrap();
+		if let Some(ref mut slot) = slot {
+			src.set_auxiliary_send(0, slot).unwrap();
+		}
 		for _ in 0 .. 5 {
 			let mut buf = ctx.new_buffer().unwrap();
 			buf.set_data(wave.render().take(44_000 / 10).collect::<Vec<_>>(), 44_000).unwrap();
@@ -50,11 +70,7 @@ fn main() {
 		while src.buffers_processed().unwrap() < 5 { }
 	}
 
-//	{
-//		let slot = ctx.new_aux_effect_slot().unwrap();
-//		let reverb: ReverbEffect = ctx.new_effect().unwrap();
-//	}
-
+	std::thread::sleep(std::time::Duration::new(1, 0));
 }
 
 

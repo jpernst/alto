@@ -341,6 +341,37 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for EaxReverbEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
+	pub fn set_preset(&mut self, preset: &EaxReverbProperties) -> AltoResult<()> {
+		let mut r = Ok(());
+
+		r = r.and(self.set_density(preset.density));
+		r = r.and(self.set_diffusion(preset.diffusion));
+		r = r.and(self.set_gain(preset.gain));
+		r = r.and(self.set_gainhf(preset.gainhf));
+		r = r.and(self.set_gainlf(preset.gainlf));
+		r = r.and(self.set_decay_time(preset.decay_time));
+		r = r.and(self.set_decay_hfratio(preset.decay_hfratio));
+		r = r.and(self.set_decay_lfratio(preset.decay_lfratio));
+		r = r.and(self.set_reflections_gain(preset.reflections_gain));
+		r = r.and(self.set_reflections_delay(preset.reflections_delay));
+		r = r.and(self.set_reflections_pan(preset.reflections_pan));
+		r = r.and(self.set_late_reverb_gain(preset.late_reverb_gain));
+		r = r.and(self.set_late_reverb_delay(preset.late_reverb_delay));
+		r = r.and(self.set_late_reverb_pan(preset.late_reverb_pan));
+		r = r.and(self.set_echo_time(preset.echo_time));
+		r = r.and(self.set_echo_depth(preset.echo_depth));
+		r = r.and(self.set_modulation_time(preset.modulation_time));
+		r = r.and(self.set_modulation_depth(preset.modulation_depth));
+		r = r.and(self.set_air_absorption_gainhf(preset.air_absorption_gainhf));
+		r = r.and(self.set_hfreference(preset.hfreference));
+		r = r.and(self.set_lfreference(preset.lfreference));
+		r = r.and(self.set_room_rolloff_factor(preset.room_rolloff_factor));
+		r = r.and(self.set_decay_hflimit(preset.decay_hflimit));
+
+		r
+	}
+
+
 	pub fn density(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -723,6 +754,27 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for ReverbEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
+	pub fn set_preset(&mut self, preset: &EaxReverbProperties) -> AltoResult<()> {
+		let mut r = Ok(());
+
+		r = r.and(self.set_density(preset.density));
+		r = r.and(self.set_diffusion(preset.diffusion));
+		r = r.and(self.set_gain(preset.gain));
+		r = r.and(self.set_gainhf(preset.gainhf));
+		r = r.and(self.set_decay_time(preset.decay_time));
+		r = r.and(self.set_decay_hfratio(preset.decay_hfratio));
+		r = r.and(self.set_reflections_gain(preset.reflections_gain));
+		r = r.and(self.set_reflections_delay(preset.reflections_delay));
+		r = r.and(self.set_late_reverb_gain(preset.late_reverb_gain));
+		r = r.and(self.set_late_reverb_delay(preset.late_reverb_delay));
+		r = r.and(self.set_air_absorption_gainhf(preset.air_absorption_gainhf));
+		r = r.and(self.set_room_rolloff_factor(preset.room_rolloff_factor));
+		r = r.and(self.set_decay_hflimit(preset.decay_hflimit));
+
+		r
+	}
+
+
 	pub fn density(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;

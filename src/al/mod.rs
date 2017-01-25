@@ -1156,7 +1156,7 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 
 		let _lock = arc_self.ctx.make_current(true)?;
 		let mut sends = arc_self.sends.lock().unwrap();
-		unsafe { arc_self.ctx.api.owner().alSourceiv()(arc_self.src, efx.AL_AUXILIARY_SEND_FILTER?, &mut [send, slot.as_raw() as sys::ALint, filter as sys::ALint] as *mut [sys::ALint; 3] as *mut sys::ALint); }
+		unsafe { arc_self.ctx.api.owner().alSourceiv()(arc_self.src, efx.AL_AUXILIARY_SEND_FILTER?, &mut [slot.as_raw() as sys::ALint, send, filter as sys::ALint] as *mut [sys::ALint; 3] as *mut sys::ALint); }
 		arc_self.ctx.get_error()?;
 		sends[send as usize] = 0;
 		slot.add_input(Arc::downgrade(arc_self));
@@ -1170,7 +1170,7 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 
 		let _lock = self.ctx.make_current(true)?;
 		let mut sends = self.sends.lock().unwrap();
-		unsafe { self.ctx.api.owner().alSourceiv()(self.src, efx.AL_AUXILIARY_SEND_FILTER?, &mut [send, 0, 0] as *mut [sys::ALint; 3] as *mut sys::ALint); }
+		unsafe { self.ctx.api.owner().alSourceiv()(self.src, efx.AL_AUXILIARY_SEND_FILTER?, &mut [0, send, 0] as *mut [sys::ALint; 3] as *mut sys::ALint); }
 		self.ctx.get_error()?;
 		sends[send as usize] = 0;
 		Ok(())
@@ -1179,7 +1179,7 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 		let efx = self.ctx.dev.extensions().ALC_EXT_EFX()?;
 		for (i, s) in self.sends.lock().unwrap().iter_mut().enumerate() {
 			if *s == slot {
-				unsafe { self.ctx.api.owner().alSourceiv()(self.src, efx.AL_AUXILIARY_SEND_FILTER.unwrap(), &mut [i as sys::ALint, 0, 0] as *mut [sys::ALint; 3] as *mut sys::ALint); }
+				unsafe { self.ctx.api.owner().alSourceiv()(self.src, efx.AL_AUXILIARY_SEND_FILTER.unwrap(), &mut [0, i as sys::ALint, 0] as *mut [sys::ALint; 3] as *mut sys::ALint); }
 				*s = 0;
 			}
 		}

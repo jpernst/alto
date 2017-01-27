@@ -19,18 +19,27 @@ mod format;
 pub use self::format::*;
 
 
+/// The gain curve of sources as a function of distance to the listener.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum DistanceModel {
+	/// `AL_NONE`
 	None,
+	/// `AL_INVERSE_DISTANCE`
 	Inverse,
+	/// `AL_INVERSE_DISTANCE_CLAMPED`
 	InverseClamped,
+	/// `AL_LINEAR_DISTANCE`
 	Linear,
+	/// `AL_LINEAR_DISTANCE_CLAMPED`
 	LinearClamped,
+	/// `AL_EXPONENT_DISTANCE`
 	Exponent,
+	/// `AL_EXPONENT_DISTANCE_CLAMPLED`
 	ExponentClamped,
 }
 
 
+/// A listener context.
 pub struct Context<'d> {
 	dev: &'d DeviceTrait,
 	api: &'d AlApi<'static>,
@@ -42,10 +51,11 @@ pub struct Context<'d> {
 
 
 /// An RAII lock that will suspend state updates while held.
-/// When this lock is droopped, the context will apply all pending updates.
+/// When this lock is dropped, the context will apply all pending updates.
 pub struct SuspendLock<'d: 'c, 'c>(&'c Context<'d>);
 
 
+/// An audio buffer of any format.
 pub struct Buffer<'d: 'c, 'c> {
 	ctx: &'c Context<'d>,
 	buf: sys::ALuint, 
@@ -59,105 +69,193 @@ pub unsafe trait SourceTrait<'d: 'c, 'c> {
 	/// Raw handle as provided by OpenAL.
 	fn as_raw(&self) -> sys::ALuint;
 
+	/// `alGetSourcei(AL_SOURCE_STATE)`
 	fn state(&self) -> AltoResult<SourceState>;
+	/// `alSourcePlay()`
 	fn play(&mut self) -> AltoResult<()>;
+	/// `alSourcePause()`
 	fn pause(&mut self) -> AltoResult<()>;
+	/// `alSourceStop()`
 	fn stop(&mut self) -> AltoResult<()>;
+	/// `alSourceRewind()`
 	fn rewind(&mut self) -> AltoResult<()>;
 
+	/// `alGetSourcei(AL_SOURCE_RELATIVE)`
 	fn relative(&self) -> AltoResult<bool>;
+	/// `alSourcei(AL_SOURCE_RELATIVE)`
 	fn set_relative(&mut self, bool) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_GAIN)`
 	fn gain(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_GAIN)`
 	fn set_gain(&mut self, f32) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_MIN_GAIN)`
 	fn min_gain(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_MIN_GAIN)`
 	fn set_min_gain(&mut self, f32) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_MAX_GAIN)`
 	fn max_gain(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_MAX_GAIN)`
 	fn set_max_gain(&mut self, f32) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_REFERENCE_DISTANCE)`
 	fn reference_distance(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_REFERENCE_DISTANCE)`
 	fn set_reference_distance(&mut self, f32) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_ROLLOFF_FACTOR)`
 	fn rolloff_factor(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_ROLLOFF_FACTOR)`
 	fn set_rolloff_factor(&mut self, f32) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_MAX_DISTANCE)`
 	fn max_distance(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_MAX_DISTANCE)`
 	fn set_max_distance(&mut self, f32) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_PITCH)`
 	fn pitch(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_PITCH)`
 	fn set_pitch(&mut self, f32) -> AltoResult<()>;
 
+	/// `alGetSourcefv(AL_POSITION)`
 	fn position<V: From<[f32; 3]>>(&self) -> AltoResult<V>;
+	/// `alSourcefv(AL_POSITION)`
 	fn set_position<V: Into<[f32; 3]>>(&mut self, V) -> AltoResult<()>;
 
+	/// `alGetSourcefv(AL_VELOCITY)`
 	fn velocity<V: From<[f32; 3]>>(&self) -> AltoResult<V>;
+	/// `alSourcefv(AL_VELOCITY)`
 	fn set_velocity<V: Into<[f32; 3]>>(&mut self, V) -> AltoResult<()>;
 
+	/// `alGetSourcefv(AL_DIRECTION)`
 	fn direction<V: From<[f32; 3]>>(&self) -> AltoResult<V>;
+	/// `alSourcefv(AL_DIRECTION)`
 	fn set_direction<V: Into<[f32; 3]>>(&mut self, V) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_CONE_INNER_ANGLE)`
 	fn cone_inner_angle(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_CONE_INNER_ANGLE)`
 	fn set_cone_inner_angle(&mut self, f32) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_CONE_OUTER_ANGLE)`
 	fn cone_outer_angle(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_CONE_OUTER_ANGLE)`
 	fn set_cone_outer_angle(&mut self, f32) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_CONE_OUTER_GAIN)`
 	fn cone_outer_gain(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_CONE_OUTER_GAIN)`
 	fn set_cone_outer_gain(&mut self, f32) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_SEC_OFFSET)`
 	fn sec_offset(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_SEC_OFFSET)`
 	fn set_sec_offset(&mut self, f32) -> AltoResult<()>;
 
+	/// `alSetSourcei(AL_SAMPLE_OFFSET)`
 	fn sample_offset(&self) -> AltoResult<sys::ALint>;
+	/// `alSourcei(AL_SAMPLE_OFFSET)`
 	fn set_sample_offset(&mut self, sys::ALint) -> AltoResult<()>;
 
+	/// `alSetSourcei(AL_BYTE_OFFSET)`
 	fn byte_offset(&self) -> AltoResult<sys::ALint>;
+	/// `alSourcei(AL_BYTE_OFFSET)`
 	fn set_byte_offset(&mut self, sys::ALint) -> AltoResult<()>;
 
+	/// `alGetSourcedvSOFT(AL_SEC_OFFSET_LATENCY_SOFT)`
+	/// Requires `AL_SOFT_source_latency`
 	fn soft_sec_offset_latency(&self) -> AltoResult<(f64, f64)>;
 
-	fn soft_sample_offset_frac_latency(&self) -> AltoResult<(i32, i32, i64)>;
+	/// `alGetSourcei16vSOFT(AL_SAMPLE_OFFSET_LATENCY_SOFT)`
+	/// Requires `AL_SOFT_source_latency`
+	fn soft_sample_frac_offset_latency(&self) -> AltoResult<(i32, i32, i64)>;
 
+	/// `alGetSourcef(AL_SEC_LENGTH_SOFT)`
+	/// Requires `AL_SOFT_source_length`
 	fn soft_sec_length(&self) -> AltoResult<f32>;
 
+	/// `alGetSourcei(AL_SAMPLE_LENGTH_SOFT)`
+	/// Requires `AL_SOFT_source_length`
 	fn soft_sample_length(&self) -> AltoResult<sys::ALint>;
 
+	/// `alGetSourcei(AL_BYTE_LENGTH_SOFT)`
+	/// Requires `AL_SOFT_source_length`
 	fn soft_byte_length(&self) -> AltoResult<sys::ALint>;
 
+	/// `alGetSourcei(AL_DIRECT_CHANNELS_SOFT)`
+	/// Requires `AL_SOFT_direct_channels`
 	fn soft_direct_channels(&self) -> AltoResult<bool>;
+	/// `alSourcei(AL_DIRECT_CHANNELS_SOFT)`
+	/// Requires `AL_SOFT_direct_channels`
 	fn set_soft_direct_channels(&mut self, bool) -> AltoResult<()>;
 
+	/// `alGetSourcei(AL_DISTANCE_MODEL)`
+	/// Requires `AL_EXT_source_distance_model`
 	fn distance_model(&self) -> AltoResult<DistanceModel>;
+	/// `alSourcei(AL_DISTANCE_MODEL)`
+	/// Requires `AL_EXT_source_distance_model`
 	fn set_distance_model(&mut self, DistanceModel) -> AltoResult<()>;
 
+	/// `alSourcei(AL_DIRECT_FILTER)`
+	/// Requires `ALC_EXT_EFX`
 	fn set_direct_filter<F: FilterTrait<'d, 'c>>(&mut self, value: &F) -> AltoResult<()>;
+	/// `alSourcei(AL_DIRECT_FILTER)`
+	/// Requires `ALC_EXT_EFX`
 	fn clear_direct_filter(&mut self) -> AltoResult<()>;
 
+	/// `alSourceiv(AL_AUXILIARY_SEND_FILTER)`
+	/// Requires `ALC_EXT_EFX`
 	fn set_auxiliary_send(&mut self, send: sys::ALint, value: &mut AuxEffectSlot<'d, 'c>) -> AltoResult<()>;
+	/// `alSourceiv(AL_AUXILIARY_SEND_FILTER)`
+	/// Requires `ALC_EXT_EFX`
 	fn set_auxiliary_send_filter<F: FilterTrait<'d, 'c>>(&mut self, send: sys::ALint, slot: &mut AuxEffectSlot<'d, 'c>, filter: &F) -> AltoResult<()>;
+	/// `alSourceiv(AL_AUXILIARY_SEND_FILTER)`
+	/// Requires `ALC_EXT_EFX`
 	fn clear_auxiliary_send(&mut self, send: sys::ALint) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_AIR_ABSORPTION_FACTOR)`
+	/// Requires `ALC_EXT_EFX`
 	fn air_absorption_factor(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_AIR_ABSORPTION_FACTOR)`
+	/// Requires `ALC_EXT_EFX`
 	fn set_air_absorption_factor(&mut self, f32) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_ROOM_ROLLOFF_FACTOR)`
+	/// Requires `ALC_EXT_EFX`
 	fn room_rolloff_factor(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_ROOM_ROLLOFF_FACTOR)`
+	/// Requires `ALC_EXT_EFX`
 	fn set_room_rolloff_factor(&mut self, f32) -> AltoResult<()>;
 
+	/// `alGetSourcef(AL_CONE_OUTER_GAINHF)`
+	/// Requires `ALC_EXT_EFX`
 	fn cone_outer_gainhf(&self) -> AltoResult<f32>;
+	/// `alSourcef(AL_CONE_OUTER_GAINHF)`
+	/// Requires `ALC_EXT_EFX`
 	fn set_cone_outer_gainhf(&mut self, f32) -> AltoResult<()>;
 
+	/// `alGetSourcei(AL_DIRECT_FILTER_GAINHF_AUTO)`
+	/// Requires `ALC_EXT_EFX`
 	fn direct_filter_gainhf_auto(&self) -> AltoResult<bool>;
+	/// `alSourcei(AL_DIRECT_FILTER_GAINHF_AUTO)`
+	/// Requires `ALC_EXT_EFX`
 	fn set_direct_filter_gainhf_auto(&mut self, bool) -> AltoResult<()>;
 }
 
 
+/// The current playback state of a source.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum SourceState {
+	/// `AL_INITIAL`
 	Initial,
+	/// `AL_PLAYING`
 	Playing,
+	/// `AL_PAUSED`
 	Paused,
+	/// `AL_STOPPED`
 	Stopped,
 }
 
@@ -170,7 +268,7 @@ pub struct SourceImpl<'d: 'c, 'c> {
 }
 
 
-/// A source that can play shared static buffer.
+/// A source that can play a shared static buffer.
 pub struct StaticSource<'d: 'c, 'c> {
 	src: Arc<SourceImpl<'d, 'c>>,
 	buf: Option<Arc<Buffer<'d, 'c>>>,
@@ -204,6 +302,7 @@ impl<'d> Context<'d> {
 	pub fn as_raw(&self) -> *mut sys::ALCcontext { self.ctx }
 
 
+	/// `alIsExtensionPresent()`
 	pub fn is_extension_present(&self, ext: ext::Al) -> bool {
 		match ext {
 			ext::Al::ALaw => self.exts.AL_EXT_ALAW().is_ok(),
@@ -247,6 +346,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alGetInteger(AL_DISTANCE_MODEL)`
 	pub fn distance_model(&self) -> AltoResult<DistanceModel> {
 		let _lock = self.make_current(true)?;
 		let value = unsafe { self.api.owner().alGetInteger()(sys::AL_DISTANCE_MODEL) };
@@ -261,6 +361,7 @@ impl<'d> Context<'d> {
 			_ => Err(AltoError::AlInvalidValue),
 		})
 	}
+	/// `alDistanceModel()`
 	pub fn set_distance_model(&self, value: DistanceModel) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
 		unsafe {
@@ -278,11 +379,15 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alIsEnabled(AL_SOURCE_DISTANCE_MODEL)`
+	/// Requires `AL_EXT_source_distance_model`
 	pub fn using_source_distance_model(&self) -> AltoResult<bool> {
 		let _lock = self.make_current(true)?;
 		let value = unsafe { self.api.owner().alIsEnabled()(self.exts.AL_EXT_source_distance_model()?.AL_SOURCE_DISTANCE_MODEL?) };
 		self.get_error().map(|_| value == sys::AL_TRUE)
 	}
+	/// `alEnable/alDisable(AL_SOURCE_DISTANCE_MODEL)`
+	/// Requires `AL_EXT_source_distance_model`
 	pub fn use_source_distance_model(&self, value: bool) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
 		if value {
@@ -294,11 +399,13 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alGetFloat(AL_DOPPLER_FACTOR)`
 	pub fn doppler_factor(&self) -> AltoResult<f32> {
 		let _lock = self.make_current(true)?;
 		let value = unsafe { self.api.owner().alGetFloat()(sys::AL_DOPPLER_FACTOR) };
 		self.get_error().map(|_| value)
 	}
+	/// `alDopplerFactor()`
 	pub fn set_doppler_factor(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
 		unsafe { self.api.owner().alDopplerFactor()(value); }
@@ -306,11 +413,13 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alGetFloat(AL_SPEED_OF_SOUND)`
 	pub fn speed_of_sound(&self) -> AltoResult<f32> {
 		let _lock = self.make_current(true)?;
 		let value = unsafe { self.api.owner().alGetFloat()(sys::AL_SPEED_OF_SOUND) };
 		self.get_error().map(|_| value)
 	}
+	/// `alSpeedOfSound()`
 	pub fn set_speed_of_sound(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
 		unsafe { self.api.owner().alSpeedOfSound()(value); }
@@ -318,12 +427,14 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alGetListenerv(AL_GAIN)`
 	pub fn gain(&self) -> AltoResult<f32> {
 		let _lock = self.make_current(true)?;
 		let mut value = 0.0;
 		unsafe { self.api.owner().alGetListenerf()(sys::AL_GAIN, &mut value); }
 		self.get_error().map(|_| value)
 	}
+	/// `alListenerf(AL_GAIN)`
 	pub fn set_gain(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
 		unsafe { self.api.owner().alListenerf()(sys::AL_GAIN, value); }
@@ -331,12 +442,14 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alGetListenerfv(AL_POSITION)`
 	pub fn position<V: From<[f32; 3]>>(&self) -> AltoResult<V> {
 		let _lock = self.make_current(true)?;
 		let mut value = [0.0, 0.0, 0.0];
 		unsafe { self.api.owner().alGetListenerfv()(sys::AL_POSITION, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
 		self.get_error().map(|_| value.into())
 	}
+	/// `alListenerfv(AL_POSITION)`
 	pub fn set_position<V: Into<[f32; 3]>>(&self, value: V) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
 		let value = value.into();
@@ -345,12 +458,14 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alGetListenerfv(AL_VELOCITY)`
 	pub fn velocity<V: From<[f32; 3]>>(&self) -> AltoResult<V> {
 		let _lock = self.make_current(true)?;
 		let mut value = [0.0, 0.0, 0.0];
 		unsafe { self.api.owner().alGetListenerfv()(sys::AL_VELOCITY, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
 		self.get_error().map(|_| value.into())
 	}
+	/// `alListenerfv(AL_VELOCITY)`
 	pub fn set_velocity<V: Into<[f32; 3]>>(&self, value: V) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
 		let value = value.into();
@@ -359,12 +474,14 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alGetListenerfv(AL_ORIENTATION)`
 	pub fn orientation<V: From<[f32; 3]>>(&self) -> AltoResult<(V, V)> {
 		let _lock = self.make_current(true)?;
 		let mut value = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]];
 		unsafe { self.api.owner().alGetListenerfv()(sys::AL_ORIENTATION, &mut value as *mut [[f32; 3]; 2] as *mut sys::ALfloat); }
 		self.get_error().map(|_| (value[0].into(), value[1].into()))
 	}
+	/// `alListenerfv(AL_ORIENTATION)`
 	pub fn set_orientation<V: Into<[f32; 3]>>(&self, value: (V, V)) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
 		let value = [value.0.into(), value.1.into()];
@@ -373,6 +490,8 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alGetListenerf(AL_METERS_PER_UNIT)`
+	/// Requires `ALC_EXT_EFX`
 	pub fn meters_per_unit(&self) -> AltoResult<f32> {
 		let efx = self.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.make_current(true)?;
@@ -380,6 +499,8 @@ impl<'d> Context<'d> {
 		unsafe { self.api.owner().alGetListenerf()(efx.AL_METERS_PER_UNIT?, &mut value); }
 		self.get_error().map(|_| value)
 	}
+	/// `alListenerf(AL_METERS_PER_UNIT)`
+	/// Requires `ALC_EXT_EFX`
 	pub fn set_meters_per_unit(&self, value: f32) -> AltoResult<()> {
 		let efx = self.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.make_current(true)?;
@@ -388,23 +509,25 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alGenBuffers()`
 	pub fn new_buffer<'c>(&'c self) -> AltoResult<Buffer<'d, 'c>> {
 		Buffer::new(self)
 	}
 
 
-	/// Create a new static source.
+	/// `alGenSources()`
 	pub fn new_static_source(&self) -> AltoResult<StaticSource> {
 		StaticSource::new(self)
 	}
 
 
-	/// Create a new streaming source.
+	/// `alGenSources()`
 	pub fn new_streaming_source(&self) -> AltoResult<StreamingSource> {
 		StreamingSource::new(self)
 	}
 
 
+	/// `alSourcePlayv()`
 	pub fn play_all<'c, S, I>(&self, srcs: I) -> AltoResult<()> where
 		'd: 'c,
 		S: SourceTrait<'d, 'c>,
@@ -420,6 +543,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alSourcePausev()`
 	pub fn pause_all<'c, S, I>(&self, srcs: I) -> AltoResult<()> where
 		'd: 'c,
 		S: SourceTrait<'d, 'c>,
@@ -435,6 +559,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alSourceStopv()`
 	pub fn stop_all<'c, S, I>(&self, srcs: I) -> AltoResult<()> where
 		'd: 'c,
 		S: SourceTrait<'d, 'c>,
@@ -450,6 +575,7 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alSourceRewindv()`
 	pub fn rewind_all<'c, S, I>(&self, srcs: I) -> AltoResult<()> where
 		'd: 'c,
 		S: SourceTrait<'d, 'c>,
@@ -465,21 +591,29 @@ impl<'d> Context<'d> {
 	}
 
 
+	/// `alcSuspendContext()`
+	/// or `alDeferUpdatesSOFT()` if `AL_SOFT_deferred_updates` is available.
 	pub fn suspend<'c>(&'c self) -> AltoResult<SuspendLock<'d, 'c>> {
 		SuspendLock::new(self)
 	}
 
 
+	/// `alGenAuxiliaryEffectSlots()`
+	/// Requires `ALC_EXT_EFX`
 	pub fn new_aux_effect_slot<'c>(&'c self) -> AltoResult<AuxEffectSlot<'d, 'c>> {
 		AuxEffectSlot::new(self)
 	}
 
 
+	/// `alGenEffects()`
+	/// Requires `ALC_EXT_EFX`
 	pub fn new_effect<'c, E: EffectTrait<'d, 'c>>(&'c self) -> AltoResult<E> {
 		E::new(self)
 	}
 
 
+	/// `alGenFilters()`
+	/// Requires `ALC_EXT_EFX`
 	pub fn new_filter<'c, F: FilterTrait<'d, 'c>>(&'c self) -> AltoResult<F> {
 		F::new(self)
 	}
@@ -601,6 +735,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	pub fn as_raw(&self) -> sys::ALuint { self.buf }
 
 
+	/// `alBufferData()`
 	pub fn set_data<F: SampleFrame, R: AsBufferData<F>>(&mut self, data: R, freq: i32) -> AltoResult<()> {
 		let data = data.as_buffer_data();
 		let size = data.len() * mem::size_of::<F>();
@@ -620,6 +755,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
+	/// `alGetBufferi(AL_FREQUENCY)`
 	pub fn frequency(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
@@ -628,6 +764,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
+	/// `alGetBufferi(AL_BITS)`
 	pub fn bits(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
@@ -636,6 +773,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
+	/// `alGetBufferi(AL_CHANNELS)`
 	pub fn channels(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
@@ -644,6 +782,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
+	/// `alGetBufferi(AL_SIZE)`
 	pub fn size(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
@@ -652,12 +791,16 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	}
 
 
+	/// `alGetBufferiv(AL_LOOP_POINTS_SOFT)`
+	/// Requires `AL_SOFT_loop_points`
 	pub fn soft_loop_points(&self) -> AltoResult<(sys::ALint, sys::ALint)> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = [0, 0];
 		unsafe { self.ctx.api.owner().alGetBufferiv()(self.buf, self.ctx.exts.AL_SOFT_loop_points()?.AL_LOOP_POINTS_SOFT?, &mut value as *mut [sys::ALint; 2] as *mut sys::ALint); }
 		self.ctx.get_error().map(|_| (value[0], value[1]))
 	}
+	/// `alBufferiv(AL_LOOP_POINTS_SOFT)`
+	/// Requires `AL_SOFT_loop_points`
 	pub fn set_soft_loop_points(&self, value: (sys::ALint, sys::ALint)) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
 		unsafe { self.ctx.api.owner().alBufferiv()(self.buf, self.ctx.exts.AL_SOFT_loop_points()?.AL_LOOP_POINTS_SOFT?, &[value.0, value.1] as *const [sys::ALint; 2] as *const sys::ALint); }
@@ -1201,6 +1344,7 @@ impl<'d: 'c, 'c> StaticSource<'d, 'c> {
 	pub fn buffer(&self) -> Option<&Arc<Buffer<'d, 'c>>> { self.buf.as_ref() }
 
 
+	/// `alSourcei(AL_BUFFER)`
 	pub fn set_buffer(&mut self, buf: Arc<Buffer<'d, 'c>>) -> AltoResult<()> {
 		if buf.ctx.device().as_raw() != self.src.ctx.device().as_raw() {
 			return Err(AltoError::AlInvalidValue);
@@ -1215,6 +1359,7 @@ impl<'d: 'c, 'c> StaticSource<'d, 'c> {
 		self.buf = Some(buf);
 		Ok(())
 	}
+	/// `alSourcei(AL_BUFFER)`
 	pub fn clear_buffer(&mut self) -> AltoResult<()> {
 		{
 			let _lock = self.src.ctx.make_current(true)?;
@@ -1227,12 +1372,14 @@ impl<'d: 'c, 'c> StaticSource<'d, 'c> {
 	}
 
 
+	/// `alGetSourcei(AL_LOOPING)`
 	pub fn looping(&self) -> AltoResult<bool> {
 		let _lock = self.src.ctx.make_current(true)?;
 		let mut value = 0;
 		unsafe { self.src.ctx.api.owner().alGetSourcei()(self.src.src, sys::AL_LOOPING, &mut value); }
 		self.src.ctx.get_error().map(|_| value == sys::AL_TRUE as sys::ALint)
 	}
+	/// `alSourcei(AL_LOOPING)`
 	pub fn set_looping(&mut self, value: bool) -> AltoResult<()> {
 		let _lock = self.src.ctx.make_current(true)?;
 		unsafe { self.src.ctx.api.owner().alSourcei()(self.src.src, sys::AL_LOOPING, if value { sys::AL_TRUE } else { sys::AL_FALSE } as sys::ALint); }
@@ -1306,7 +1453,7 @@ unsafe impl<'d: 'c, 'c> SourceTrait<'d, 'c> for StaticSource<'d, 'c> {
 
 	fn soft_sec_offset_latency(&self) -> AltoResult<(f64, f64)> { self.src.soft_sec_offset_latency() }
 
-	fn soft_sample_offset_frac_latency(&self) -> AltoResult<(i32, i32, i64)> { self.src.soft_sample_offset_frac_latency() }
+	fn soft_sample_frac_offset_latency(&self) -> AltoResult<(i32, i32, i64)> { self.src.soft_sample_offset_frac_latency() }
 
 	fn soft_sec_length(&self) -> AltoResult<f32> { self.src.soft_sec_length() }
 
@@ -1360,11 +1507,13 @@ impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
 	}
 
 
+	/// `alGetSourcei(AL_BUFFERS_QUEUED)`
 	pub fn buffers_queued(&self) -> AltoResult<sys::ALint> {
 		Ok(self.bufs.len() as sys::ALint)
 	}
 
 
+	/// `alGetSourcei(AL_BUFFERS_PROCESSED)`
 	pub fn buffers_processed(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.src.ctx.make_current(true)?;
 		let mut value = 0;
@@ -1373,6 +1522,7 @@ impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
 	}
 
 
+	/// `alSourceQueueBuffers()`
 	pub fn queue_buffer(&mut self, buf: Buffer<'d, 'c>) -> Result<(), (AltoError, Buffer<'d, 'c>)> {
 		{
 			if buf.ctx.device().as_raw() != self.src.ctx.device().as_raw() {
@@ -1396,6 +1546,7 @@ impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
 	}
 
 
+	/// `alSourceUnqueueBuffers()`
 	pub fn unqueue_buffer(&mut self) -> AltoResult<Buffer<'d, 'c>> {
 		{
 			let _lock = self.src.ctx.make_current(true)?;
@@ -1472,7 +1623,7 @@ unsafe impl<'d: 'c, 'c> SourceTrait<'d, 'c> for StreamingSource<'d, 'c> {
 
 	fn soft_sec_offset_latency(&self) -> AltoResult<(f64, f64)> { self.src.soft_sec_offset_latency() }
 
-	fn soft_sample_offset_frac_latency(&self) -> AltoResult<(i32, i32, i64)> { self.src.soft_sample_offset_frac_latency() }
+	fn soft_sample_frac_offset_latency(&self) -> AltoResult<(i32, i32, i64)> { self.src.soft_sample_offset_frac_latency() }
 
 	fn soft_sec_length(&self) -> AltoResult<f32> { self.src.soft_sec_length() }
 

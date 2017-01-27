@@ -1,17 +1,12 @@
 //! #Overview
-//! Alto is an idiomatic wrapper for the OpenAL 3D audio API and associated extensions
-//! (EFX support is still WIP). This documentation will describe how the API was adapted
-//! for rust, but for more general information about OpenAL, the official documentation
-//! should be consulted.
+//! Alto is an idiomatic wrapper for the OpenAL 3D audio API and associated extensions (including EFX).
+//! This documentation does not describe how to use the OpenAL API itself, but rather explains how
+//! it has been adapted for rust and provides the native symbols associated with each function
+//! so they can be cross-referenced with the official OpenAL documentation for full details.
 //!
-//! The core of the API is the [`Alto`](struct.Alto.html) struct. From this struct audio
-//! devices can be enumerated and opened. Once a [`Device`](struct.Device.html) or
-//! [`LoopbackDevice`](struct.LoopbackDevice.html) is opened, a [`Context`](struct.Context.html)
-//! can be created from it. The context governs properties of the listener and allows you to
-//! allocate audio [`Buffer`](struct.Buffer.html)s. These buffers can then be played with either
-//! a [`StaticSource`](struct.StaticSource.html) or [`StreamingSource`](struct.StreamingSource.html),
-//! which are also allocated from the context.
-
+//! The core of the API is the [`Alto`](struct.Alto.html) struct. It has no analog in raw OpenAL and
+//! represents an implementation of the API itself. From there, instances of familiar OpenAL objects
+//! can be instantiated.
 
 #[macro_use]
 extern crate lazy_static;

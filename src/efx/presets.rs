@@ -1,4 +1,4 @@
-/// Represents a preset for the AL_EFFECT_REVERB and AL_EFFECT_EAXREVERB effects.
+/// Represents a preset for the `AL_EFFECT_REVERB` and `AL_EFFECT_EAXREVERB` effects.
 pub struct EaxReverbProperties {
 	pub density: f32,
 	pub diffusion: f32,

@@ -205,42 +205,67 @@ pub type AlExtResult<T> = ::std::result::Result<T, AlExtensionError>;
 
 #[derive(Copy, Clone, PartialEq, Hash, Eq, Debug)]
 pub enum AlcNull {
+	/// `ALC_ENUMERATE_ALL_EXT`
 	EnumerateAll,
+	/// `ALC_SOFT_loopback`
 	SoftLoopback,
+	/// `ALC_EXT_thread_local_context`
 	ThreadLocalContext,
 }
 
 
 #[derive(Copy, Clone, PartialEq, Hash, Eq, Debug)]
 pub enum Alc {
+	/// `ALC_EXT_DEDICATED`
 	Dedicated,
+	/// `ALC_EXT_disconnect`
 	Disconnect,
+	/// `ALC_EXT_EFX`
 	Efx,
+	/// `ALC_SOFT_HRTF`
 	SoftHrtf,
+	/// `ALC_SOFT_pause_device`
 	SoftPauseDevice,
 }
 
 
 #[derive(Copy, Clone, PartialEq, Hash, Eq, Debug)]
 pub enum Al {
+	/// `AL_EXT_ALAW`
 	ALaw,
+	/// `AL_EXT_BFORMAT`
 	BFormat,
+	/// `AL_EXT_double`
 	Double,
+	/// `AL_EXT_float32`
 	Float32,
+	/// `AL_EXT_IMA4`
 	Ima4,
+	/// `AL_EXT_MCFORMATS`
 	McFormats,
+	/// `AL_EXT_MULAW`
 	MuLaw,
+	/// `AL_EXT_MULAW_BFORMAT`
 	MuLawBFormat,
+	/// `AL_EXT_MULAW_MCFORMATS`
 	MuLawMcFormats,
+	/// `AL_SOFT_block_alignment`
 	SoftBlockAlignment,
 //	SoftBufferSamples,
 //	SoftBufferSubData,
+	/// `AL_SOFT_deferred_updates`
 	SoftDeferredUpdates,
+	/// `AL_SOFT_direct_channels`
 	SoftDirectChannels,
+	/// `AL_SOFT_loop_points`
 	SoftLoopPoints,
+	/// `AL_SOFT_MSADPCM`
 	SoftMsadpcm,
+	/// `AL_SOFT_source_latency`
 	SoftSourceLatency,
+	/// `AL_SOFT_source_length`
 	SoftSourceLength,
+	/// `AL_EXT_source_distance_model`
 	SourceDistanceModel,
 }
 

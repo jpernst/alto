@@ -12,6 +12,7 @@ mod presets;
 pub use self::presets::*;
 
 
+/// An auxiliary effect slot as provided by EFX.
 pub struct AuxEffectSlot<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	slot: sys::ALuint,
@@ -19,27 +20,33 @@ pub struct AuxEffectSlot<'d: 'c, 'c> {
 }
 
 
+/// Implemented for effects defined by EFX.
 pub unsafe trait EffectTrait<'d: 'c, 'c>: Sized {
 	#[doc(hidden)]
 	fn new(ctx: &'c al::Context<'d>) -> AltoResult<Self>;
 
+	/// Context from which this effect was created.
 	fn context(&self) -> &al::Context<'d>;
+	/// Raw handle as provided by OpenAL.
 	fn as_raw(&self) -> sys::ALuint;
 }
 
 
+/// `AL_EFFECT_EAXREVERB`
 pub struct EaxReverbEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
 }
 
 
+/// `AL_EFFECT_REVERB`
 pub struct ReverbEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
 }
 
 
+/// `AL_EFFECT_CHORUS`
 pub struct ChorusEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
@@ -56,18 +63,21 @@ enum_from_primitive! {
 }
 
 
+/// `AL_EFFECT_DISTORTION`
 pub struct DistortionEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
 }
 
 
+/// `AL_EFFECT_ECHO`
 pub struct EchoEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
 }
 
 
+/// `AL_EFFECT_FLANGER`
 pub struct FlangerEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
@@ -84,6 +94,7 @@ enum_from_primitive! {
 }
 
 
+/// `AL_EFFECT_FREQUENCY_SHIFTER`
 pub struct FrequencyShifterEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
@@ -101,6 +112,7 @@ enum_from_primitive! {
 }
 
 
+/// `AL_EFFECT_VOCAL_MORPHER`
 pub struct VocalMorpherEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
@@ -156,12 +168,14 @@ enum_from_primitive! {
 }
 
 
+/// `AL_EFFECT_PITCH_SHIFTER`
 pub struct PitchShifterEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
 }
 
 
+/// `AL_EFFECT_RING_MODULATOR`
 pub struct RingModulatorEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
@@ -179,57 +193,70 @@ enum_from_primitive! {
 }
 
 
+/// `AL_EFFECT_AUTOWAH`
 pub struct AutowahEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
 }
 
 
+/// `AL_EFFECT_COMPRESSOR`
 pub struct CompressorEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
 }
 
 
+/// `AL_EFFECT_EQUALIZER`
 pub struct EqualizerEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
 }
 
 
+/// `AL_EFFECT_DEDICATED_LOW_FREQUENCY_EFFECT`
+/// Requires `ALC_EXT_DEDICATED`
 pub struct DedicatedLowFrequencyEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
 }
 
 
+/// `AL_EFFECT_DEDICATED_DIALOGUE`
+/// Requires `ALC_EXT_DEDICATED`
 pub struct DedicatedDialogueEffect<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	effect: sys::ALuint,
 }
 
 
+/// Implemented for filters as defined by EFX.
 pub unsafe trait FilterTrait<'d: 'c, 'c>: Sized {
 	#[doc(hidden)]
 	fn new(ctx: &'c al::Context<'d>) -> AltoResult<Self>;
 
+	/// Context from which this effect was created.
 	fn context(&self) -> &al::Context<'d>;
+	/// Raw handle as provided by OpenAL.
 	fn as_raw(&self) -> sys::ALuint;
 }
 
 
+/// `AL_FILTER_LOWPASS`
 pub struct LowpassFilter<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	filter: sys::ALuint,
 }
 
 
+/// `AL_FILTER_HIGHPASS`
 pub struct HighpassFilter<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	filter: sys::ALuint,
 }
 
 
+/// `AL_FILTER_BANDPASS`
 pub struct BandpassFilter<'d: 'c, 'c> {
 	ctx: &'c al::Context<'d>,
 	filter: sys::ALuint,
@@ -264,12 +291,14 @@ impl<'d: 'c, 'c> AuxEffectSlot<'d, 'c> {
 	pub fn as_raw(&self) -> sys::ALuint { self.slot }
 
 
+	/// `alAuxiliaryEffectSloti(AL_EFFECTSLOT_EFFECT)`
 	pub fn set_effect<E: EffectTrait<'d, 'c>>(&mut self, value: &E) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
 		unsafe { efx.alAuxiliaryEffectSloti?(self.slot, efx.AL_EFFECTSLOT_EFFECT?, value.as_raw() as sys::ALint); }
 		self.ctx.get_error()
 	}
+	/// `alAuxiliaryEffectSloti(AL_EFFECTSLOT_EFFECT)`
 	pub fn clear_effect(&mut self) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -278,6 +307,7 @@ impl<'d: 'c, 'c> AuxEffectSlot<'d, 'c> {
 	}
 
 
+	/// `alGetAuxiliaryEffectSloti(AL_EFFECTSLOT_GAIN)`
 	pub fn gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -285,6 +315,7 @@ impl<'d: 'c, 'c> AuxEffectSlot<'d, 'c> {
 		unsafe { efx.alGetAuxiliaryEffectSlotf?(self.slot, efx.AL_EFFECTSLOT_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alAuxiliaryEffectSloti(AL_EFFECTSLOT_GAIN)`
 	pub fn set_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -293,6 +324,7 @@ impl<'d: 'c, 'c> AuxEffectSlot<'d, 'c> {
 	}
 
 
+	/// `alGetAuxiliaryEffectSloti(AL_EFFECTSLOT_AUXILIARY_SEND_AUTO)`
 	pub fn auxiliary_send_auto(&self) -> AltoResult<bool> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -300,6 +332,7 @@ impl<'d: 'c, 'c> AuxEffectSlot<'d, 'c> {
 		unsafe { efx.alGetAuxiliaryEffectSloti?(self.slot, efx.AL_EFFECTSLOT_AUXILIARY_SEND_AUTO?, &mut value); }
 		self.ctx.get_error().map(|_| value == sys::AL_TRUE as sys::ALint)
 	}
+	/// `alAuxiliaryEffectSloti(AL_EFFECTSLOT_AUXILIARY_SEND_AUTO)`
 	pub fn set_auxiliary_send_auto(&mut self, value: bool) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -353,6 +386,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for EaxReverbEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
+	/// Set all effect properties based on a reverb preset.
 	pub fn set_preset(&mut self, preset: &EaxReverbProperties) -> AltoResult<()> {
 		let mut r = Ok(());
 
@@ -384,6 +418,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_DENSITY)`
 	pub fn density(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -391,6 +426,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_DENSITY?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_DENSITY)`
 	pub fn set_density(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -399,6 +435,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_DIFFUSION)`
 	pub fn diffusion(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -406,6 +443,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_DIFFUSION?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_DIFFUSION)`
 	pub fn set_diffusion(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -414,6 +452,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_GAIN)`
 	pub fn gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -421,6 +460,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_GAIN)`
 	pub fn set_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -429,6 +469,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_GAINHF)`
 	pub fn gainhf(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -436,6 +477,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_GAINHF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_GAINHF)`
 	pub fn set_gainhf(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -444,6 +486,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_GAINLF)`
 	pub fn gainlf(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -451,6 +494,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_GAINLF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_GAINLF)`
 	pub fn set_gainlf(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -459,6 +503,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_DECAY_TIME)`
 	pub fn decay_time(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -466,6 +511,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_DECAY_TIME?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_DECAY_TIME)`
 	pub fn set_decay_time(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -474,6 +520,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_DECAY_HFRATIO)`
 	pub fn decay_hfratio(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -481,6 +528,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_DECAY_HFRATIO?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_DECAY_HFRATIO)`
 	pub fn set_decay_hfratio(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -489,6 +537,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_DECAY_LFRATIO)`
 	pub fn decay_lfratio(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -496,6 +545,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_DECAY_LFRATIO?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_DECAY_LFRATIO)`
 	pub fn set_decay_lfratio(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -504,6 +554,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_REFLECTIONS_GAIN)`
 	pub fn reflections_gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -511,6 +562,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_REFLECTIONS_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_REFLECTIONS_GAIN)`
 	pub fn set_reflections_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -519,6 +571,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_REFLECTIONS_DELAY)`
 	pub fn reflections_delay(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -526,6 +579,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_REFLECTIONS_DELAY?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_REFLECTIONS_DELAY)`
 	pub fn set_reflections_delay(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -534,6 +588,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectfv(AL_EAXREVERB_REFLECTIONS_PAN)`
 	pub fn reflections_pan<V: From<[f32; 3]>>(&self) -> AltoResult<V> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -541,6 +596,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectfv?(self.effect, efx.AL_EAXREVERB_REFLECTIONS_PAN?, &mut value as *mut [f32; 3] as *mut f32); }
 		self.ctx.get_error().map(|_| value.into())
 	}
+	/// `alEffectfv(AL_EAXREVERB_REFLECTIONS_PAN)`
 	pub fn set_reflections_pan<V: Into<[f32; 3]>>(&mut self, value: V) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -549,6 +605,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_LATE_REVERB_GAIN)`
 	pub fn late_reverb_gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -556,6 +613,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_LATE_REVERB_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_LATE_REVERB_GAIN)`
 	pub fn set_late_reverb_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -564,6 +622,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_LATE_REVERB_DELAY)`
 	pub fn late_reverb_delay(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -571,6 +630,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_LATE_REVERB_DELAY?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_LATE_REVERB_DELAY)`
 	pub fn set_late_reverb_delay(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -579,6 +639,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectfv(AL_EAXREVERB_LATE_REVERB_PAN)`
 	pub fn late_reverb_pan<V: From<[f32; 3]>>(&self) -> AltoResult<V> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -586,6 +647,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectfv?(self.effect, efx.AL_EAXREVERB_LATE_REVERB_PAN?, &mut value as *mut [f32; 3] as *mut f32); }
 		self.ctx.get_error().map(|_| value.into())
 	}
+	/// `alEffectfv(AL_EAXREVERB_LATE_REVERB_PAN)`
 	pub fn set_late_reverb_pan<V: Into<[f32; 3]>>(&mut self, value: V) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -594,6 +656,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_ECHO_TIME)`
 	pub fn echo_time(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -601,6 +664,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_ECHO_TIME?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_ECHO_TIME)`
 	pub fn set_echo_time(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -609,6 +673,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_ECHO_DEPTH)`
 	pub fn echo_depth(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -616,6 +681,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_ECHO_DEPTH?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_ECHO_DEPTH)`
 	pub fn set_echo_depth(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -624,6 +690,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_MODULATION_TIME)`
 	pub fn modulation_time(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -631,6 +698,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_MODULATION_TIME?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_MODULATION_TIME)`
 	pub fn set_modulation_time(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -639,6 +707,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_MODULATION_DEPTH)`
 	pub fn modulation_depth(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -646,6 +715,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_MODULATION_DEPTH?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_MODULATION_DEPTH)`
 	pub fn set_modulation_depth(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -654,6 +724,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_HFREFERENCE)`
 	pub fn hfreference(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -661,6 +732,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_HFREFERENCE?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_HFREFERENCE)`
 	pub fn set_hfreference(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -669,6 +741,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_LFREFERENCE)`
 	pub fn lfreference(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -676,6 +749,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_LFREFERENCE?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_LFREFERENCE)`
 	pub fn set_lfreference(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -684,6 +758,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_AIR_ABSORPTION_GAINHF)`
 	pub fn air_absorption_gainhf(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -691,6 +766,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_AIR_ABSORPTION_GAINHF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_AIR_ABSORPTION_GAINHF)`
 	pub fn set_air_absorption_gainhf(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -699,6 +775,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EAXREVERB_ROOM_ROLLOFF_FACTOR)`
 	pub fn room_rolloff_factor(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -706,6 +783,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EAXREVERB_ROOM_ROLLOFF_FACTOR?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EAXREVERB_ROOM_ROLLOFF_FACTOR)`
 	pub fn set_room_rolloff_factor(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -714,6 +792,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffecti(AL_EAXREVERB_DECAY_HFLIMIT)`
 	pub fn decay_hflimit(&self) -> AltoResult<bool> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -721,6 +800,7 @@ impl<'d: 'c, 'c> EaxReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_EAXREVERB_DECAY_HFLIMIT?, &mut value); }
 		self.ctx.get_error().map(|_| value == sys::AL_TRUE as sys::ALint)
 	}
+	/// `alEffecti(AL_EAXREVERB_DECAY_HFLIMIT)`
 	pub fn set_decay_hflimit(&mut self, value: bool) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -766,6 +846,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for ReverbEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
+	/// Set all effect properties based on a reverb preset.
 	pub fn set_preset(&mut self, preset: &EaxReverbProperties) -> AltoResult<()> {
 		let mut r = Ok(());
 
@@ -787,6 +868,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_REVERB_DENSITY)`
 	pub fn density(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -794,6 +876,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_REVERB_DENSITY?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_REVERB_DENSITY)`
 	pub fn set_density(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -802,6 +885,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_REVERB_DIFFUSION)`
 	pub fn diffusion(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -809,6 +893,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_REVERB_DIFFUSION?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_REVERB_DIFFUSION)`
 	pub fn set_diffusion(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -817,6 +902,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_REVERB_GAIN)`
 	pub fn gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -824,6 +910,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_REVERB_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_REVERB_GAIN)`
 	pub fn set_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -832,6 +919,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_REVERB_GAINHF)`
 	pub fn gainhf(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -839,6 +927,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_REVERB_GAINHF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_REVERB_GAINHF)`
 	pub fn set_gainhf(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -847,6 +936,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_REVERB_DECAY_TIME)`
 	pub fn decay_time(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -854,6 +944,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_REVERB_DECAY_TIME?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_REVERB_DECAY_TIME)`
 	pub fn set_decay_time(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -862,6 +953,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_REVERB_DECAY_HFRATIO)`
 	pub fn decay_hfratio(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -869,6 +961,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_REVERB_DECAY_HFRATIO?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_REVERB_DECAY_HFRATIO)`
 	pub fn set_decay_hfratio(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -877,6 +970,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_REVERB_REFLECTIONS_GAIN)`
 	pub fn reflections_gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -884,6 +978,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_REVERB_REFLECTIONS_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_REVERB_REFLECTIONS_GAIN)`
 	pub fn set_reflections_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -892,6 +987,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_REVERB_REFLECTIONS_DELAY)`
 	pub fn reflections_delay(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -899,6 +995,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_REVERB_REFLECTIONS_DELAY?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_REVERB_REFLECTIONS_DELAY)`
 	pub fn set_reflections_delay(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -907,6 +1004,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_REVERB_LATE_REVERB_GAIN)`
 	pub fn late_reverb_gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -914,6 +1012,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_REVERB_LATE_REVERB_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_REVERB_LATE_REVERB_GAIN)`
 	pub fn set_late_reverb_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -922,6 +1021,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_REVERB_LATE_REVERB_DELAY)`
 	pub fn late_reverb_delay(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -929,6 +1029,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_REVERB_LATE_REVERB_DELAY?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_REVERB_LATE_REVERB_DELAY)`
 	pub fn set_late_reverb_delay(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -937,6 +1038,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_REVERB_AIR_ABSORPTION_GAINHF)`
 	pub fn air_absorption_gainhf(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -944,6 +1046,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_REVERB_AIR_ABSORPTION_GAINHF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_REVERB_AIR_ABSORPTION_GAINHF)`
 	pub fn set_air_absorption_gainhf(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -952,6 +1055,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_REVERB_ROOM_ROLLOFF_FACTOR)`
 	pub fn room_rolloff_factor(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -959,6 +1063,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_REVERB_ROOM_ROLLOFF_FACTOR?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_REVERB_ROOM_ROLLOFF_FACTOR)`
 	pub fn set_room_rolloff_factor(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -967,6 +1072,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffecti(AL_REVERB_DECAY_HFLIMIT)`
 	pub fn decay_hflimit(&self) -> AltoResult<bool> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -974,6 +1080,7 @@ impl<'d: 'c, 'c> ReverbEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_REVERB_DECAY_HFLIMIT?, &mut value); }
 		self.ctx.get_error().map(|_| value == sys::AL_TRUE as sys::ALint)
 	}
+	/// `alEffecti(AL_REVERB_DECAY_HFLIMIT)`
 	pub fn set_decay_hflimit(&mut self, value: bool) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1019,6 +1126,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for ChorusEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> ChorusEffect<'d, 'c> {
+	/// `alGetEffecti(AL_CHORUS_WAVEFORM)`
 	pub fn waveform(&self) -> AltoResult<ChorusWaveform> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1026,6 +1134,7 @@ impl<'d: 'c, 'c> ChorusEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_CHORUS_WAVEFORM?, &mut value); }
 		self.ctx.get_error().and_then(|_| ChorusWaveform::from_i32(value as i32).ok_or(AltoError::AlInvalidValue))
 	}
+	/// `alEffecti(AL_CHORUS_WAVEFORM)`
 	pub fn set_waveform(&mut self, value: ChorusWaveform) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1034,6 +1143,7 @@ impl<'d: 'c, 'c> ChorusEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffecti(AL_CHORUS_PHASE)`
 	pub fn phase(&self) -> AltoResult<sys::ALint> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1041,6 +1151,7 @@ impl<'d: 'c, 'c> ChorusEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_CHORUS_PHASE?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffecti(AL_CHORUS_PHASE)`
 	pub fn set_phase(&mut self, value: sys::ALint) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1049,6 +1160,7 @@ impl<'d: 'c, 'c> ChorusEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_CHORUS_RATE)`
 	pub fn rate(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1056,6 +1168,7 @@ impl<'d: 'c, 'c> ChorusEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_CHORUS_RATE?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_CHORUS_RATE)`
 	pub fn set_rate(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1064,6 +1177,7 @@ impl<'d: 'c, 'c> ChorusEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_CHORUS_DEPTH)`
 	pub fn depth(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1071,6 +1185,7 @@ impl<'d: 'c, 'c> ChorusEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_CHORUS_DEPTH?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_CHORUS_DEPTH)`
 	pub fn set_depth(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1079,6 +1194,7 @@ impl<'d: 'c, 'c> ChorusEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_CHORUS_FEEDBACK)`
 	pub fn feedback(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1086,6 +1202,7 @@ impl<'d: 'c, 'c> ChorusEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_CHORUS_FEEDBACK?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_CHORUS_FEEDBACK)`
 	pub fn set_feedback(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1094,6 +1211,7 @@ impl<'d: 'c, 'c> ChorusEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_CHORUS_DELAY)`
 	pub fn delay(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1101,6 +1219,7 @@ impl<'d: 'c, 'c> ChorusEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_CHORUS_DELAY?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_CHORUS_DELAY)`
 	pub fn set_delay(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1146,6 +1265,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for DistortionEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> DistortionEffect<'d, 'c> {
+	/// `alGetEffectf(AL_DISTORTION_EDGE)`
 	pub fn edge(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1153,6 +1273,7 @@ impl<'d: 'c, 'c> DistortionEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_DISTORTION_EDGE?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_DISTORTION_EDGE)`
 	pub fn set_edge(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1161,6 +1282,7 @@ impl<'d: 'c, 'c> DistortionEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_DISTORTION_LOWPASS_CUTOFF)`
 	pub fn lowpass_cutoff(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1168,6 +1290,7 @@ impl<'d: 'c, 'c> DistortionEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_DISTORTION_LOWPASS_CUTOFF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_DISTORTION_LOWPASS_CUTOFF)`
 	pub fn set_lowpass_cutoff(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1176,6 +1299,7 @@ impl<'d: 'c, 'c> DistortionEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_DISTORTION_EQCENTER)`
 	pub fn eqcenter(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1183,6 +1307,7 @@ impl<'d: 'c, 'c> DistortionEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_DISTORTION_EQCENTER?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_DISTORTION_EQCENTER)`
 	pub fn set_eqcenter(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1191,6 +1316,7 @@ impl<'d: 'c, 'c> DistortionEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_DISTORTION_EQBANDWIDTH)`
 	pub fn eqbandwidth(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1198,6 +1324,7 @@ impl<'d: 'c, 'c> DistortionEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_DISTORTION_EQBANDWIDTH?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_DISTORTION_EQBANDWIDTH)`
 	pub fn set_eqbandwidth(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1243,6 +1370,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for EchoEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> EchoEffect<'d, 'c> {
+	/// `alGetEffectf(AL_ECHO_DELAY)`
 	pub fn delay(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1250,6 +1378,7 @@ impl<'d: 'c, 'c> EchoEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_ECHO_DELAY?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_ECHO_DELAY)`
 	pub fn set_delay(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1258,6 +1387,7 @@ impl<'d: 'c, 'c> EchoEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_ECHO_LRDELAY)`
 	pub fn lrdelay(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1265,6 +1395,7 @@ impl<'d: 'c, 'c> EchoEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_ECHO_LRDELAY?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_ECHO_LRDELAY)`
 	pub fn set_lrdelay(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1273,6 +1404,7 @@ impl<'d: 'c, 'c> EchoEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_ECHO_DAMPING)`
 	pub fn damping(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1280,6 +1412,7 @@ impl<'d: 'c, 'c> EchoEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_ECHO_DAMPING?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_ECHO_DAMPING)`
 	pub fn set_damping(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1288,6 +1421,7 @@ impl<'d: 'c, 'c> EchoEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_ECHO_FEEDBACK)`
 	pub fn feedback(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1295,6 +1429,7 @@ impl<'d: 'c, 'c> EchoEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_ECHO_FEEDBACK?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_ECHO_FEEDBACK)`
 	pub fn set_feedback(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1303,6 +1438,7 @@ impl<'d: 'c, 'c> EchoEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_ECHO_SPREAD)`
 	pub fn spread(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1310,6 +1446,7 @@ impl<'d: 'c, 'c> EchoEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_ECHO_SPREAD?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_ECHO_SPREAD)`
 	pub fn set_spread(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1355,6 +1492,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for FlangerEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> FlangerEffect<'d, 'c> {
+	/// `alGetEffecti(AL_FLANGER_WAVEFORM)`
 	pub fn waveform(&self) -> AltoResult<FlangerWaveform> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1362,6 +1500,7 @@ impl<'d: 'c, 'c> FlangerEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_FLANGER_WAVEFORM?, &mut value); }
 		self.ctx.get_error().and_then(|_| FlangerWaveform::from_i32(value as i32).ok_or(AltoError::AlInvalidValue))
 	}
+	/// `alEffecti(AL_FLANGER_WAVEFORM)`
 	pub fn set_waveform(&mut self, value: FlangerWaveform) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1370,6 +1509,7 @@ impl<'d: 'c, 'c> FlangerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffecti(AL_FLANGER_PHASE)`
 	pub fn phase(&self) -> AltoResult<sys::ALint> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1377,6 +1517,7 @@ impl<'d: 'c, 'c> FlangerEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_FLANGER_PHASE?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffecti(AL_FLANGER_PHASE)`
 	pub fn set_phase(&mut self, value: sys::ALint) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1385,6 +1526,7 @@ impl<'d: 'c, 'c> FlangerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_FLANGER_RATE)`
 	pub fn rate(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1392,6 +1534,7 @@ impl<'d: 'c, 'c> FlangerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_FLANGER_RATE?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_FLANGER_RATE)`
 	pub fn set_rate(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1400,6 +1543,7 @@ impl<'d: 'c, 'c> FlangerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_FLANGER_DEPTH)`
 	pub fn depth(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1407,6 +1551,7 @@ impl<'d: 'c, 'c> FlangerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_FLANGER_DEPTH?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_FLANGER_DEPTH)`
 	pub fn set_depth(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1415,6 +1560,7 @@ impl<'d: 'c, 'c> FlangerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_FLANGER_FEEDBACK)`
 	pub fn feedback(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1422,6 +1568,7 @@ impl<'d: 'c, 'c> FlangerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_FLANGER_FEEDBACK?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_FLANGER_FEEDBACK)`
 	pub fn set_feedback(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1430,6 +1577,7 @@ impl<'d: 'c, 'c> FlangerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_FLANGER_DELAY)`
 	pub fn delay(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1437,6 +1585,7 @@ impl<'d: 'c, 'c> FlangerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_FLANGER_DELAY?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_FLANGER_DELAY)`
 	pub fn set_delay(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1482,6 +1631,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for FrequencyShifterEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> FrequencyShifterEffect<'d, 'c> {
+	/// `alGetEffectf(AL_FREQUENCY_SHIFTER_FREQUENCY)`
 	pub fn frequency(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1489,6 +1639,7 @@ impl<'d: 'c, 'c> FrequencyShifterEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_FREQUENCY_SHIFTER_FREQUENCY?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_FREQUENCY_SHIFTER_FREQUENCY)`
 	pub fn set_frequency(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1497,6 +1648,7 @@ impl<'d: 'c, 'c> FrequencyShifterEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffecti(AL_FREQUENCY_SHIFTER_LEFT_DIRECTION)`
 	pub fn left_direction(&self) -> AltoResult<FrequencyShifterDirection> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1504,6 +1656,7 @@ impl<'d: 'c, 'c> FrequencyShifterEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_FREQUENCY_SHIFTER_LEFT_DIRECTION?, &mut value); }
 		self.ctx.get_error().and_then(|_| FrequencyShifterDirection::from_i32(value as i32).ok_or(AltoError::AlInvalidValue))
 	}
+	/// `alEffecti(AL_FREQUENCY_SHIFTER_LEFT_DIRECTION)`
 	pub fn set_left_direction(&mut self, value: FrequencyShifterDirection) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1512,6 +1665,7 @@ impl<'d: 'c, 'c> FrequencyShifterEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffecti(AL_FREQUENCY_SHIFTER_RIGHT_DIRECTION)`
 	pub fn right_direction(&self) -> AltoResult<FrequencyShifterDirection> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1519,6 +1673,7 @@ impl<'d: 'c, 'c> FrequencyShifterEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_FREQUENCY_SHIFTER_RIGHT_DIRECTION?, &mut value); }
 		self.ctx.get_error().and_then(|_| FrequencyShifterDirection::from_i32(value as i32).ok_or(AltoError::AlInvalidValue))
 	}
+	/// `alEffecti(AL_FREQUENCY_SHIFTER_RIGHT_DIRECTION)`
 	pub fn set_right_direction(&mut self, value: FrequencyShifterDirection) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1564,6 +1719,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for VocalMorpherEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> VocalMorpherEffect<'d, 'c> {
+	/// `alGetEffecti(AL_VOCAL_MORPHER_PHONEMEA)`
 	pub fn phonemea(&self) -> AltoResult<VocalMorpherPhoneme> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1571,6 +1727,7 @@ impl<'d: 'c, 'c> VocalMorpherEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_VOCAL_MORPHER_PHONEMEA?, &mut value); }
 		self.ctx.get_error().and_then(|_| VocalMorpherPhoneme::from_i32(value as i32).ok_or(AltoError::AlInvalidValue))
 	}
+	/// `alEffecti(AL_VOCAL_MORPHER_PHONEMEA)`
 	pub fn set_phonemea(&mut self, value: VocalMorpherPhoneme) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1579,6 +1736,7 @@ impl<'d: 'c, 'c> VocalMorpherEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffecti(AL_VOCAL_MORPHER_PHONEMEB)`
 	pub fn phonemeb(&self) -> AltoResult<VocalMorpherPhoneme> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1586,6 +1744,7 @@ impl<'d: 'c, 'c> VocalMorpherEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_VOCAL_MORPHER_PHONEMEB?, &mut value); }
 		self.ctx.get_error().and_then(|_| VocalMorpherPhoneme::from_i32(value as i32).ok_or(AltoError::AlInvalidValue))
 	}
+	/// `alEffecti(AL_VOCAL_MORPHER_PHONEMEB)`
 	pub fn set_phonemeb(&mut self, value: VocalMorpherPhoneme) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1594,6 +1753,7 @@ impl<'d: 'c, 'c> VocalMorpherEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffecti(AL_VOCAL_MORPHER_PHONEMEA_COARSE_TUNING)`
 	pub fn phonemea_coarse_tuning(&self) -> AltoResult<sys::ALint> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1601,6 +1761,7 @@ impl<'d: 'c, 'c> VocalMorpherEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_VOCAL_MORPHER_PHONEMEA_COARSE_TUNING?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffecti(AL_VOCAL_MORPHER_PHONEMEA_COARSE_TUNING)`
 	pub fn set_phonemea_coarse_tuning(&mut self, value: sys::ALint) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1609,6 +1770,7 @@ impl<'d: 'c, 'c> VocalMorpherEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffecti(AL_VOCAL_MORPHER_PHONEMEB_COARSE_TUNING)`
 	pub fn phonemeb_coarse_tuning(&self) -> AltoResult<sys::ALint> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1616,6 +1778,7 @@ impl<'d: 'c, 'c> VocalMorpherEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_VOCAL_MORPHER_PHONEMEB_COARSE_TUNING?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffecti(AL_VOCAL_MORPHER_PHONEMEB_COARSE_TUNING)`
 	pub fn set_phonemeb_coarse_tuning(&mut self, value: sys::ALint) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1624,6 +1787,7 @@ impl<'d: 'c, 'c> VocalMorpherEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffecti(AL_VOCAL_MORPHER_WAVEFORM)`
 	pub fn waveform(&self) -> AltoResult<VocalMorpherWaveform> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1631,6 +1795,7 @@ impl<'d: 'c, 'c> VocalMorpherEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_VOCAL_MORPHER_WAVEFORM?, &mut value); }
 		self.ctx.get_error().and_then(|_| VocalMorpherWaveform::from_i32(value as i32).ok_or(AltoError::AlInvalidValue))
 	}
+	/// `alEffecti(AL_VOCAL_MORPHER_WAVEFORM)`
 	pub fn set_waveform(&mut self, value: VocalMorpherWaveform) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1639,6 +1804,7 @@ impl<'d: 'c, 'c> VocalMorpherEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_VOCAL_MORPHER_RATE)`
 	pub fn rate(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1646,6 +1812,7 @@ impl<'d: 'c, 'c> VocalMorpherEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_VOCAL_MORPHER_RATE?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_VOCAL_MORPHER_RATE)`
 	pub fn set_rate(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1691,6 +1858,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for PitchShifterEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> PitchShifterEffect<'d, 'c> {
+	/// `alGetEffecti(AL_PITCH_SHIFTER_COARSE_TUNE)`
 	pub fn coarse_tune(&self) -> AltoResult<sys::ALint> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1698,6 +1866,7 @@ impl<'d: 'c, 'c> PitchShifterEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_PITCH_SHIFTER_COARSE_TUNE?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffecti(AL_PITCH_SHIFTER_COARSE_TUNE)`
 	pub fn set_coarse_tune(&mut self, value: sys::ALint) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1706,6 +1875,7 @@ impl<'d: 'c, 'c> PitchShifterEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffecti(AL_PITCH_SHIFTER_FINE_TUNE)`
 	pub fn fine_tune(&self) -> AltoResult<sys::ALint> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1713,6 +1883,7 @@ impl<'d: 'c, 'c> PitchShifterEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_PITCH_SHIFTER_FINE_TUNE?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffecti(AL_PITCH_SHIFTER_FINE_TUNE)`
 	pub fn set_fine_tune(&mut self, value: sys::ALint) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1758,6 +1929,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for RingModulatorEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> RingModulatorEffect<'d, 'c> {
+	/// `alGetEffectf(AL_RING_MODULATOR_FREQUENCY)`
 	pub fn frequency(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1765,6 +1937,7 @@ impl<'d: 'c, 'c> RingModulatorEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_RING_MODULATOR_FREQUENCY?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_RING_MODULATOR_FREQUENCY)`
 	pub fn set_frequency(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1773,6 +1946,7 @@ impl<'d: 'c, 'c> RingModulatorEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_RING_MODULATOR_HIGHPASS_CUTOFF)`
 	pub fn highpass_cutoff(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1780,6 +1954,7 @@ impl<'d: 'c, 'c> RingModulatorEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_RING_MODULATOR_HIGHPASS_CUTOFF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_RING_MODULATOR_HIGHPASS_CUTOFF)`
 	pub fn set_highpass_cutoff(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1788,6 +1963,7 @@ impl<'d: 'c, 'c> RingModulatorEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffecti(AL_RING_MODULATOR_WAVEFORM)`
 	pub fn waveform(&self) -> AltoResult<RingModulatorWaveform> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1795,6 +1971,7 @@ impl<'d: 'c, 'c> RingModulatorEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_RING_MODULATOR_WAVEFORM?, &mut value); }
 		self.ctx.get_error().and_then(|_| RingModulatorWaveform::from_i32(value as i32).ok_or(AltoError::AlInvalidValue))
 	}
+	/// `alEffecti(AL_RING_MODULATOR_WAVEFORM)`
 	pub fn set_waveform(&mut self, value: ChorusWaveform) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1840,6 +2017,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for AutowahEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> AutowahEffect<'d, 'c> {
+	/// `alGetEffectf(AL_AUTOWAH_ATTACK_TIME)`
 	pub fn attack_time(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1847,6 +2025,7 @@ impl<'d: 'c, 'c> AutowahEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_AUTOWAH_ATTACK_TIME?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_AUTOWAH_ATTACK_TIME)`
 	pub fn set_attack_time(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1855,6 +2034,7 @@ impl<'d: 'c, 'c> AutowahEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_AUTOWAH_RELEASE_TIME)`
 	pub fn release_time(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1862,6 +2042,7 @@ impl<'d: 'c, 'c> AutowahEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_AUTOWAH_RELEASE_TIME?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_AUTOWAH_RELEASE_TIME)`
 	pub fn set_release_time(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1870,6 +2051,7 @@ impl<'d: 'c, 'c> AutowahEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_AUTOWAH_RESONANCE)`
 	pub fn resonance(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1877,6 +2059,7 @@ impl<'d: 'c, 'c> AutowahEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_AUTOWAH_RESONANCE?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_AUTOWAH_RESONANCE)`
 	pub fn set_resonance(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1885,6 +2068,7 @@ impl<'d: 'c, 'c> AutowahEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_AUTOWAH_PEAK_GAIN)`
 	pub fn peak_gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1892,6 +2076,7 @@ impl<'d: 'c, 'c> AutowahEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_AUTOWAH_PEAK_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_AUTOWAH_PEAK_GAIN)`
 	pub fn set_peak_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1937,6 +2122,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for CompressorEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> CompressorEffect<'d, 'c> {
+	/// `alGetEffecti(AL_COMPRESSOR_ONOFF)`
 	pub fn onoff(&self) -> AltoResult<bool> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1944,6 +2130,7 @@ impl<'d: 'c, 'c> CompressorEffect<'d, 'c> {
 		unsafe { efx.alGetEffecti?(self.effect, efx.AL_COMPRESSOR_ONOFF?, &mut value); }
 		self.ctx.get_error().map(|_| value == 1 as sys::ALint)
 	}
+	/// `alEffecti(AL_COMPRESSOR_ONOFF)`
 	pub fn set_onoff(&mut self, value: bool) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1989,6 +2176,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for EqualizerEffect<'d, 'c> {
 
 
 impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
+	/// `alGetEffectf(AL_EQUALIZER_LOW_GAIN)`
 	pub fn low_gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -1996,6 +2184,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EQUALIZER_LOW_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EQUALIZER_LOW_GAIN)`
 	pub fn set_low_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2004,6 +2193,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EQUALIZER_LOW_CUTOFF)`
 	pub fn low_cutoff(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2011,6 +2201,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EQUALIZER_LOW_CUTOFF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EQUALIZER_LOW_CUTOFF)`
 	pub fn set_low_cutoff(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2019,6 +2210,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EQUALIZER_MID1_GAIN)`
 	pub fn mid1_gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2026,6 +2218,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EQUALIZER_MID1_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EQUALIZER_MID1_GAIN)`
 	pub fn set_mid1_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2034,6 +2227,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EQUALIZER_MID1_CENTER)`
 	pub fn mid1_center(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2041,6 +2235,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EQUALIZER_MID1_CENTER?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EQUALIZER_MID1_CENTER)`
 	pub fn set_mid1_center(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2049,6 +2244,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EQUALIZER_MID1_WIDTH)`
 	pub fn mid1_width(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2056,6 +2252,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EQUALIZER_MID1_WIDTH?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EQUALIZER_MID1_WIDTH)`
 	pub fn set_mid1_width(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2064,6 +2261,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EQUALIZER_MID2_GAIN)`
 	pub fn mid2_gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2071,6 +2269,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EQUALIZER_MID2_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EQUALIZER_MID2_GAIN)`
 	pub fn set_mid2_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2079,6 +2278,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EQUALIZER_MID2_CENTER)`
 	pub fn mid2_center(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2086,6 +2286,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EQUALIZER_MID2_CENTER?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EQUALIZER_MID2_CENTER)`
 	pub fn set_mid2_center(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2094,6 +2295,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EQUALIZER_MID2_WIDTH)`
 	pub fn mid2_width(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2101,6 +2303,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EQUALIZER_MID2_WIDTH?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EQUALIZER_MID2_WIDTH)`
 	pub fn set_mid2_width(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2109,6 +2312,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EQUALIZER_HIGH_GAIN)`
 	pub fn high_gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2116,6 +2320,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EQUALIZER_HIGH_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EQUALIZER_HIGH_GAIN)`
 	pub fn set_high_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2124,6 +2329,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 	}
 
 
+	/// `alGetEffectf(AL_EQUALIZER_HIGH_CUTOFF)`
 	pub fn high_cutoff(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2131,6 +2337,7 @@ impl<'d: 'c, 'c> EqualizerEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, efx.AL_EQUALIZER_HIGH_CUTOFF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EQUALIZER_HIGH_CUTOFF)`
 	pub fn set_high_cutoff(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2177,6 +2384,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for DedicatedLowFrequencyEffect<'d, 
 
 
 impl<'d: 'c, 'c> DedicatedLowFrequencyEffect<'d, 'c> {
+	/// `alGetEffectf(AL_EFFECT_DEDICATED_GAIN)`
 	pub fn gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let d = self.ctx.device().extensions().ALC_EXT_DEDICATED()?;
@@ -2185,6 +2393,7 @@ impl<'d: 'c, 'c> DedicatedLowFrequencyEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, d.AL_EFFECT_DEDICATED_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EFFECT_DEDICATED_GAIN)`
 	pub fn set_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let d = self.ctx.device().extensions().ALC_EXT_DEDICATED()?;
@@ -2232,6 +2441,7 @@ unsafe impl<'d: 'c, 'c> EffectTrait<'d, 'c> for DedicatedDialogueEffect<'d, 'c> 
 
 
 impl<'d: 'c, 'c> DedicatedDialogueEffect<'d, 'c> {
+	/// `alGetEffectf(AL_EFFECT_DEDICATED_GAIN)`
 	pub fn gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let d = self.ctx.device().extensions().ALC_EXT_DEDICATED()?;
@@ -2240,6 +2450,7 @@ impl<'d: 'c, 'c> DedicatedDialogueEffect<'d, 'c> {
 		unsafe { efx.alGetEffectf?(self.effect, d.AL_EFFECT_DEDICATED_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alEffectf(AL_EFFECT_DEDICATED_GAIN)`
 	pub fn set_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let d = self.ctx.device().extensions().ALC_EXT_DEDICATED()?;
@@ -2286,6 +2497,7 @@ unsafe impl<'d: 'c, 'c> FilterTrait<'d, 'c> for LowpassFilter<'d, 'c> {
 
 
 impl<'d: 'c, 'c> LowpassFilter<'d, 'c> {
+	/// `alGetFilterf(AL_LOWPASS_GAIN)`
 	pub fn gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2293,6 +2505,7 @@ impl<'d: 'c, 'c> LowpassFilter<'d, 'c> {
 		unsafe { efx.alGetFilterf?(self.filter, efx.AL_LOWPASS_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alFilterf(AL_LOWPASS_GAIN)`
 	pub fn set_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2301,6 +2514,7 @@ impl<'d: 'c, 'c> LowpassFilter<'d, 'c> {
 	}
 
 
+	/// `alGetFilterf(AL_LOWPASS_GAINHF)`
 	pub fn gainhf(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2308,6 +2522,7 @@ impl<'d: 'c, 'c> LowpassFilter<'d, 'c> {
 		unsafe { efx.alGetFilterf?(self.filter, efx.AL_LOWPASS_GAINHF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alFilterf(AL_LOWPASS_GAINHF)`
 	pub fn set_gainhf(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2353,6 +2568,7 @@ unsafe impl<'d: 'c, 'c> FilterTrait<'d, 'c> for HighpassFilter<'d, 'c> {
 
 
 impl<'d: 'c, 'c> HighpassFilter<'d, 'c> {
+	/// `alGetFilterf(AL_HIGHPASS_GAIN)`
 	pub fn gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2360,6 +2576,7 @@ impl<'d: 'c, 'c> HighpassFilter<'d, 'c> {
 		unsafe { efx.alGetFilterf?(self.filter, efx.AL_HIGHPASS_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alFilterf(AL_HIGHPASS_GAIN)`
 	pub fn set_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2368,6 +2585,7 @@ impl<'d: 'c, 'c> HighpassFilter<'d, 'c> {
 	}
 
 
+	/// `alGetFilterf(AL_HIGHPASS_GAINLF)`
 	pub fn gainlf(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2375,6 +2593,7 @@ impl<'d: 'c, 'c> HighpassFilter<'d, 'c> {
 		unsafe { efx.alGetFilterf?(self.filter, efx.AL_HIGHPASS_GAINLF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alFilterf(AL_HIGHPASS_GAINLF)`
 	pub fn set_gainlf(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2420,6 +2639,7 @@ unsafe impl<'d: 'c, 'c> FilterTrait<'d, 'c> for BandpassFilter<'d, 'c> {
 
 
 impl<'d: 'c, 'c> BandpassFilter<'d, 'c> {
+	/// `alGetFilterf(AL_BANDPASS_GAIN)`
 	pub fn gain(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2427,6 +2647,7 @@ impl<'d: 'c, 'c> BandpassFilter<'d, 'c> {
 		unsafe { efx.alGetFilterf?(self.filter, efx.AL_BANDPASS_GAIN?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alFilterf(AL_BANDPASS_GAIN)`
 	pub fn set_gain(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2435,6 +2656,7 @@ impl<'d: 'c, 'c> BandpassFilter<'d, 'c> {
 	}
 
 
+	/// `alGetFilterf(AL_BANDPASS_GAINLF)`
 	pub fn gainlf(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2442,6 +2664,7 @@ impl<'d: 'c, 'c> BandpassFilter<'d, 'c> {
 		unsafe { efx.alGetFilterf?(self.filter, efx.AL_BANDPASS_GAINLF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alFilterf(AL_BANDPASS_GAINLF)`
 	pub fn set_gainlf(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2450,6 +2673,7 @@ impl<'d: 'c, 'c> BandpassFilter<'d, 'c> {
 	}
 
 
+	/// `alGetFilterf(AL_BANDPASS_GAINHF)`
 	pub fn gainhf(&self) -> AltoResult<f32> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
@@ -2457,6 +2681,7 @@ impl<'d: 'c, 'c> BandpassFilter<'d, 'c> {
 		unsafe { efx.alGetFilterf?(self.filter, efx.AL_BANDPASS_GAINHF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
+	/// `alFilterf(AL_BANDPASS_GAINHF)`
 	pub fn set_gainhf(&mut self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;

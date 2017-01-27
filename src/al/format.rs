@@ -28,9 +28,13 @@ pub enum Format {
 /// Standard formats defined in the base specification.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum StandardFormat {
+	/// `AL_FORMAT_MONO8`
 	MonoU8,
+	/// `AL_FORMAT_MONO16`
 	MonoI16,
+	/// `AL_FORMAT_STEREO8`
 	StereoU8,
+	/// `AL_FORMAT_STEREO16`
 	StereoI16,
 }
 
@@ -38,7 +42,9 @@ pub enum StandardFormat {
 /// Formats provided by `AL_EXT_ALAW`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtALawFormat {
+	/// `AL_FORMAT_MONO_ALAW_EXT`
 	Mono,
+	/// `AL_FORMAT_STEREO_ALAW_EXT`
 	Stereo,
 }
 
@@ -46,11 +52,17 @@ pub enum ExtALawFormat {
 /// Formats provided by `AL_EXT_BFORMAT`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtBFormat {
+	/// `AL_FORMAT_BFORMAT2D_8`
 	B2DU8,
+	/// `AL_FORMAT_BFORMAT2D_16`
 	B2DI16,
+	/// `AL_FORMAT_BFORMAT2D_FLOAT32`
 	B2DF32,
+	/// `AL_FORMAT_BFORMAT3D_8`
 	B3DU8,
+	/// `AL_FORMAT_BFORMAT3D_16`
 	B3DI16,
+	/// `AL_FORMAT_BFORMAT3D_FLOAT32`
 	B3DF32,
 }
 
@@ -58,7 +70,9 @@ pub enum ExtBFormat {
 /// Formats provided by `AL_EXT_double`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtDoubleFormat {
+	/// `AL_FORMAT_MONO_DOUBLE_EXT`
 	Mono,
+	/// `AL_FORMAT_STEREO_DOUBLE_EXT`
 	Stereo,
 }
 
@@ -66,7 +80,9 @@ pub enum ExtDoubleFormat {
 /// Formats provided by `AL_EXT_float32`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtFloat32Format {
+	/// `AL_FORMAT_MONO_FLOAT32`
 	Mono,
+	/// `AL_FORMAT_STEREO_FLOAT32`
 	Stereo,
 }
 
@@ -74,7 +90,9 @@ pub enum ExtFloat32Format {
 /// Formats provided by `AL_EXT_IMA4`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtIma4Format {
+	/// `AL_FORMAT_MONO_IMA4`
 	Mono,
+	/// `AL_FORMAT_STEREO_IMA4`
 	Stereo,
 }
 
@@ -82,20 +100,35 @@ pub enum ExtIma4Format {
 /// Formats provided by `AL_EXT_MCFORMATS`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtMcFormat {
+	/// `AL_FORMAT_QUAD8`
 	QuadU8,
+	/// `AL_FORMAT_QUAD16`
 	QuadI16,
+	/// `AL_FORMAT_QUAD32`
 	QuadF32,
+	/// `AL_FORMAT_REAR8`
 	RearU8,
+	/// `AL_FORMAT_REAR16`
 	RearI16,
+	/// `AL_FORMAT_REAR32`
 	RearF32,
+	/// `AL_FORMAT_51CHN8`
 	Mc51ChnU8,
+	/// `AL_FORMAT_51CHN16`
 	Mc51ChnI16,
+	/// `AL_FORMAT_51CHN32`
 	Mc51ChnF32,
+	/// `AL_FORMAT_61CHN8`
 	Mc61ChnU8,
+	/// `AL_FORMAT_61CHN16`
 	Mc61ChnI16,
+	/// `AL_FORMAT_61CHN32`
 	Mc61ChnF32,
+	/// `AL_FORMAT_71CHN8`
 	Mc71ChnU8,
+	/// `AL_FORMAT_71CHN16`
 	Mc71ChnI16,
+	/// `AL_FORMAT_71CHN32`
 	Mc71ChnF32,
 }
 
@@ -103,7 +136,9 @@ pub enum ExtMcFormat {
 /// Formats provided by `AL_EXT_MULAW`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtMuLawFormat {
+	/// `AL_FORMAT_MONO_MULAW_EXT`
 	Mono,
+	/// `AL_FORMAT_STEREO_MULAW_EXT`
 	Stereo,
 }
 
@@ -111,7 +146,9 @@ pub enum ExtMuLawFormat {
 /// Formats provided by `AL_EXT_MULAW_BFORMAT`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtMuLawBFormat {
+	/// `AL_FORMAT_BFORMAT2D_MULAW`
 	B2D,
+	/// `AL_FORMAT_BFORMAT3D_MULAW`
 	B3D,
 }
 
@@ -119,12 +156,19 @@ pub enum ExtMuLawBFormat {
 /// Formats provided by `AL_EXT_MULAW_MCFORMATS`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ExtMuLawMcFormat {
+	/// `AL_FORMAT_MONO_MULAW`
 	Mono,
+	/// `AL_FORMAT_STEREO_MULAW`
 	Stereo,
+	/// `AL_FORMAT_QUAD_MULAW`
 	Quad,
+	/// `AL_FORMAT_REAR_MULAW`
 	Rear,
+	/// `AL_FORMAT_51CHN_MULAW`
 	Mc51Chn,
+	/// `AL_FORMAT_61CHN_MULAW`
 	Mc61Chn,
+	/// `AL_FORMAT_71CHN_MULAW`
 	Mc71Chn,
 }
 
@@ -132,7 +176,9 @@ pub enum ExtMuLawMcFormat {
 /// Formats provided by `AL_SOFT_MSADPCM`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum SoftMsadpcmFormat {
+	/// `AL_FORMAT_MONO_MSADPCM_SOFT`
 	Mono,
+	/// `AL_FORMAT_STEREO_MSADPCM_SOFT`
 	Stereo,
 }
 
@@ -163,10 +209,6 @@ pub trait AsBufferData<F: SampleFrame> {
 
 pub trait AsBufferDataMut<F: SampleFrame> {
 	fn as_buffer_data_mut(&mut self) -> &mut [F];
-}
-
-
-pub trait Block {
 }
 
 

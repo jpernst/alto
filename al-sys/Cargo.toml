@@ -1,12 +1,13 @@
 [package]
 name = "al-sys"
-description = "Rust bindings for OpenAL 1.1"
-version = "0.3.1"
+description = "Raw bindings for OpenAL 1.1"
+version = "0.3.2"
 authors = ["jpernst"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/jpernst/alto.git"
 documentation = "https://docs.rs/al-sys"
 keywords = ["openal", "al", "sound", "audio"]
+categories = ["multimedia::audio", "external-ffi-bindings"]
 
 [build-dependencies]
 pkg-config = "0.3.8"

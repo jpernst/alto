@@ -19,6 +19,11 @@ mod format;
 pub use self::format::*;
 
 
+lazy_static! {
+    pub static ref CTX_LOCK: Mutex<()> = Mutex::new(());
+}
+
+
 /// The gain curve of sources as a function of distance to the listener.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum DistanceModel {
@@ -43,7 +48,6 @@ pub enum DistanceModel {
 pub struct Context<'d> {
 	dev: &'d DeviceTrait,
 	api: &'d AlApi<'static>,
-	ctx_lock: &'d Mutex<()>,
 	ctx: *mut sys::ALCcontext,
 	exts: ext::AlCache<'d>,
 	defer_rc: Arc<AtomicUsize>,
@@ -284,11 +288,10 @@ pub struct StreamingSource<'d: 'c, 'c> {
 
 impl<'d> Context<'d> {
 	#[doc(hidden)]
-	pub unsafe fn new(dev: &'d DeviceTrait, api: &'d AlApi<'static>, ctx_lock: &'d Mutex<()>, ctx: *mut sys::ALCcontext) -> Context<'d> {
+	pub unsafe fn new(dev: &'d DeviceTrait, api: &'d AlApi<'static>, ctx: *mut sys::ALCcontext) -> Context<'d> {
 		Context{
 			dev: dev,
 			api: api,
-			ctx_lock: ctx_lock,
 			ctx: ctx,
 			exts: ext::AlCache::new(api.owner()),
 			defer_rc: Arc::new(AtomicUsize::new(0)),
@@ -340,7 +343,7 @@ impl<'d> Context<'d> {
 				self.dev.alto().get_error(self.dev.as_raw()).map(|_| None)
 			} else {
 				unsafe { self.api.owner().alcMakeContextCurrent()(if set { self.ctx } else { ptr::null_mut() }); }
-				self.dev.alto().get_error(self.dev.as_raw()).map(|_| Some(self.ctx_lock.lock().unwrap()))
+				self.dev.alto().get_error(self.dev.as_raw()).map(|_| Some(CTX_LOCK.lock().unwrap()))
 			}
 		})
 	}

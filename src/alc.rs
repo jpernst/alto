@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::ptr;
 use std::ffi::{CString, CStr};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::path::Path;
 use std::marker::PhantomData;
@@ -124,7 +124,6 @@ pub use self::rent::AlApi;
 /// From here, available devices can be queried and opened.
 pub struct Alto {
 	api: AlApi<'static>,
-	ctx_lock: Mutex<()>,
 }
 
 
@@ -205,7 +204,6 @@ impl Alto {
 		let api = Box::new(sys::AlApi::load_default()?);
 		Ok(Alto{
 			api: AlApi::new(api, |a| unsafe { ext::AlcNullCache::new(a, ptr::null_mut()) }),
-			ctx_lock: Mutex::new(()),
 		}).and_then(|a| a.check_version())
 	}
 
@@ -215,7 +213,6 @@ impl Alto {
 		let api = Box::new(sys::AlApi::load(path)?);
 		Ok(Alto{
 			api: AlApi::new(api, |a| unsafe { ext::AlcNullCache::new(a, ptr::null_mut()) }),
-			ctx_lock: Mutex::new(()),
 		}).and_then(|a| a.check_version())
 	}
 
@@ -431,7 +428,7 @@ impl<'a> Device<'a> {
 		let attrs_vec = self.make_attrs_vec(attrs.into());
 
 		let ctx = unsafe { self.alto.api.owner().alcCreateContext()(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
-		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, &self.alto.ctx_lock, ctx) })
+		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, ctx) })
 	}
 
 
@@ -628,7 +625,7 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 	pub fn new_context<A: Into<Option<LoopbackAttrs>>>(&self, freq: sys::ALCint, attrs: A) -> AltoResult<Context> {
 		let attrs_vec = self.make_attrs_vec(freq, attrs.into())?;
 		let ctx = unsafe { self.alto.api.owner().alcCreateContext()(self.dev, attrs_vec.as_slice().as_ptr()) };
-		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, &self.alto.ctx_lock, ctx) })
+		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, ctx) })
 	}
 
 

@@ -20,7 +20,8 @@ pub use self::format::*;
 
 
 lazy_static! {
-    pub static ref CTX_LOCK: Mutex<()> = Mutex::new(());
+	#[no_mangle]
+    pub static ref ALTO_CTX_LOCK__: Mutex<()> = Mutex::new(());
 }
 
 
@@ -343,7 +344,7 @@ impl<'d> Context<'d> {
 				self.dev.alto().get_error(self.dev.as_raw()).map(|_| None)
 			} else {
 				unsafe { self.api.owner().alcMakeContextCurrent()(if set { self.ctx } else { ptr::null_mut() }); }
-				self.dev.alto().get_error(self.dev.as_raw()).map(|_| Some(CTX_LOCK.lock().unwrap()))
+				self.dev.alto().get_error(self.dev.as_raw()).map(|_| Some(ALTO_CTX_LOCK__.lock().unwrap()))
 			}
 		})
 	}

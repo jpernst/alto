@@ -20,6 +20,7 @@ pub use self::format::*;
 
 
 lazy_static! {
+	#[doc(hidden)]
 	#[no_mangle]
     pub static ref ALTO_CTX_LOCK__: Mutex<()> = Mutex::new(());
 }

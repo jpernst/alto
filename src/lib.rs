@@ -7,6 +7,11 @@
 //! The core of the API is the [`Alto`](struct.Alto.html) struct. It has no analog in raw OpenAL and
 //! represents an implementation of the API itself. From there, instances of familiar OpenAL objects
 //! can be instantiated.
+//!
+//! #Safety
+//! Because the semantics of OpenAL require global state in the implementation, only one version of
+//! Alto should be linked into any given binary to prevent race conditions. An unmangled symbol is
+//! used to prevent binaries that attempt to link multiple versions from linking successfully.
 
 #[macro_use]
 extern crate lazy_static;

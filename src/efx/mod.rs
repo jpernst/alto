@@ -293,6 +293,9 @@ impl<'d: 'c, 'c> AuxEffectSlot<'d, 'c> {
 
 	/// `alAuxiliaryEffectSloti(AL_EFFECTSLOT_EFFECT)`
 	pub fn set_effect<E: EffectTrait<'d, 'c>>(&mut self, value: &E) -> AltoResult<()> {
+		if value.context() != self.ctx {
+			return Err(AltoError::AlInvalidValue);
+		}
 		let efx = self.ctx.device().extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
 		unsafe { efx.alAuxiliaryEffectSloti?(self.slot, efx.AL_EFFECTSLOT_EFFECT?, value.as_raw() as sys::ALint); }

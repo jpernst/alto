@@ -1182,6 +1182,10 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 
 	fn set_direct_filter<F: FilterTrait<'d, 'c>>(&self, value: &F) -> AltoResult<()> {
 		let efx = self.ctx.dev.extensions().ALC_EXT_EFX()?;
+		if value.context() != self.ctx {
+			return Err(AltoError::AlInvalidValue);
+		}
+
 		let _lock = self.ctx.make_current(true)?;
 		unsafe { self.ctx.api.owner().alSourcei()(self.src, efx.AL_DIRECT_FILTER?, value.as_raw() as sys::ALint); }
 		self.ctx.get_error()

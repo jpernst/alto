@@ -15,6 +15,7 @@ extern crate lazy_static;
 extern crate enum_primitive;
 #[macro_use]
 extern crate rental;
+extern crate tempdir;
 extern crate al_sys;
 
 use std::error::Error as StdError;

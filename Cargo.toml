@@ -1,8 +1,8 @@
 [package]
 name = "alto"
 description = "Idiomatic interface for OpenAL 1.1 and extensions (including EFX)"
-version = "1.1.0"
-authors = ["jpernst"]
+version = "1.1.1"
+authors = ["Jameson Ernst <jameson@jpernst.com>"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/jpernst/alto.git"
 documentation = "https://docs.rs/alto"
@@ -14,5 +14,4 @@ lazy_static = "0.2.1"
 enum_primitive = "0.1.0"
 rental = "0.3.2"
 tempdir = "0.3.5"
-al-sys = "0.3.1"
-
+al-sys = "0.4.0"

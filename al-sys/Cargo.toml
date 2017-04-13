@@ -1,8 +1,8 @@
 [package]
 name = "al-sys"
 description = "Raw bindings for OpenAL 1.1"
-version = "0.3.3"
-authors = ["jpernst"]
+version = "0.4.0"
+authors = ["Jameson Ernst <jameson@jpernst.com>"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/jpernst/alto.git"
 documentation = "https://docs.rs/al-sys"
@@ -13,6 +13,7 @@ categories = ["multimedia::audio", "external-ffi-bindings"]
 pkg-config = "0.3.8"
 
 [dependencies]
-libloading = "0.3.1"
-rental = "0.3.1"
+rental = "0.4.5"
 
+[target.'cfg(not(target_os = "emscripten"))'.dependencies]
+libloading = "0.3.1"

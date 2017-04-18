@@ -167,11 +167,16 @@ pub enum SoftHrtfStatus {
 }
 
 
-rental!{
+rental! {
 	mod rent {
-		pub rental AlApi<'rental>(Box<::sys::AlApi>, ::ext::AlcNullCache<'rental>);
+		#[rental]
+		pub struct AlApi {
+			api: Box<::sys::AlApi>,
+			cache: ::ext::AlcNullCache<'api>,
+		}
 	}
 }
+
 
 #[doc(hidden)]
 pub use self::rent::AlApi;
@@ -180,7 +185,7 @@ pub use self::rent::AlApi;
 /// This struct is the entry point of the API. Instantiating it will load an OpenAL implementation.
 /// From here, available devices can be queried and opened.
 pub struct Alto {
-	api: AlApi<'static>,
+	api: AlApi,
 	_hints_dir: Option<TempDir>,
 }
 
@@ -362,9 +367,9 @@ impl Alto {
 
 	fn check_version(self) -> AltoResult<Alto> {
 		let mut major = 0;
-		unsafe { self.api.owner().alcGetIntegerv()(ptr::null_mut(), sys::ALC_MAJOR_VERSION, 1, &mut major); }
+		unsafe { self.api.head().alcGetIntegerv()(ptr::null_mut(), sys::ALC_MAJOR_VERSION, 1, &mut major); }
 		let mut minor = 0;
-		unsafe { self.api.owner().alcGetIntegerv()(ptr::null_mut(), sys::ALC_MINOR_VERSION, 1, &mut minor); }
+		unsafe { self.api.head().alcGetIntegerv()(ptr::null_mut(), sys::ALC_MINOR_VERSION, 1, &mut minor); }
 
 		if major == 1 && minor >= 1 {
 			Ok(self)
@@ -382,9 +387,9 @@ impl Alto {
 	pub fn default_output(&self) -> AltoResult<CString> {
 		self.api.rent(|exts| {
 			let spec = if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
-				unsafe { CStr::from_ptr(self.api.owner().alcGetString()(ptr::null_mut(), ea.ALC_DEFAULT_ALL_DEVICES_SPECIFIER?)) }
+				unsafe { CStr::from_ptr(self.api.head().alcGetString()(ptr::null_mut(), ea.ALC_DEFAULT_ALL_DEVICES_SPECIFIER?)) }
 			} else {
-				unsafe { CStr::from_ptr(self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_DEFAULT_DEVICE_SPECIFIER)) }
+				unsafe { CStr::from_ptr(self.api.head().alcGetString()(ptr::null_mut(), sys::ALC_DEFAULT_DEVICE_SPECIFIER)) }
 			};
 			self.get_error(ptr::null_mut()).map(|_| spec.to_owned())
 		})
@@ -393,7 +398,7 @@ impl Alto {
 
 	/// `alcGetString(ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)`
 	pub fn default_capture(&self) -> AltoResult<CString> {
-		let spec = unsafe { CStr::from_ptr(self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)) };
+		let spec = unsafe { CStr::from_ptr(self.api.head().alcGetString()(ptr::null_mut(), sys::ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)) };
 		self.get_error(ptr::null_mut()).map(|_| spec.to_owned())
 	}
 
@@ -402,9 +407,9 @@ impl Alto {
 	pub fn enumerate_outputs(&self) -> AltoResult<Vec<CString>> {
 		self.api.rent(|exts| {
 			let spec = if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
-				unsafe { self.api.owner().alcGetString()(ptr::null_mut(), ea.ALC_ALL_DEVICES_SPECIFIER?) }
+				unsafe { self.api.head().alcGetString()(ptr::null_mut(), ea.ALC_ALL_DEVICES_SPECIFIER?) }
 			} else {
-				unsafe { self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_DEVICE_SPECIFIER) }
+				unsafe { self.api.head().alcGetString()(ptr::null_mut(), sys::ALC_DEVICE_SPECIFIER) }
 			};
 			self.get_error(ptr::null_mut()).and_then(|_| Alto::parse_enum_spec(spec as *const u8))
 		})
@@ -413,7 +418,7 @@ impl Alto {
 
 	/// `alcGetString(ALC_CAPTURE_DEVICE_SPECIFIER)`
 	pub fn enumerate_captures(&self) -> AltoResult<Vec<CString>> {
-		let spec = unsafe { self.api.owner().alcGetString()(ptr::null_mut(), sys::ALC_CAPTURE_DEVICE_SPECIFIER) };
+		let spec = unsafe { self.api.head().alcGetString()(ptr::null_mut(), sys::ALC_CAPTURE_DEVICE_SPECIFIER) };
 		self.get_error(ptr::null_mut()).and_then(|_| Alto::parse_enum_spec(spec as *const u8))
 	}
 
@@ -444,7 +449,7 @@ impl Alto {
 			self.default_output()?
 		};
 
-		let dev = unsafe { self.api.owner().alcOpenDevice()(spec.as_ptr()) };
+		let dev = unsafe { self.api.head().alcOpenDevice()(spec.as_ptr()) };
 		self.get_error(ptr::null_mut())?;
 
 		if dev == ptr::null_mut() {
@@ -454,7 +459,7 @@ impl Alto {
 				alto: self,
 				spec: spec,
 				dev: dev,
-				exts: unsafe { ext::AlcCache::new(self.api.owner(), dev) },
+				exts: unsafe { ext::AlcCache::new(self.api.head(), dev) },
 				pause_rc: Arc::new(AtomicUsize::new(0))
 			})
 		}
@@ -483,7 +488,7 @@ impl Alto {
 					alto: self,
 					spec: spec,
 					dev: dev,
-					exts: unsafe { ext::AlcCache::new(self.api.owner(), dev) },
+					exts: unsafe { ext::AlcCache::new(self.api.head(), dev) },
 					marker: PhantomData
 				})
 			}
@@ -499,7 +504,7 @@ impl Alto {
 			self.default_output()?
 		};
 
-		let dev = unsafe { self.api.owner().alcCaptureOpenDevice()(spec.as_ptr(), freq, F::format().into_raw(None)?, len) };
+		let dev = unsafe { self.api.head().alcCaptureOpenDevice()(spec.as_ptr(), freq, F::format().into_raw(None)?, len) };
 		self.get_error(ptr::null_mut())?;
 
 		if dev == ptr::null_mut() {
@@ -512,7 +517,7 @@ impl Alto {
 
 	#[doc(hidden)]
 	pub fn get_error(&self, dev: *mut sys::ALCdevice) -> AltoResult<()> {
-		match unsafe { self.api.owner().alcGetError()(dev)} {
+		match unsafe { self.api.head().alcGetError()(dev)} {
 			sys::ALC_NO_ERROR => Ok(()),
 			e => Err(AltoError::from_alc(e)),
 		}
@@ -570,7 +575,7 @@ impl<'a> Device<'a> {
 	pub fn new_context<A: Into<Option<ContextAttrs>>>(&self, attrs: A) -> AltoResult<Context> {
 		let attrs_vec = self.make_attrs_vec(attrs.into());
 
-		let ctx = unsafe { self.alto.api.owner().alcCreateContext()(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
+		let ctx = unsafe { self.alto.api.head().alcCreateContext()(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
 		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, ctx) })
 	}
 
@@ -618,7 +623,7 @@ unsafe impl<'a> DeviceTrait for Device<'a> {
 
 	fn connected(&self) -> AltoResult<bool> {
 		let mut value = 0;
-		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_DISCONNECT()?.ALC_CONNECTED?, 1, &mut value); }
+		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_DISCONNECT()?.ALC_CONNECTED?, 1, &mut value); }
 		self.alto.get_error(self.dev).map(|_| value == sys::ALC_TRUE as sys::ALCint)
 	}
 
@@ -627,7 +632,7 @@ unsafe impl<'a> DeviceTrait for Device<'a> {
 		let ash = self.exts.ALC_SOFT_HRTF()?;
 
 		let mut value = 0;
-		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_NUM_HRTF_SPECIFIERS_SOFT?, 1, &mut value); }
+		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, ash.ALC_NUM_HRTF_SPECIFIERS_SOFT?, 1, &mut value); }
 		self.alto.get_error(self.dev)?;
 
 		let mut spec_vec = Vec::new();
@@ -645,7 +650,7 @@ unsafe impl<'a> DeviceTrait for Device<'a> {
 		let ash = self.exts.ALC_SOFT_HRTF()?;
 
 		let mut value = 0;
-		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut value); }
+		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut value); }
 		self.alto.get_error(self.dev).and_then(|_| match value {
 			s if s == ash.ALC_HRTF_DISABLED_SOFT? => Ok(SoftHrtfStatus::Disabled),
 			s if s == ash.ALC_HRTF_ENABLED_SOFT? => Ok(SoftHrtfStatus::Enabled),
@@ -660,7 +665,7 @@ unsafe impl<'a> DeviceTrait for Device<'a> {
 
 	fn max_auxiliary_sends(&self) -> AltoResult<sys::ALCint> {
 		let mut value = 0;
-		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_EFX()?.ALC_MAX_AUXILIARY_SENDS?, 1, &mut value); }
+		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_EFX()?.ALC_MAX_AUXILIARY_SENDS?, 1, &mut value); }
 		self.alto.get_error(self.dev).map(|_| value)
 	}
 }
@@ -676,7 +681,7 @@ impl<'a> Eq for Device<'a> { }
 
 impl<'a> Drop for Device<'a> {
 	fn drop(&mut self) {
-		unsafe { self.alto.api.owner().alcCloseDevice()(self.dev); }
+		unsafe { self.alto.api.head().alcCloseDevice()(self.dev); }
 		if let Err(_) = self.alto.get_error(self.dev) {
 			let _ = writeln!(io::stderr(), "ALTO ERROR: `alcCloseDevice` failed in Device drop");
 		}
@@ -767,7 +772,7 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 	/// `alcCreateContext()`
 	pub fn new_context<A: Into<Option<LoopbackAttrs>>>(&self, freq: sys::ALCint, attrs: A) -> AltoResult<Context> {
 		let attrs_vec = self.make_attrs_vec(freq, attrs.into())?;
-		let ctx = unsafe { self.alto.api.owner().alcCreateContext()(self.dev, attrs_vec.as_slice().as_ptr()) };
+		let ctx = unsafe { self.alto.api.head().alcCreateContext()(self.dev, attrs_vec.as_slice().as_ptr()) };
 		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, ctx) })
 	}
 
@@ -827,7 +832,7 @@ unsafe impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
 		let ash = self.exts.ALC_SOFT_HRTF()?;
 
 		let mut value = 0;
-		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_NUM_HRTF_SPECIFIERS_SOFT?, 1, &mut value); }
+		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, ash.ALC_NUM_HRTF_SPECIFIERS_SOFT?, 1, &mut value); }
 		self.alto.get_error(self.dev)?;
 
 		let mut spec_vec = Vec::new();
@@ -845,7 +850,7 @@ unsafe impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
 		let ash = self.exts.ALC_SOFT_HRTF()?;
 
 		let mut value = 0;
-		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut value); }
+		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut value); }
 		self.alto.get_error(self.dev).and_then(|_| match value {
 			s if s == ash.ALC_HRTF_DISABLED_SOFT? => Ok(SoftHrtfStatus::Disabled),
 			s if s == ash.ALC_HRTF_ENABLED_SOFT? => Ok(SoftHrtfStatus::Enabled),
@@ -860,7 +865,7 @@ unsafe impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
 
 	fn max_auxiliary_sends(&self) -> AltoResult<sys::ALCint> {
 		let mut value = 0;
-		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_EFX()?.ALC_MAX_AUXILIARY_SENDS?, 1, &mut value); }
+		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_EFX()?.ALC_MAX_AUXILIARY_SENDS?, 1, &mut value); }
 		self.alto.get_error(self.dev).map(|_| value)
 	}
 }
@@ -876,7 +881,7 @@ impl<'a, F: LoopbackFrame> Eq for LoopbackDevice<'a, F> { }
 
 impl<'a, F: LoopbackFrame> Drop for LoopbackDevice<'a, F> {
 	fn drop(&mut self) {
-		unsafe { self.alto.api.owner().alcCloseDevice()(self.dev); }
+		unsafe { self.alto.api.head().alcCloseDevice()(self.dev); }
 		if let Err(_) = self.alto.get_error(self.dev) {
 			let _ = writeln!(io::stderr(), "ALTO ERROR: `alcCloseDevice` failed in LoopbackDevice drop");
 		}
@@ -902,14 +907,14 @@ impl<'a, F: StandardFrame> CaptureDevice<'a, F> {
 
 	/// `alcCaptureStart()`
 	pub fn start(&mut self) -> AltoResult<()> {
-		unsafe { self.alto.api.owner().alcCaptureStart()(self.dev); }
+		unsafe { self.alto.api.head().alcCaptureStart()(self.dev); }
 		self.alto.get_error(self.dev)
 	}
 
 
 	/// `alcCaptureStop()`
 	pub fn stop(&mut self) -> AltoResult<()> {
-		unsafe { self.alto.api.owner().alcCaptureStop()(self.dev); }
+		unsafe { self.alto.api.head().alcCaptureStop()(self.dev); }
 		self.alto.get_error(self.dev)
 	}
 
@@ -917,7 +922,7 @@ impl<'a, F: StandardFrame> CaptureDevice<'a, F> {
 	/// `alcGetIntegerv(ALC_CAPTURE_SAMPLES)`
 	pub fn samples_len(&self) -> AltoResult<sys::ALCint> {
 		let mut samples = 0;
-		unsafe { self.alto.api.owner().alcGetIntegerv()(self.dev, sys::ALC_CAPTURE_SAMPLES, 1, &mut samples); }
+		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, sys::ALC_CAPTURE_SAMPLES, 1, &mut samples); }
 		self.alto.get_error(self.dev).map(|_| samples)
 	}
 
@@ -927,7 +932,7 @@ impl<'a, F: StandardFrame> CaptureDevice<'a, F> {
 		let mut data = data.as_buffer_data_mut();
 		if data.len() > self.samples_len()? as usize { return Err(AltoError::AlcInvalidValue) }
 
-		unsafe { self.alto.api.owner().alcCaptureSamples()(self.dev, data.as_mut_ptr() as *mut _, data.len() as sys::ALCsizei); }
+		unsafe { self.alto.api.head().alcCaptureSamples()(self.dev, data.as_mut_ptr() as *mut _, data.len() as sys::ALCsizei); }
 		self.alto.get_error(self.dev)
 	}
 }

@@ -2,8 +2,28 @@ use std::mem;
 use std::sync::RwLock;
 use std::ptr;
 
-use rental::{self, RentRwLock};
 use sys::*;
+
+
+rental! {
+	mod rent {
+		use std::sync;
+
+
+		#[rental(deref_suffix)]
+		pub struct AlcExt<'a, T: 'static> {
+			lock: sync::RwLockReadGuard<'a, Option<super::AlcExtResult<T>>>,
+			ext: &'lock T,
+		}
+
+
+		#[rental(deref_suffix)]
+		pub struct AlExt<'a, T: 'static> {
+			lock: sync::RwLockReadGuard<'a, Option<super::AlExtResult<T>>>,
+			ext: &'lock T,
+		}
+	}
+}
 
 
 macro_rules! alc_ext {
@@ -36,18 +56,20 @@ macro_rules! alc_ext {
 			}
 
 
-			$(pub fn $ext(&self) -> AlcExtResult<RentRwLock<Option<AlcExtResult<$ext>>, $ext>> {
+			$(pub fn $ext(&self) -> AlcExtResult<rent::AlcExt<$ext>> {
 				if let Ok(mut ext) = self.$ext.try_write() {
 					if ext.is_none() {
 						*ext = Some($ext::load(&self.api, self.dev));
 					}
 				}
 
-				let ext = RentRwLock::new(self.$ext.read().unwrap(), |ext| ext.as_ref().unwrap());
-				match *ext {
-					Ok(_) => Ok(rental::MapRef::map(ext, |ext| ext.as_ref().unwrap())),
-					Err(e) => Err(e),
-				}
+				rent::AlcExt::try_new(
+					self.$ext.read().unwrap(),
+					|ext| match *ext.as_ref().unwrap() {
+						Ok(ref ext) => Ok(ext),
+						Err(e) => Err(e),
+					}
+				).map_err(|e| e.0)
 			})*
 		}
 
@@ -130,18 +152,20 @@ macro_rules! al_ext {
 			}
 
 
-			$(pub fn $ext(&self) -> AlExtResult<RentRwLock<Option<AlExtResult<$ext>>, $ext>> {
+			$(pub fn $ext(&self) -> AlExtResult<rent::AlExt<$ext>> {
 				if let Ok(mut ext) = self.$ext.try_write() {
 					if ext.is_none() {
 						*ext = Some($ext::load(&self.api));
 					}
 				}
 
-				let ext = RentRwLock::new(self.$ext.read().unwrap(), |ext| ext.as_ref().unwrap());
-				match *ext {
-					Ok(_) => Ok(rental::MapRef::map(ext, |ext| ext.as_ref().unwrap())),
-					Err(e) => Err(e),
-				}
+				rent::AlExt::try_new(
+					self.$ext.read().unwrap(),
+					|ext| match *ext.as_ref().unwrap() {
+						Ok(ref ext) => Ok(ext),
+						Err(e) => Err(e),
+					}
+				).map_err(|e| e.0)
 			})*
 		}
 

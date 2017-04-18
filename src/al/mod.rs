@@ -49,7 +49,7 @@ pub enum DistanceModel {
 /// A listener context.
 pub struct Context<'d> {
 	dev: &'d DeviceTrait,
-	api: &'d AlApi<'static>,
+	api: &'d AlApi,
 	ctx: *mut sys::ALCcontext,
 	exts: ext::AlCache<'d>,
 	defer_rc: Arc<AtomicUsize>,
@@ -290,12 +290,12 @@ pub struct StreamingSource<'d: 'c, 'c> {
 
 impl<'d> Context<'d> {
 	#[doc(hidden)]
-	pub unsafe fn new(dev: &'d DeviceTrait, api: &'d AlApi<'static>, ctx: *mut sys::ALCcontext) -> Context<'d> {
+	pub unsafe fn new(dev: &'d DeviceTrait, api: &'d AlApi, ctx: *mut sys::ALCcontext) -> Context<'d> {
 		Context{
 			dev: dev,
 			api: api,
 			ctx: ctx,
-			exts: ext::AlCache::new(api.owner()),
+			exts: ext::AlCache::new(api.head()),
 			defer_rc: Arc::new(AtomicUsize::new(0)),
 		}
 	}
@@ -344,7 +344,7 @@ impl<'d> Context<'d> {
 				unsafe { tlc.alcSetThreadContext?(if set { self.ctx } else { ptr::null_mut() }); }
 				self.dev.alto().get_error(self.dev.as_raw()).map(|_| None)
 			} else {
-				unsafe { self.api.owner().alcMakeContextCurrent()(if set { self.ctx } else { ptr::null_mut() }); }
+				unsafe { self.api.head().alcMakeContextCurrent()(if set { self.ctx } else { ptr::null_mut() }); }
 				self.dev.alto().get_error(self.dev.as_raw()).map(|_| Some(ALTO_CTX_LOCK__.lock().unwrap()))
 			}
 		})
@@ -354,7 +354,7 @@ impl<'d> Context<'d> {
 	/// `alGetInteger(AL_DISTANCE_MODEL)`
 	pub fn distance_model(&self) -> AltoResult<DistanceModel> {
 		let _lock = self.make_current(true)?;
-		let value = unsafe { self.api.owner().alGetInteger()(sys::AL_DISTANCE_MODEL) };
+		let value = unsafe { self.api.head().alGetInteger()(sys::AL_DISTANCE_MODEL) };
 		self.get_error().and_then(|_| match value {
 			sys::AL_NONE => Ok(DistanceModel::None),
 			sys::AL_INVERSE_DISTANCE => Ok(DistanceModel::Inverse),
@@ -370,7 +370,7 @@ impl<'d> Context<'d> {
 	pub fn set_distance_model(&self, value: DistanceModel) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
 		unsafe {
-			self.api.owner().alDistanceModel()(match value {
+			self.api.head().alDistanceModel()(match value {
 				DistanceModel::None => sys::AL_NONE,
 				DistanceModel::Inverse => sys::AL_INVERSE_DISTANCE,
 				DistanceModel::InverseClamped => sys::AL_INVERSE_DISTANCE_CLAMPED,
@@ -388,7 +388,7 @@ impl<'d> Context<'d> {
 	/// Requires `AL_EXT_source_distance_model`
 	pub fn using_source_distance_model(&self) -> AltoResult<bool> {
 		let _lock = self.make_current(true)?;
-		let value = unsafe { self.api.owner().alIsEnabled()(self.exts.AL_EXT_source_distance_model()?.AL_SOURCE_DISTANCE_MODEL?) };
+		let value = unsafe { self.api.head().alIsEnabled()(self.exts.AL_EXT_source_distance_model()?.AL_SOURCE_DISTANCE_MODEL?) };
 		self.get_error().map(|_| value == sys::AL_TRUE)
 	}
 	/// `alEnable/alDisable(AL_SOURCE_DISTANCE_MODEL)`
@@ -396,9 +396,9 @@ impl<'d> Context<'d> {
 	pub fn use_source_distance_model(&self, value: bool) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
 		if value {
-			unsafe { self.api.owner().alEnable()(self.exts.AL_EXT_source_distance_model()?.AL_SOURCE_DISTANCE_MODEL?); }
+			unsafe { self.api.head().alEnable()(self.exts.AL_EXT_source_distance_model()?.AL_SOURCE_DISTANCE_MODEL?); }
 		} else {
-			unsafe { self.api.owner().alDisable()(self.exts.AL_EXT_source_distance_model()?.AL_SOURCE_DISTANCE_MODEL?); }
+			unsafe { self.api.head().alDisable()(self.exts.AL_EXT_source_distance_model()?.AL_SOURCE_DISTANCE_MODEL?); }
 		}
 		self.get_error()
 	}
@@ -407,13 +407,13 @@ impl<'d> Context<'d> {
 	/// `alGetFloat(AL_DOPPLER_FACTOR)`
 	pub fn doppler_factor(&self) -> AltoResult<f32> {
 		let _lock = self.make_current(true)?;
-		let value = unsafe { self.api.owner().alGetFloat()(sys::AL_DOPPLER_FACTOR) };
+		let value = unsafe { self.api.head().alGetFloat()(sys::AL_DOPPLER_FACTOR) };
 		self.get_error().map(|_| value)
 	}
 	/// `alDopplerFactor()`
 	pub fn set_doppler_factor(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
-		unsafe { self.api.owner().alDopplerFactor()(value); }
+		unsafe { self.api.head().alDopplerFactor()(value); }
 		self.get_error()
 	}
 
@@ -421,13 +421,13 @@ impl<'d> Context<'d> {
 	/// `alGetFloat(AL_SPEED_OF_SOUND)`
 	pub fn speed_of_sound(&self) -> AltoResult<f32> {
 		let _lock = self.make_current(true)?;
-		let value = unsafe { self.api.owner().alGetFloat()(sys::AL_SPEED_OF_SOUND) };
+		let value = unsafe { self.api.head().alGetFloat()(sys::AL_SPEED_OF_SOUND) };
 		self.get_error().map(|_| value)
 	}
 	/// `alSpeedOfSound()`
 	pub fn set_speed_of_sound(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
-		unsafe { self.api.owner().alSpeedOfSound()(value); }
+		unsafe { self.api.head().alSpeedOfSound()(value); }
 		self.get_error()
 	}
 
@@ -436,13 +436,13 @@ impl<'d> Context<'d> {
 	pub fn gain(&self) -> AltoResult<f32> {
 		let _lock = self.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.api.owner().alGetListenerf()(sys::AL_GAIN, &mut value); }
+		unsafe { self.api.head().alGetListenerf()(sys::AL_GAIN, &mut value); }
 		self.get_error().map(|_| value)
 	}
 	/// `alListenerf(AL_GAIN)`
 	pub fn set_gain(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
-		unsafe { self.api.owner().alListenerf()(sys::AL_GAIN, value); }
+		unsafe { self.api.head().alListenerf()(sys::AL_GAIN, value); }
 		self.get_error()
 	}
 
@@ -451,14 +451,14 @@ impl<'d> Context<'d> {
 	pub fn position<V: From<[f32; 3]>>(&self) -> AltoResult<V> {
 		let _lock = self.make_current(true)?;
 		let mut value = [0.0, 0.0, 0.0];
-		unsafe { self.api.owner().alGetListenerfv()(sys::AL_POSITION, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
+		unsafe { self.api.head().alGetListenerfv()(sys::AL_POSITION, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
 		self.get_error().map(|_| value.into())
 	}
 	/// `alListenerfv(AL_POSITION)`
 	pub fn set_position<V: Into<[f32; 3]>>(&self, value: V) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
 		let value = value.into();
-		unsafe { self.api.owner().alListenerfv()(sys::AL_POSITION, &value as *const [f32; 3] as *const sys::ALfloat); }
+		unsafe { self.api.head().alListenerfv()(sys::AL_POSITION, &value as *const [f32; 3] as *const sys::ALfloat); }
 		self.get_error()
 	}
 
@@ -467,14 +467,14 @@ impl<'d> Context<'d> {
 	pub fn velocity<V: From<[f32; 3]>>(&self) -> AltoResult<V> {
 		let _lock = self.make_current(true)?;
 		let mut value = [0.0, 0.0, 0.0];
-		unsafe { self.api.owner().alGetListenerfv()(sys::AL_VELOCITY, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
+		unsafe { self.api.head().alGetListenerfv()(sys::AL_VELOCITY, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
 		self.get_error().map(|_| value.into())
 	}
 	/// `alListenerfv(AL_VELOCITY)`
 	pub fn set_velocity<V: Into<[f32; 3]>>(&self, value: V) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
 		let value = value.into();
-		unsafe { self.api.owner().alListenerfv()(sys::AL_VELOCITY, &value as *const [f32; 3] as *const sys::ALfloat); }
+		unsafe { self.api.head().alListenerfv()(sys::AL_VELOCITY, &value as *const [f32; 3] as *const sys::ALfloat); }
 		self.get_error()
 	}
 
@@ -483,14 +483,14 @@ impl<'d> Context<'d> {
 	pub fn orientation<V: From<[f32; 3]>>(&self) -> AltoResult<(V, V)> {
 		let _lock = self.make_current(true)?;
 		let mut value = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]];
-		unsafe { self.api.owner().alGetListenerfv()(sys::AL_ORIENTATION, &mut value as *mut [[f32; 3]; 2] as *mut sys::ALfloat); }
+		unsafe { self.api.head().alGetListenerfv()(sys::AL_ORIENTATION, &mut value as *mut [[f32; 3]; 2] as *mut sys::ALfloat); }
 		self.get_error().map(|_| (value[0].into(), value[1].into()))
 	}
 	/// `alListenerfv(AL_ORIENTATION)`
 	pub fn set_orientation<V: Into<[f32; 3]>>(&self, value: (V, V)) -> AltoResult<()> {
 		let _lock = self.make_current(true)?;
 		let value = [value.0.into(), value.1.into()];
-		unsafe { self.api.owner().alListenerfv()(sys::AL_ORIENTATION, &value as *const [[f32; 3]; 2] as *const sys::ALfloat); }
+		unsafe { self.api.head().alListenerfv()(sys::AL_ORIENTATION, &value as *const [[f32; 3]; 2] as *const sys::ALfloat); }
 		self.get_error()
 	}
 
@@ -501,7 +501,7 @@ impl<'d> Context<'d> {
 		let efx = self.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.api.owner().alGetListenerf()(efx.AL_METERS_PER_UNIT?, &mut value); }
+		unsafe { self.api.head().alGetListenerf()(efx.AL_METERS_PER_UNIT?, &mut value); }
 		self.get_error().map(|_| value)
 	}
 	/// `alListenerf(AL_METERS_PER_UNIT)`
@@ -509,7 +509,7 @@ impl<'d> Context<'d> {
 	pub fn set_meters_per_unit(&self, value: f32) -> AltoResult<()> {
 		let efx = self.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.make_current(true)?;
-		unsafe { self.api.owner().alListenerf()(efx.AL_METERS_PER_UNIT?, value); }
+		unsafe { self.api.head().alListenerf()(efx.AL_METERS_PER_UNIT?, value); }
 		self.get_error()
 	}
 
@@ -543,7 +543,7 @@ impl<'d> Context<'d> {
 		if v.len() > sys::ALint::max_value() as usize { return Err(AltoError::AlInvalidValue) }
 
 		let _lock = self.make_current(true)?;
-		unsafe { self.api.owner().alSourcePlayv()(v.len() as i32, v.as_slice().as_ptr()); }
+		unsafe { self.api.head().alSourcePlayv()(v.len() as i32, v.as_slice().as_ptr()); }
 		self.get_error()
 	}
 
@@ -559,7 +559,7 @@ impl<'d> Context<'d> {
 		if v.len() > sys::ALint::max_value() as usize { return Err(AltoError::AlInvalidValue) }
 
 		let _lock = self.make_current(true)?;
-		unsafe { self.api.owner().alSourcePausev()(v.len() as i32, v.as_slice().as_ptr()); }
+		unsafe { self.api.head().alSourcePausev()(v.len() as i32, v.as_slice().as_ptr()); }
 		self.get_error()
 	}
 
@@ -575,7 +575,7 @@ impl<'d> Context<'d> {
 		if v.len() > sys::ALint::max_value() as usize { return Err(AltoError::AlInvalidValue) }
 
 		let _lock = self.make_current(true)?;
-		unsafe { self.api.owner().alSourceStopv()(v.len() as i32, v.as_slice().as_ptr()); }
+		unsafe { self.api.head().alSourceStopv()(v.len() as i32, v.as_slice().as_ptr()); }
 		self.get_error()
 	}
 
@@ -591,7 +591,7 @@ impl<'d> Context<'d> {
 		if v.len() > sys::ALint::max_value() as usize { return Err(AltoError::AlInvalidValue) }
 
 		let _lock = self.make_current(true)?;
-		unsafe { self.api.owner().alSourceRewindv()(v.len() as i32, v.as_slice().as_ptr()); }
+		unsafe { self.api.head().alSourceRewindv()(v.len() as i32, v.as_slice().as_ptr()); }
 		self.get_error()
 	}
 
@@ -626,7 +626,7 @@ impl<'d> Context<'d> {
 
 	#[doc(hidden)]
 	pub fn get_error(&self) -> AltoResult<()> {
-		match unsafe { self.api.owner().alGetError()() } {
+		match unsafe { self.api.head().alGetError()() } {
 			sys::AL_NO_ERROR => Ok(()),
 			e => Err(AltoError::from_al(e))
 		}
@@ -645,7 +645,7 @@ impl<'d> Eq for Context<'d> { }
 impl<'d> Drop for Context<'d> {
 	fn drop(&mut self) {
 		if self.make_current(false).is_ok() {
-			unsafe { self.api.owner().alcDestroyContext()(self.ctx); }
+			unsafe { self.api.head().alcDestroyContext()(self.ctx); }
 			if let Err(_) = self.dev.alto().get_error(self.dev.as_raw()) {
 				let _ = writeln!(io::stderr(), "ALTO ERROR: `alcDeleteContext` failed in Context drop");
 			}
@@ -676,7 +676,7 @@ impl<'d: 'c, 'c> SuspendLock<'d, 'c> {
 					}
 				},
 				Err(_) => {
-					unsafe { ctx.api.owner().alcSuspendContext()(ctx.ctx); }
+					unsafe { ctx.api.head().alcSuspendContext()(ctx.ctx); }
 					if let Err(e) = ctx.dev.alto().get_error(ctx.dev.as_raw()) {
 						ctx.defer_rc.fetch_sub(1, Ordering::SeqCst);
 						return Err(e);
@@ -713,7 +713,7 @@ impl<'d: 'c, 'c> Drop for SuspendLock<'d, 'c> {
 					}
 				},
 				Err(_) => {
-					unsafe { self.0.api.owner().alcProcessContext()(self.0.ctx); }
+					unsafe { self.0.api.head().alcProcessContext()(self.0.ctx); }
 					if let Err(_) = self.0.dev.alto().get_error(self.0.dev.as_raw()) {
 						let _ = writeln!(io::stderr(), "ALTO ERROR: `alcProcessContext` failed in SuspendLock drop");
 					}
@@ -729,7 +729,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	pub fn new(ctx: &'c Context<'d>) -> AltoResult<Buffer<'d, 'c>> {
 		let _lock = ctx.make_current(true)?;
 		let mut buf = 0;
-		unsafe { ctx.api.owner().alGenBuffers()(1, &mut buf as *mut sys::ALuint); }
+		unsafe { ctx.api.head().alGenBuffers()(1, &mut buf as *mut sys::ALuint); }
 		ctx.get_error().map(|_| Buffer{ctx: ctx, buf: buf})
 	}
 
@@ -748,7 +748,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 
 		let _lock = self.ctx.make_current(true)?;
 		unsafe {
-			self.ctx.api.owner().alBufferData()(
+			self.ctx.api.head().alBufferData()(
 				self.buf,
 				F::format().into_raw(Some(self.ctx))?,
 				data.as_ptr() as *const sys::ALvoid,
@@ -764,7 +764,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	pub fn frequency(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.ctx.api.owner().alGetBufferi()(self.buf, sys::AL_FREQUENCY, &mut value); }
+		unsafe { self.ctx.api.head().alGetBufferi()(self.buf, sys::AL_FREQUENCY, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 
@@ -773,7 +773,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	pub fn bits(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.ctx.api.owner().alGetBufferi()(self.buf, sys::AL_BITS, &mut value); }
+		unsafe { self.ctx.api.head().alGetBufferi()(self.buf, sys::AL_BITS, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 
@@ -782,7 +782,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	pub fn channels(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.ctx.api.owner().alGetBufferi()(self.buf, sys::AL_CHANNELS, &mut value); }
+		unsafe { self.ctx.api.head().alGetBufferi()(self.buf, sys::AL_CHANNELS, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 
@@ -791,7 +791,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	pub fn size(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.ctx.api.owner().alGetBufferi()(self.buf, sys::AL_SIZE, &mut value); }
+		unsafe { self.ctx.api.head().alGetBufferi()(self.buf, sys::AL_SIZE, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 
@@ -801,14 +801,14 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 	pub fn soft_loop_points(&self) -> AltoResult<(sys::ALint, sys::ALint)> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = [0, 0];
-		unsafe { self.ctx.api.owner().alGetBufferiv()(self.buf, self.ctx.exts.AL_SOFT_loop_points()?.AL_LOOP_POINTS_SOFT?, &mut value as *mut [sys::ALint; 2] as *mut sys::ALint); }
+		unsafe { self.ctx.api.head().alGetBufferiv()(self.buf, self.ctx.exts.AL_SOFT_loop_points()?.AL_LOOP_POINTS_SOFT?, &mut value as *mut [sys::ALint; 2] as *mut sys::ALint); }
 		self.ctx.get_error().map(|_| (value[0], value[1]))
 	}
 	/// `alBufferiv(AL_LOOP_POINTS_SOFT)`
 	/// Requires `AL_SOFT_loop_points`
 	pub fn set_soft_loop_points(&self, value: (sys::ALint, sys::ALint)) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alBufferiv()(self.buf, self.ctx.exts.AL_SOFT_loop_points()?.AL_LOOP_POINTS_SOFT?, &[value.0, value.1] as *const [sys::ALint; 2] as *const sys::ALint); }
+		unsafe { self.ctx.api.head().alBufferiv()(self.buf, self.ctx.exts.AL_SOFT_loop_points()?.AL_LOOP_POINTS_SOFT?, &[value.0, value.1] as *const [sys::ALint; 2] as *const sys::ALint); }
 		self.ctx.get_error()
 	}
 }
@@ -817,7 +817,7 @@ impl<'d: 'c, 'c> Buffer<'d, 'c> {
 impl<'d: 'c, 'c> Drop for Buffer<'d, 'c> {
 	fn drop(&mut self) {
 		if let Ok(_lock) = self.ctx.make_current(true) {
-			unsafe { self.ctx.api.owner().alDeleteBuffers()(1, &mut self.buf as *mut sys::ALuint); }
+			unsafe { self.ctx.api.head().alDeleteBuffers()(1, &mut self.buf as *mut sys::ALuint); }
 			if let Err(_) = self.ctx.get_error() {
 				let _ = writeln!(io::stderr(), "ALTO ERROR: `alDeleteBuffers` failed in Buffer drop");
 			}
@@ -836,7 +836,7 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn state(&self) -> AltoResult<SourceState> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.ctx.api.owner().alGetSourcei()(self.src, sys::AL_SOURCE_STATE, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcei()(self.src, sys::AL_SOURCE_STATE, &mut value); }
 		self.ctx.get_error().and_then(|_| match value {
 			sys::AL_INITIAL => Ok(SourceState::Initial),
 			sys::AL_PLAYING => Ok(SourceState::Playing),
@@ -847,22 +847,22 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	}
 	fn play(&self) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcePlay()(self.src); }
+		unsafe { self.ctx.api.head().alSourcePlay()(self.src); }
 		self.ctx.get_error()
 	}
 	fn pause(&self) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcePause()(self.src); }
+		unsafe { self.ctx.api.head().alSourcePause()(self.src); }
 		self.ctx.get_error()
 	}
 	fn stop(&self) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourceStop()(self.src); }
+		unsafe { self.ctx.api.head().alSourceStop()(self.src); }
 		self.ctx.get_error()
 	}
 	fn rewind(&self) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourceRewind()(self.src); }
+		unsafe { self.ctx.api.head().alSourceRewind()(self.src); }
 		self.ctx.get_error()
 	}
 
@@ -870,12 +870,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn relative(&self) -> AltoResult<bool> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.ctx.api.owner().alGetSourcei()(self.src, sys::AL_SOURCE_RELATIVE, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcei()(self.src, sys::AL_SOURCE_RELATIVE, &mut value); }
 		self.ctx.get_error().map(|_| value == sys::AL_TRUE as sys::ALint)
 	}
 	fn set_relative(&self, value: bool) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcei()(self.src, sys::AL_SOURCE_RELATIVE, if value { sys::AL_TRUE } else { sys::AL_FALSE } as sys::ALint); }
+		unsafe { self.ctx.api.head().alSourcei()(self.src, sys::AL_SOURCE_RELATIVE, if value { sys::AL_TRUE } else { sys::AL_FALSE } as sys::ALint); }
 		self.ctx.get_error()
 	}
 
@@ -883,12 +883,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn gain(&self) -> AltoResult<f32> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, sys::AL_GAIN, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, sys::AL_GAIN, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_gain(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, sys::AL_GAIN, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, sys::AL_GAIN, value); }
 		self.ctx.get_error()
 	}
 
@@ -896,12 +896,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn min_gain(&self) -> AltoResult<f32> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, sys::AL_MIN_GAIN, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, sys::AL_MIN_GAIN, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_min_gain(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, sys::AL_MIN_GAIN, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, sys::AL_MIN_GAIN, value); }
 		self.ctx.get_error()
 	}
 
@@ -909,12 +909,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn max_gain(&self) -> AltoResult<f32> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, sys::AL_MAX_GAIN, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, sys::AL_MAX_GAIN, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_max_gain(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, sys::AL_MAX_GAIN, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, sys::AL_MAX_GAIN, value); }
 		self.ctx.get_error()
 	}
 
@@ -922,12 +922,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn reference_distance(&self) -> AltoResult<f32> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, sys::AL_REFERENCE_DISTANCE, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, sys::AL_REFERENCE_DISTANCE, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_reference_distance(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, sys::AL_REFERENCE_DISTANCE, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, sys::AL_REFERENCE_DISTANCE, value); }
 		self.ctx.get_error()
 	}
 
@@ -935,12 +935,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn rolloff_factor(&self) -> AltoResult<f32> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, sys::AL_ROLLOFF_FACTOR, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, sys::AL_ROLLOFF_FACTOR, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_rolloff_factor(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, sys::AL_ROLLOFF_FACTOR, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, sys::AL_ROLLOFF_FACTOR, value); }
 		self.ctx.get_error()
 	}
 
@@ -948,12 +948,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn max_distance(&self) -> AltoResult<f32> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, sys::AL_MAX_DISTANCE, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, sys::AL_MAX_DISTANCE, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_max_distance(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, sys::AL_MAX_DISTANCE, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, sys::AL_MAX_DISTANCE, value); }
 		self.ctx.get_error()
 	}
 
@@ -961,12 +961,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn pitch(&self) -> AltoResult<f32> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, sys::AL_PITCH, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, sys::AL_PITCH, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_pitch(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, sys::AL_PITCH, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, sys::AL_PITCH, value); }
 		self.ctx.get_error()
 	}
 
@@ -974,13 +974,13 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn position<V: From<[f32; 3]>>(&self) -> AltoResult<V> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = [0.0, 0.0, 0.0];
-		unsafe { self.ctx.api.owner().alGetSourcefv()(self.src, sys::AL_POSITION, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
+		unsafe { self.ctx.api.head().alGetSourcefv()(self.src, sys::AL_POSITION, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
 		self.ctx.get_error().map(|_| value.into())
 	}
 	fn set_position<V: Into<[f32; 3]>>(&self, value: V) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
 		let value = value.into();
-		unsafe { self.ctx.api.owner().alSourcefv()(self.src, sys::AL_POSITION, &value as *const [f32; 3] as *const sys::ALfloat); }
+		unsafe { self.ctx.api.head().alSourcefv()(self.src, sys::AL_POSITION, &value as *const [f32; 3] as *const sys::ALfloat); }
 		self.ctx.get_error()
 	}
 
@@ -988,13 +988,13 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn velocity<V: From<[f32; 3]>>(&self) -> AltoResult<V> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = [0.0, 0.0, 0.0];
-		unsafe { self.ctx.api.owner().alGetSourcefv()(self.src, sys::AL_VELOCITY, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
+		unsafe { self.ctx.api.head().alGetSourcefv()(self.src, sys::AL_VELOCITY, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
 		self.ctx.get_error().map(|_| value.into())
 	}
 	fn set_velocity<V: Into<[f32; 3]>>(&self, value: V) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
 		let value = value.into();
-		unsafe { self.ctx.api.owner().alSourcefv()(self.src, sys::AL_VELOCITY, &value as *const [f32; 3] as *const sys::ALfloat); }
+		unsafe { self.ctx.api.head().alSourcefv()(self.src, sys::AL_VELOCITY, &value as *const [f32; 3] as *const sys::ALfloat); }
 		self.ctx.get_error()
 	}
 
@@ -1002,13 +1002,13 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn direction<V: From<[f32; 3]>>(&self) -> AltoResult<V> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = [0.0, 0.0, 0.0];
-		unsafe { self.ctx.api.owner().alGetSourcefv()(self.src, sys::AL_DIRECTION, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
+		unsafe { self.ctx.api.head().alGetSourcefv()(self.src, sys::AL_DIRECTION, &mut value as *mut [f32; 3] as *mut sys::ALfloat); }
 		self.ctx.get_error().map(|_| value.into())
 	}
 	fn set_direction<V: Into<[f32; 3]>>(&self, value: V) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
 		let value = value.into();
-		unsafe { self.ctx.api.owner().alSourcefv()(self.src, sys::AL_DIRECTION, &value as *const [f32; 3] as *const sys::ALfloat); }
+		unsafe { self.ctx.api.head().alSourcefv()(self.src, sys::AL_DIRECTION, &value as *const [f32; 3] as *const sys::ALfloat); }
 		self.ctx.get_error()
 	}
 
@@ -1016,12 +1016,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn cone_inner_angle(&self) -> AltoResult<f32> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, sys::AL_CONE_INNER_ANGLE, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, sys::AL_CONE_INNER_ANGLE, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_cone_inner_angle(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, sys::AL_CONE_INNER_ANGLE, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, sys::AL_CONE_INNER_ANGLE, value); }
 		self.ctx.get_error()
 	}
 
@@ -1029,12 +1029,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn cone_outer_angle(&self) -> AltoResult<f32> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, sys::AL_CONE_OUTER_ANGLE, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, sys::AL_CONE_OUTER_ANGLE, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_cone_outer_angle(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, sys::AL_CONE_OUTER_ANGLE, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, sys::AL_CONE_OUTER_ANGLE, value); }
 		self.ctx.get_error()
 	}
 
@@ -1042,12 +1042,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn cone_outer_gain(&self) -> AltoResult<f32> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, sys::AL_CONE_OUTER_GAIN, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, sys::AL_CONE_OUTER_GAIN, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_cone_outer_gain(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, sys::AL_CONE_OUTER_GAIN, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, sys::AL_CONE_OUTER_GAIN, value); }
 		self.ctx.get_error()
 	}
 
@@ -1055,12 +1055,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn sec_offset(&self) -> AltoResult<f32> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, sys::AL_SEC_OFFSET, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, sys::AL_SEC_OFFSET, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_sec_offset(&self, value: f32) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, sys::AL_SEC_OFFSET, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, sys::AL_SEC_OFFSET, value); }
 		self.ctx.get_error()
 	}
 
@@ -1068,12 +1068,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn sample_offset(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.ctx.api.owner().alGetSourcei()(self.src, sys::AL_SAMPLE_OFFSET, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcei()(self.src, sys::AL_SAMPLE_OFFSET, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_sample_offset(&self, value: sys::ALint) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcei()(self.src, sys::AL_SAMPLE_OFFSET, value); }
+		unsafe { self.ctx.api.head().alSourcei()(self.src, sys::AL_SAMPLE_OFFSET, value); }
 		self.ctx.get_error()
 	}
 
@@ -1081,12 +1081,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn byte_offset(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.ctx.api.owner().alGetSourcei()(self.src, sys::AL_BYTE_OFFSET, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcei()(self.src, sys::AL_BYTE_OFFSET, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_byte_offset(&self, value: sys::ALint) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcei()(self.src, sys::AL_BYTE_OFFSET, value); }
+		unsafe { self.ctx.api.head().alSourcei()(self.src, sys::AL_BYTE_OFFSET, value); }
 		self.ctx.get_error()
 	}
 
@@ -1112,12 +1112,12 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn soft_direct_channels(&self) -> AltoResult<bool> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.ctx.api.owner().alGetSourcei()(self.src, self.ctx.exts.AL_SOFT_direct_channels()?.AL_DIRECT_CHANNELS_SOFT?, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcei()(self.src, self.ctx.exts.AL_SOFT_direct_channels()?.AL_DIRECT_CHANNELS_SOFT?, &mut value); }
 		self.ctx.get_error().map(|_| value == sys::AL_TRUE as sys::ALint)
 	}
 	fn set_soft_direct_channels(&self, value: bool) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcei()(self.src, self.ctx.exts.AL_SOFT_direct_channels()?.AL_DIRECT_CHANNELS_SOFT?, if value { sys::AL_TRUE } else { sys::AL_FALSE } as sys::ALint); }
+		unsafe { self.ctx.api.head().alSourcei()(self.src, self.ctx.exts.AL_SOFT_direct_channels()?.AL_DIRECT_CHANNELS_SOFT?, if value { sys::AL_TRUE } else { sys::AL_FALSE } as sys::ALint); }
 		self.ctx.get_error()
 	}
 
@@ -1125,7 +1125,7 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn soft_sec_length(&self) -> AltoResult<f32> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, self.ctx.exts.AL_SOFT_source_length()?.AL_SEC_LENGTH_SOFT?, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, self.ctx.exts.AL_SOFT_source_length()?.AL_SEC_LENGTH_SOFT?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 
@@ -1133,7 +1133,7 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn soft_sample_length(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.ctx.api.owner().alGetSourcei()(self.src, self.ctx.exts.AL_SOFT_source_length()?.AL_SAMPLE_LENGTH_SOFT?, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcei()(self.src, self.ctx.exts.AL_SOFT_source_length()?.AL_SAMPLE_LENGTH_SOFT?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 
@@ -1141,7 +1141,7 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 	fn soft_byte_length(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.ctx.api.owner().alGetSourcei()(self.src, self.ctx.exts.AL_SOFT_source_length()?.AL_BYTE_LENGTH_SOFT?, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcei()(self.src, self.ctx.exts.AL_SOFT_source_length()?.AL_BYTE_LENGTH_SOFT?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 
@@ -1150,7 +1150,7 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 		self.ctx.exts.AL_EXT_source_distance_model()?;
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.ctx.api.owner().alGetSourcei()(self.src, sys::AL_DISTANCE_MODEL, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcei()(self.src, sys::AL_DISTANCE_MODEL, &mut value); }
 		self.ctx.get_error().and_then(|_| match value {
 			sys::AL_NONE => Ok(DistanceModel::None),
 			sys::AL_INVERSE_DISTANCE => Ok(DistanceModel::Inverse),
@@ -1166,7 +1166,7 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 		self.ctx.exts.AL_EXT_source_distance_model()?;
 		let _lock = self.ctx.make_current(true)?;
 		unsafe {
-			self.ctx.api.owner().alSourcei()(self.src, sys::AL_DISTANCE_MODEL, match value {
+			self.ctx.api.head().alSourcei()(self.src, sys::AL_DISTANCE_MODEL, match value {
 				DistanceModel::None => sys::AL_NONE,
 				DistanceModel::Inverse => sys::AL_INVERSE_DISTANCE,
 				DistanceModel::InverseClamped => sys::AL_INVERSE_DISTANCE_CLAMPED,
@@ -1187,13 +1187,13 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 		}
 
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcei()(self.src, efx.AL_DIRECT_FILTER?, value.as_raw() as sys::ALint); }
+		unsafe { self.ctx.api.head().alSourcei()(self.src, efx.AL_DIRECT_FILTER?, value.as_raw() as sys::ALint); }
 		self.ctx.get_error()
 	}
 	fn clear_direct_filter(&self) -> AltoResult<()> {
 		let efx = self.ctx.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcei()(self.src, efx.AL_DIRECT_FILTER?, 0); }
+		unsafe { self.ctx.api.head().alSourcei()(self.src, efx.AL_DIRECT_FILTER?, 0); }
 		self.ctx.get_error()
 	}
 
@@ -1216,7 +1216,7 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 
 		let _lock = arc_self.ctx.make_current(true)?;
 		let mut sends = arc_self.sends.lock().unwrap();
-		unsafe { arc_self.ctx.api.owner().alSourceiv()(arc_self.src, efx.AL_AUXILIARY_SEND_FILTER?, &mut [slot.as_raw() as sys::ALint, send, filter as sys::ALint] as *mut [sys::ALint; 3] as *mut sys::ALint); }
+		unsafe { arc_self.ctx.api.head().alSourceiv()(arc_self.src, efx.AL_AUXILIARY_SEND_FILTER?, &mut [slot.as_raw() as sys::ALint, send, filter as sys::ALint] as *mut [sys::ALint; 3] as *mut sys::ALint); }
 		arc_self.ctx.get_error()?;
 		sends[send as usize] = 0;
 		slot.add_input(Arc::downgrade(arc_self));
@@ -1230,7 +1230,7 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 
 		let _lock = self.ctx.make_current(true)?;
 		let mut sends = self.sends.lock().unwrap();
-		unsafe { self.ctx.api.owner().alSourceiv()(self.src, efx.AL_AUXILIARY_SEND_FILTER?, &mut [0, send, 0] as *mut [sys::ALint; 3] as *mut sys::ALint); }
+		unsafe { self.ctx.api.head().alSourceiv()(self.src, efx.AL_AUXILIARY_SEND_FILTER?, &mut [0, send, 0] as *mut [sys::ALint; 3] as *mut sys::ALint); }
 		self.ctx.get_error()?;
 		sends[send as usize] = 0;
 		Ok(())
@@ -1239,7 +1239,7 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 		let efx = self.ctx.dev.extensions().ALC_EXT_EFX()?;
 		for (i, s) in self.sends.lock().unwrap().iter_mut().enumerate() {
 			if *s == slot {
-				unsafe { self.ctx.api.owner().alSourceiv()(self.src, efx.AL_AUXILIARY_SEND_FILTER.unwrap(), &mut [0, i as sys::ALint, 0] as *mut [sys::ALint; 3] as *mut sys::ALint); }
+				unsafe { self.ctx.api.head().alSourceiv()(self.src, efx.AL_AUXILIARY_SEND_FILTER.unwrap(), &mut [0, i as sys::ALint, 0] as *mut [sys::ALint; 3] as *mut sys::ALint); }
 				*s = 0;
 			}
 		}
@@ -1252,13 +1252,13 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 		let efx = self.ctx.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, efx.AL_AIR_ABSORPTION_FACTOR?, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, efx.AL_AIR_ABSORPTION_FACTOR?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_air_absorption_factor(&self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, efx.AL_AIR_ABSORPTION_FACTOR?, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, efx.AL_AIR_ABSORPTION_FACTOR?, value); }
 		self.ctx.get_error()
 	}
 
@@ -1267,13 +1267,13 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 		let efx = self.ctx.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, efx.AL_ROOM_ROLLOFF_FACTOR?, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, efx.AL_ROOM_ROLLOFF_FACTOR?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_room_rolloff_factor(&self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, efx.AL_ROOM_ROLLOFF_FACTOR?, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, efx.AL_ROOM_ROLLOFF_FACTOR?, value); }
 		self.ctx.get_error()
 	}
 
@@ -1282,13 +1282,13 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 		let efx = self.ctx.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0.0;
-		unsafe { self.ctx.api.owner().alGetSourcef()(self.src, efx.AL_CONE_OUTER_GAINHF?, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcef()(self.src, efx.AL_CONE_OUTER_GAINHF?, &mut value); }
 		self.ctx.get_error().map(|_| value)
 	}
 	fn set_cone_outer_gainhf(&self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcef()(self.src, efx.AL_CONE_OUTER_GAINHF?, value); }
+		unsafe { self.ctx.api.head().alSourcef()(self.src, efx.AL_CONE_OUTER_GAINHF?, value); }
 		self.ctx.get_error()
 	}
 
@@ -1297,13 +1297,13 @@ impl<'d: 'c, 'c> SourceImpl<'d, 'c> {
 		let efx = self.ctx.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.ctx.api.owner().alGetSourcei()(self.src, efx.AL_CONE_OUTER_GAINHF?, &mut value); }
+		unsafe { self.ctx.api.head().alGetSourcei()(self.src, efx.AL_CONE_OUTER_GAINHF?, &mut value); }
 		self.ctx.get_error().map(|_| value == sys::AL_TRUE as sys::ALint)
 	}
 	fn set_direct_filter_gainhf_auto(&self, value: bool) -> AltoResult<()> {
 		let efx = self.ctx.dev.extensions().ALC_EXT_EFX()?;
 		let _lock = self.ctx.make_current(true)?;
-		unsafe { self.ctx.api.owner().alSourcei()(self.src, efx.AL_CONE_OUTER_GAINHF?, if value { sys::AL_TRUE } else { sys::AL_FALSE } as sys::ALint); }
+		unsafe { self.ctx.api.head().alSourcei()(self.src, efx.AL_CONE_OUTER_GAINHF?, if value { sys::AL_TRUE } else { sys::AL_FALSE } as sys::ALint); }
 		self.ctx.get_error()
 	}
 }
@@ -1328,7 +1328,7 @@ impl<'d: 'c, 'c> Hash for SourceImpl<'d, 'c> {
 impl<'d: 'c, 'c> Drop for SourceImpl<'d, 'c> {
 	fn drop(&mut self) {
 		if let Ok(_lock) = self.ctx.make_current(true) {
-			unsafe { self.ctx.api.owner().alDeleteSources()(1, &mut self.src as *mut sys::ALuint); }
+			unsafe { self.ctx.api.head().alDeleteSources()(1, &mut self.src as *mut sys::ALuint); }
 			if let Err(_) = self.ctx.get_error() {
 				let _ = writeln!(io::stderr(), "ALTO ERROR: `alDeleteSources` failed in Source drop");
 			}
@@ -1344,7 +1344,7 @@ impl<'d: 'c, 'c> StaticSource<'d, 'c> {
 	pub fn new(ctx: &'c Context<'d>) -> AltoResult<StaticSource<'d, 'c>> {
 		let _lock = ctx.make_current(true)?;
 		let mut src = 0;
-		unsafe { ctx.api.owner().alGenSources()(1, &mut src as *mut sys::ALuint); }
+		unsafe { ctx.api.head().alGenSources()(1, &mut src as *mut sys::ALuint); }
 		let sends = iter::repeat(0).take(ctx.dev.max_auxiliary_sends().unwrap_or(0) as usize).collect();
 		ctx.get_error().map(|_| StaticSource{src: Arc::new(SourceImpl{ctx: ctx, src: src, sends: Mutex::new(sends)}), buf: None})
 	}
@@ -1361,7 +1361,7 @@ impl<'d: 'c, 'c> StaticSource<'d, 'c> {
 
 		{
 			let _lock = self.src.ctx.make_current(true)?;
-			unsafe { self.src.ctx.api.owner().alSourcei()(self.src.src, sys::AL_BUFFER, buf.buf as sys::ALint); }
+			unsafe { self.src.ctx.api.head().alSourcei()(self.src.src, sys::AL_BUFFER, buf.buf as sys::ALint); }
 			self.src.ctx.get_error()?;
 		}
 
@@ -1372,7 +1372,7 @@ impl<'d: 'c, 'c> StaticSource<'d, 'c> {
 	pub fn clear_buffer(&mut self) -> AltoResult<()> {
 		{
 			let _lock = self.src.ctx.make_current(true)?;
-			unsafe { self.src.ctx.api.owner().alSourcei()(self.src.src, sys::AL_BUFFER, 0); }
+			unsafe { self.src.ctx.api.head().alSourcei()(self.src.src, sys::AL_BUFFER, 0); }
 			self.src.ctx.get_error()?;
 		}
 
@@ -1385,13 +1385,13 @@ impl<'d: 'c, 'c> StaticSource<'d, 'c> {
 	pub fn looping(&self) -> AltoResult<bool> {
 		let _lock = self.src.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.src.ctx.api.owner().alGetSourcei()(self.src.src, sys::AL_LOOPING, &mut value); }
+		unsafe { self.src.ctx.api.head().alGetSourcei()(self.src.src, sys::AL_LOOPING, &mut value); }
 		self.src.ctx.get_error().map(|_| value == sys::AL_TRUE as sys::ALint)
 	}
 	/// `alSourcei(AL_LOOPING)`
 	pub fn set_looping(&mut self, value: bool) -> AltoResult<()> {
 		let _lock = self.src.ctx.make_current(true)?;
-		unsafe { self.src.ctx.api.owner().alSourcei()(self.src.src, sys::AL_LOOPING, if value { sys::AL_TRUE } else { sys::AL_FALSE } as sys::ALint); }
+		unsafe { self.src.ctx.api.head().alSourcei()(self.src.src, sys::AL_LOOPING, if value { sys::AL_TRUE } else { sys::AL_FALSE } as sys::ALint); }
 		self.src.ctx.get_error()
 	}
 
@@ -1510,7 +1510,7 @@ impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
 	pub fn new(ctx: &'c Context<'d>) -> AltoResult<StreamingSource<'d, 'c>> {
 		let _lock = ctx.make_current(true)?;
 		let mut src = 0;
-		unsafe { ctx.api.owner().alGenSources()(1, &mut src as *mut sys::ALuint); }
+		unsafe { ctx.api.head().alGenSources()(1, &mut src as *mut sys::ALuint); }
 		let sends = iter::repeat(0).take(ctx.dev.max_auxiliary_sends().unwrap_or(0) as usize).collect();
 		ctx.get_error().map(|_| StreamingSource{src: Arc::new(SourceImpl{ctx: ctx, src: src, sends: Mutex::new(sends)}), bufs: VecDeque::new()})
 	}
@@ -1526,7 +1526,7 @@ impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
 	pub fn buffers_processed(&self) -> AltoResult<sys::ALint> {
 		let _lock = self.src.ctx.make_current(true)?;
 		let mut value = 0;
-		unsafe { self.src.ctx.api.owner().alGetSourcei()(self.src.src, sys::AL_BUFFERS_PROCESSED, &mut value); }
+		unsafe { self.src.ctx.api.head().alGetSourcei()(self.src.src, sys::AL_BUFFERS_PROCESSED, &mut value); }
 		self.src.ctx.get_error().map(|_| value)
 	}
 
@@ -1542,7 +1542,7 @@ impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
 				Err(e) => return Err((e, buf)),
 			};
 
-			unsafe { self.src.ctx.api.owner().alSourceQueueBuffers()(self.src.src, 1, &buf.buf); }
+			unsafe { self.src.ctx.api.head().alSourceQueueBuffers()(self.src.src, 1, &buf.buf); }
 
 			match self.src.ctx.get_error() {
 				Ok(_) => (),
@@ -1560,7 +1560,7 @@ impl<'d: 'c, 'c> StreamingSource<'d, 'c> {
 		{
 			let _lock = self.src.ctx.make_current(true)?;
 			let mut buf = 0;
-			unsafe { self.src.ctx.api.owner().alSourceUnqueueBuffers()(self.src.src, 1, &mut buf); }
+			unsafe { self.src.ctx.api.head().alSourceUnqueueBuffers()(self.src.src, 1, &mut buf); }
 			self.src.ctx.get_error()?;
 		}
 

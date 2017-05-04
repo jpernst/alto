@@ -1,7 +1,7 @@
 [package]
 name = "al-sys"
 description = "Raw bindings for OpenAL 1.1"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Jameson Ernst <jameson@jpernst.com>"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/jpernst/alto.git"
@@ -16,4 +16,4 @@ pkg-config = "0.3.8"
 rental = "0.4.5"
 
 [target.'cfg(not(target_os = "emscripten"))'.dependencies]
-libloading = "0.3.1"
+libloading = "0.4"

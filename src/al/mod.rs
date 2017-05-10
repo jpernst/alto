@@ -521,13 +521,13 @@ impl<'d> Context<'d> {
 
 
 	/// `alGenSources()`
-	pub fn new_static_source(&self) -> AltoResult<StaticSource> {
+	pub fn new_static_source<'c>(&'c self) -> AltoResult<StaticSource<'d, 'c>> {
 		StaticSource::new(self)
 	}
 
 
 	/// `alGenSources()`
-	pub fn new_streaming_source(&self) -> AltoResult<StreamingSource> {
+	pub fn new_streaming_source<'c>(&'c self) -> AltoResult<StreamingSource<'d, 'c>> {
 		StreamingSource::new(self)
 	}
 

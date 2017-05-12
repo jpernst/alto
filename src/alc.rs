@@ -534,7 +534,7 @@ impl Eq for DeviceTrait { }
 
 
 impl<'a> Device<'a> {
-	fn make_attrs_vec(&self, attrs: Option<ContextAttrs>) -> AltoResult<Vec<sys::ALCint>> {
+	fn make_attrs_vec(&self, attrs: Option<ContextAttrs>) -> AltoResult<Option<Vec<sys::ALCint>>> {
 		let mut attrs_vec = Vec::with_capacity(15);
 		if let Some(attrs) = attrs {
 			if let Some(freq) = attrs.frequency {
@@ -566,17 +566,26 @@ impl<'a> Device<'a> {
 			}
 
 			attrs_vec.push(0);
-		};
-		Ok(attrs_vec)
+			Ok(Some(attrs_vec))
+		} else {
+			Ok(None)
+		}
 	}
 
 
 	/// `alcCreateContext()`
 	pub fn new_context<A: Into<Option<ContextAttrs>>>(&self, attrs: A) -> AltoResult<Context> {
-		let attrs_vec = self.make_attrs_vec(attrs.into());
+		let attrs_vec = self.make_attrs_vec(attrs.into())?;
 
 		let ctx = unsafe { self.alto.api.head().alcCreateContext()(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
-		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, ctx) })
+		if ctx == ptr::null_mut() {
+			match self.alto.get_error(self.dev) {
+				Ok(..) => Err(AltoError::AlcUnknownError),
+				Err(e) => Err(e),
+			}
+		} else {
+			unsafe { Ok(Context::new(self, &self.alto.api, ctx)) }
+		}
 	}
 
 
@@ -591,7 +600,7 @@ impl<'a> Device<'a> {
 	/// Requires `ALC_SOFT_HRTF`
 	pub fn soft_reset<A: Into<Option<ContextAttrs>>>(&self, attrs: A) -> AltoResult<()> {
 		let ards = self.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
-		let attrs_vec = self.make_attrs_vec(attrs.into());
+		let attrs_vec = self.make_attrs_vec(attrs.into())?;
 		unsafe { ards(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
 		self.alto.get_error(self.dev)
 	}
@@ -773,7 +782,14 @@ impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
 	pub fn new_context<A: Into<Option<LoopbackAttrs>>>(&self, freq: sys::ALCint, attrs: A) -> AltoResult<Context> {
 		let attrs_vec = self.make_attrs_vec(freq, attrs.into())?;
 		let ctx = unsafe { self.alto.api.head().alcCreateContext()(self.dev, attrs_vec.as_slice().as_ptr()) };
-		self.alto.get_error(self.dev).map(|_| unsafe { Context::new(self, &self.alto.api, ctx) })
+		if ctx == ptr::null_mut() {
+			match self.alto.get_error(self.dev) {
+				Ok(..) => Err(AltoError::AlcUnknownError),
+				Err(e) => Err(e),
+			}
+		} else {
+			unsafe { Ok(Context::new(self, &self.alto.api, ctx)) }
+		}
 	}
 
 

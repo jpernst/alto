@@ -29,19 +29,18 @@ fn main() {
 	};
 
 	{
-		let mut buf = ctx.new_buffer().unwrap();
-		buf.set_data(SinWave::new(44_000 / 440, 0.25).render().take(44_000 / 440).collect::<Vec<_>>(), 44_000).unwrap();
+		let buf = ctx.new_buffer(SinWave::new(44_000 / 440, 0.25).render().take(44_000 / 440).collect::<Vec<_>>(), 44_000).unwrap();
 		let buf = Arc::new(buf);
 
 		let mut src = ctx.new_static_source().unwrap();
-		src.set_buffer(buf).unwrap();
-		src.set_looping(true).unwrap();
+		src.set_buffer(buf);
+		src.set_looping(true);
 		if let Some(ref mut slot) = slot {
-			src.set_auxiliary_send(0, slot).unwrap();
+			src.set_aux_send(0, slot).unwrap();
 		}
 
 		println!("Playing static 440hz sine wave...");
-		src.play().unwrap();
+		src.play();
 
 		std::thread::sleep(std::time::Duration::new(2, 0));
 	}
@@ -53,26 +52,25 @@ fn main() {
 
 		let mut src = ctx.new_streaming_source().unwrap();
 		if let Some(ref mut slot) = slot {
-			src.set_auxiliary_send(0, slot).unwrap();
+			src.set_aux_send(0, slot).unwrap();
 		}
 		for _ in 0 .. 5 {
-			let mut buf = ctx.new_buffer().unwrap();
-			buf.set_data(wave.render().take(44_000 / 10).collect::<Vec<_>>(), 44_000).unwrap();
-			src.queue_buffer(buf).map_err(|e| e.0).unwrap();
+			let buf = ctx.new_buffer(wave.render().take(44_000 / 10).collect::<Vec<_>>(), 44_000).unwrap();
+			src.queue_buffer(buf);
 		}
 
 		println!("Playing streaming 220hz sine wave...");
-		src.play().unwrap();
+		src.play();
 
 		for _ in 0 .. 15 {
-			while src.buffers_processed().unwrap() == 0 { }
+			while src.buffers_processed() == 0 { }
 
 			let mut buf = src.unqueue_buffer().unwrap();
 			buf.set_data(wave.render().take(44_000 / 10).collect::<Vec<_>>(), 44_000).unwrap();
-			src.queue_buffer(buf).map_err(|e| e.0).unwrap();
+			src.queue_buffer(buf);
 		}
 
-		while src.buffers_processed().unwrap() < 5 { }
+		while src.buffers_processed() < 5 { }
 	}
 
 	std::thread::sleep(std::time::Duration::new(1, 0));

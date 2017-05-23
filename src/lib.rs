@@ -13,8 +13,6 @@
 extern crate lazy_static;
 #[macro_use]
 extern crate enum_primitive;
-#[macro_use]
-extern crate rental;
 extern crate tempdir;
 extern crate al_sys;
 

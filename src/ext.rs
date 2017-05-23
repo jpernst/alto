@@ -1,34 +1,12 @@
 use std::mem;
-use std::sync::RwLock;
 use std::ptr;
 
 use sys::*;
 
 
-rental! {
-	mod rent {
-		use std::sync;
-
-
-		#[rental(deref_suffix)]
-		pub struct AlcExt<'a, T: 'static> {
-			lock: sync::RwLockReadGuard<'a, Option<super::AlcExtResult<T>>>,
-			ext: &'lock T,
-		}
-
-
-		#[rental(deref_suffix)]
-		pub struct AlExt<'a, T: 'static> {
-			lock: sync::RwLockReadGuard<'a, Option<super::AlExtResult<T>>>,
-			ext: &'lock T,
-		}
-	}
-}
-
-
 macro_rules! alc_ext {
 	{
-		pub cache $cache:ident;
+		pub(crate) cache $cache:ident;
 
 
 		$(pub ext $ext:ident {
@@ -36,50 +14,32 @@ macro_rules! alc_ext {
 			$(pub fn $fn_:ident: $fn_ty:ty,)*
 		})*
 	} => {
-		#[doc(hidden)]
 		#[allow(non_snake_case)]
-		pub struct $cache<'a> {
-			api: &'a AlApi,
-			dev: *mut ALCdevice,
-			$($ext: RwLock<Option<AlcExtResult<$ext>>>,)*
+		pub(crate) struct $cache {
+			pub $($ext: AlcExtResult<$ext>,)*
 		}
 
 
-		#[allow(non_snake_case)]
-		impl<'a> $cache<'a> {
-			pub unsafe fn new(api: &'a AlApi, dev: *mut ALCdevice) -> $cache<'a> {
+		#[allow(non_snake_case, dead_code)]
+		impl $cache {
+			pub unsafe fn new(api: &AlApi, dev: *mut ALCdevice) -> $cache {
 				$cache{
-					api: api,
-					dev: dev,
-					$($ext: RwLock::new(None),)*
+					$($ext: $ext::load(api, dev),)*
 				}
 			}
 
 
-			$(pub fn $ext(&self) -> AlcExtResult<rent::AlcExt<$ext>> {
-				if let Ok(mut ext) = self.$ext.try_write() {
-					if ext.is_none() {
-						*ext = Some($ext::load(&self.api, self.dev));
-					}
-				}
-
-				rent::AlcExt::try_new(
-					self.$ext.read().unwrap(),
-					|ext| match *ext.as_ref().unwrap() {
-						Ok(ref ext) => Ok(ext),
-						Err(e) => Err(e),
-					}
-				).map_err(|e| e.0)
+			$(pub fn $ext(&self) -> AlcExtResult<&$ext> {
+				self.$ext.as_ref().map_err(|e| *e)
 			})*
 		}
 
 
-		unsafe impl<'a> Send for $cache<'a> { }
-		unsafe impl<'a> Sync for $cache<'a> { }
+		unsafe impl Send for $cache { }
+		unsafe impl Sync for $cache { }
 
 
-		$(#[doc(hidden)]
-		#[allow(non_camel_case_types, non_snake_case)]
+		$(#[allow(non_camel_case_types, non_snake_case)]
 		#[derive(Debug)]
 		pub struct $ext {
 			$(pub $const_: AlcExtResult<ALCenum>,)*
@@ -89,12 +49,12 @@ macro_rules! alc_ext {
 
 		impl $ext {
 			pub fn load(api: &AlApi, dev: *mut ALCdevice) -> AlcExtResult<$ext> {
-				unsafe { api.alcGetError()(dev); }
-				if unsafe { api.alcIsExtensionPresent()(dev, concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALCchar) } == ALC_TRUE {
+				unsafe { api.alcGetError(dev); }
+				if unsafe { api.alcIsExtensionPresent(dev, concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALCchar) } == ALC_TRUE {
 					Ok($ext{
 						$($const_: {
-							let e = unsafe { api.alcGetEnumValue()(dev, concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALCchar) };
-							if e != 0 && unsafe { api.alcGetError()(dev) } == ALC_NO_ERROR {
+							let e = unsafe { api.alcGetEnumValue(dev, concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALCchar) };
+							if e != 0 && unsafe { api.alcGetError(dev) } == ALC_NO_ERROR {
 								Ok(e)
 							} else {
 								// Workaround for missing symbols in OpenAL-Soft
@@ -107,8 +67,8 @@ macro_rules! alc_ext {
 							}
 						},)*
 						$($fn_: {
-							let p = unsafe { api.alcGetProcAddress()(dev, concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALCchar) };
-							if p != ptr::null_mut() && unsafe { api.alcGetError()(dev) } == ALC_NO_ERROR {
+							let p = unsafe { api.alcGetProcAddress(dev, concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALCchar) };
+							if p != ptr::null_mut() && unsafe { api.alcGetError(dev) } == ALC_NO_ERROR {
 								Ok(unsafe { mem::transmute(p) })
 							} else {
 								Err(AlcExtensionError)
@@ -126,7 +86,7 @@ macro_rules! alc_ext {
 
 macro_rules! al_ext {
 	{
-		pub cache $cache:ident;
+		pub(crate) cache $cache:ident;
 
 
 		$(pub ext $ext:ident {
@@ -134,47 +94,31 @@ macro_rules! al_ext {
 			$(pub fn $fn_:ident: $fn_ty:ty,)*
 		})*
 	} => {
-		#[doc(hidden)]
 		#[allow(non_snake_case)]
-		pub struct $cache<'a> {
-			api: &'a AlApi,
-			$($ext: RwLock<Option<AlExtResult<$ext>>>,)*
+		pub(crate) struct $cache {
+			pub $($ext: AlExtResult<$ext>,)*
 		}
 
 
-		#[allow(non_snake_case)]
-		impl<'a> $cache<'a> {
-			pub unsafe fn new(api: &'a AlApi) -> $cache<'a> {
+		#[allow(non_snake_case, dead_code)]
+		impl $cache {
+			pub unsafe fn new(api: &AlApi) -> $cache {
 				$cache{
-					api: api,
-					$($ext: RwLock::new(None),)*
+					$($ext: $ext::load(api),)*
 				}
 			}
 
 
-			$(pub fn $ext(&self) -> AlExtResult<rent::AlExt<$ext>> {
-				if let Ok(mut ext) = self.$ext.try_write() {
-					if ext.is_none() {
-						*ext = Some($ext::load(&self.api));
-					}
-				}
-
-				rent::AlExt::try_new(
-					self.$ext.read().unwrap(),
-					|ext| match *ext.as_ref().unwrap() {
-						Ok(ref ext) => Ok(ext),
-						Err(e) => Err(e),
-					}
-				).map_err(|e| e.0)
+			$(pub fn $ext(&self) -> AlExtResult<&$ext> {
+				self.$ext.as_ref().map_err(|e| *e)
 			})*
 		}
 
 
-		unsafe impl<'a> Send for $cache<'a> { }
+		unsafe impl Send for $cache { }
 
 
-		$(#[doc(hidden)]
-		#[allow(non_camel_case_types, non_snake_case)]
+		$(#[allow(non_camel_case_types, non_snake_case)]
 		#[derive(Debug)]
 		pub struct $ext {
 			$(pub $const_: AlExtResult<ALenum>,)*
@@ -184,20 +128,20 @@ macro_rules! al_ext {
 
 		impl $ext {
 			pub fn load(api: &AlApi) -> AlExtResult<$ext> {
-				unsafe { api.alGetError()(); }
-				if unsafe { api.alIsExtensionPresent()(concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALchar) } == AL_TRUE {
+				unsafe { api.alGetError(); }
+				if unsafe { api.alIsExtensionPresent(concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALchar) } == AL_TRUE {
 					Ok($ext{
 						$($const_: {
-							let e = unsafe { api.alGetEnumValue()(concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALchar) };
-							if e != 0 && unsafe { api.alGetError()() } == AL_NO_ERROR {
+							let e = unsafe { api.alGetEnumValue(concat!(stringify!($const_), "\0").as_bytes().as_ptr() as *const ALchar) };
+							if e != 0 && unsafe { api.alGetError() } == AL_NO_ERROR {
 								Ok(e)
 							} else {
 								Err(AlExtensionError)
 							}
 						},)*
 						$($fn_: {
-							let p = unsafe { api.alGetProcAddress()(concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALchar) };
-							if p != ptr::null_mut() && unsafe { api.alGetError()() } == AL_NO_ERROR {
+							let p = unsafe { api.alGetProcAddress(concat!(stringify!($fn_), "\0").as_bytes().as_ptr() as *const ALchar) };
+							if p != ptr::null_mut() && unsafe { api.alGetError() } == AL_NO_ERROR {
 								Ok(unsafe { mem::transmute(p) })
 							} else {
 								Err(AlExtensionError)
@@ -295,7 +239,7 @@ pub enum Al {
 
 
 alc_ext! {
-	pub cache AlcNullCache;
+	pub(crate) cache AlcNullCache;
 
 
 	pub ext ALC_ENUMERATE_ALL_EXT {
@@ -335,7 +279,7 @@ alc_ext! {
 
 
 alc_ext! {
-	pub cache AlcCache;
+	pub(crate) cache AlcCache;
 
 
 	pub ext ALC_EXT_DEDICATED {
@@ -554,7 +498,7 @@ pub type ALuint64SOFT = u64;
 
 
 al_ext! {
-	pub cache AlCache;
+	pub(crate) cache AlCache;
 
 
 	pub ext AL_EXT_ALAW {

@@ -1,11 +1,10 @@
-use std::ops::Deref;
+use std::any::Any;
 use std::ptr;
 use std::ffi::{CString, CStr};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::path::Path;
 use std::marker::PhantomData;
-use std::io::{self, Write};
+use std::io::Write;
 use std::mem;
 use std::env;
 use std::fs;
@@ -90,7 +89,7 @@ pub struct ContextAttrs {
 	pub soft_hrtf_id: Option<sys::ALCint>,
 	/// `ALC_MAX_AUXILIARY_SENDS`
 	/// Requires `ALC_EXT_EFX`
-	pub max_auxiliary_sends: Option<sys::ALCint>,
+	pub max_aux_sends: Option<sys::ALCint>,
 }
 
 
@@ -110,7 +109,7 @@ pub struct LoopbackAttrs {
 	pub soft_hrtf_id: Option<sys::ALCint>,
 	/// `ALC_MAX_AUXILIARY_SENDS`
 	/// Requires `ALC_EXT_EFX`
-	pub max_auxiliary_sends: Option<sys::ALCint>,
+	pub max_aux_sends: Option<sys::ALCint>,
 }
 
 
@@ -167,69 +166,55 @@ pub enum SoftHrtfStatus {
 }
 
 
-rental! {
-	mod rent {
-		#[rental]
-		pub struct AlApi {
-			api: Box<::sys::AlApi>,
-			cache: ::ext::AlcNullCache<'api>,
-		}
-	}
-}
-
-
-#[doc(hidden)]
-pub use self::rent::AlApi;
-
-
-/// This struct is the entry point of the API. Instantiating it will load an OpenAL implementation.
-/// From here, available devices can be queried and opened.
-pub struct Alto {
-	api: AlApi,
+pub(crate) struct AltoInner {
+	pub(crate) api: sys::AlApi,
+	pub(crate) exts: ::ext::AlcNullCache,
 	_hints_dir: Option<TempDir>,
 }
 
 
+/// This struct is the entry point of the API. Instantiating it will load an OpenAL implementation.
+/// From here, available devices can be queried and opened.
+pub struct Alto(pub(crate) Arc<AltoInner>);
+
+
 /// Common capabilities expoed by both real and loopback devices.
-pub unsafe trait DeviceTrait {
-	/// Alto instance from which this device was opened.
+pub unsafe trait DeviceObject: Any {
+	/// AltoInner instance from which this device was opened.
 	fn alto(&self) -> &Alto;
 	/// Specifier string used to open this device.
-	fn specifier(&self) -> &CStr;
+	fn specifier(&self) -> Option<&CStr>;
 	/// Raw handle as exposed by OpenAL.
 	fn as_raw(&self) -> *mut sys::ALCdevice;
 	/// `alcIsExtensionPresent()`
 	fn is_extension_present(&self, ext::Alc) -> bool;
-	#[doc(hidden)]
-	fn extensions(&self) -> &ext::AlcCache;
 	/// `alcGetIntegerv(ALC_CONNECTED)`
 	/// Requires `ALC_EXT_disconnect`
 	fn connected(&self) -> AltoResult<bool>;
 	/// `alcGetStringiSOFT(ALC_HRTF_SPECIFIER_SOFT)`
 	/// Requires `ALC_SOFT_HRTF`
-	fn enumerate_soft_hrtfs(&self) -> AltoResult<Vec<CString>>;
+	fn enumerate_soft_hrtfs(&self) -> Vec<CString>;
 	/// `alcGetIntegerv(ALC_HRTF_STATUS_SOFT)`
 	/// Requires `ALC_SOFT_HRTF`
 	fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus>;
 	/// `alcGetIntegerv(ALC_MAX_AUXILIARY_SENDS)`
 	/// Requires `ALC_EXT_EFX`
-	fn max_auxiliary_sends(&self) -> AltoResult<sys::ALCint>;
+	fn max_aux_sends(&self) -> sys::ALCint;
+	/// Return a new handle to this device.
+	fn to_device(&self) -> Device;
+}
+
+
+pub(crate) struct DeviceInner {
+	pub(crate) alto: Alto,
+	spec: Option<CString>,
+	pub(crate) dev: *mut sys::ALCdevice,
+	pub(crate) exts: ext::AlcCache,
 }
 
 
 /// A regular output device. This is typically a device as reported by the operating system.
-pub struct Device<'a> {
-	alto: &'a Alto,
-	spec: CString,
-	dev: *mut sys::ALCdevice,
-	exts: ext::AlcCache<'a>,
-	pause_rc: Arc<AtomicUsize>,
-}
-
-
-/// An RAII guard that keeps a device paused.
-/// When this lock is dropped, the device will resume playback.
-pub struct SoftPauseLock<'a: 'd, 'd>(&'d Device<'a>);
+pub struct OutputDevice(pub(crate) Arc<DeviceInner>);
 
 
 /// A sample frame that is supported as a loopback device output format.
@@ -241,20 +226,18 @@ pub unsafe trait LoopbackFrame: SampleFrame {
 
 /// A loopback device that outputs audio to a memory buffer.
 /// Requires `ALC_SOFT_loopback`
-pub struct LoopbackDevice<'a, F: LoopbackFrame> {
-	alto: &'a Alto,
-	spec: CString,
-	dev: *mut sys::ALCdevice,
-	exts: ext::AlcCache<'a>,
-	marker: PhantomData<F>,
-}
+pub struct LoopbackDevice<F: LoopbackFrame>(pub(crate) Arc<DeviceInner>, pub(crate) PhantomData<F>);
+
+
+/// A handle to any kind of output device.
+pub struct Device(pub(crate) Arc<DeviceInner>);
 
 
 /// A capture device from which audio data can be sampled.
 /// This is tyically an audio input as reported by the operating system.
-pub struct CaptureDevice<'a, F: StandardFrame> {
-	alto: &'a Alto,
-	spec: CString,
+pub struct Capture<F: StandardFrame> {
+	alto: Alto,
+	spec: Option<CString>,
 	dev: *mut sys::ALCdevice,
 	marker: PhantomData<F>,
 }
@@ -264,11 +247,13 @@ impl Alto {
 	/// Load the default OpenAL implementation for the platform.
 	/// This will prefer OpenAL-Soft if it is present, otherwise it will search for a generic implementation.
 	pub fn load_default() -> AltoResult<Alto> {
-		let api = Box::new(sys::AlApi::load_default()?);
-		Ok(Alto{
-			api: AlApi::new(api, |a| unsafe { ext::AlcNullCache::new(a, ptr::null_mut()) }),
+		let api = sys::AlApi::load_default()?;
+		let exts = unsafe { ext::AlcNullCache::new(&api, ptr::null_mut()) };
+		Ok(Alto(Arc::new(AltoInner{
+			api: api,
+			exts: exts,
 			_hints_dir: None,
-		}).and_then(|a| a.check_version())
+		}))).and_then(|a| a.check_version())
 	}
 
 
@@ -278,21 +263,25 @@ impl Alto {
 	/// NOTE: This involves setting the value of the `ALSOFT_CONF` environment variable. If it is already set,
 	/// then the provided hints will be discarded.
 	pub fn load_default_with_soft_hints(hints: SoftHints) -> AltoResult<Alto> {
-		let api = Box::new(sys::AlApi::load_default()?);
-		Ok(Alto{
-			api: AlApi::new(api, |a| unsafe { ext::AlcNullCache::new(a, ptr::null_mut()) }),
+		let api = sys::AlApi::load_default()?;
+		let exts = unsafe { ext::AlcNullCache::new(&api, ptr::null_mut()) };
+		Ok(Alto(Arc::new(AltoInner{
+			api: api,
+			exts: exts,
 			_hints_dir: Alto::set_hints(hints),
-		}).and_then(|a| a.check_version())
+		}))).and_then(|a| a.check_version())
 	}
 
 
 	/// Loads a specific OpenAL implementation from a specififed path.
 	pub fn load<P: AsRef<Path>>(path: P) -> AltoResult<Alto> {
-		let api = Box::new(sys::AlApi::load(path)?);
-		Ok(Alto{
-			api: AlApi::new(api, |a| unsafe { ext::AlcNullCache::new(a, ptr::null_mut()) }),
+		let api = sys::AlApi::load(path)?;
+		let exts = unsafe { ext::AlcNullCache::new(&api, ptr::null_mut()) };
+		Ok(Alto(Arc::new(AltoInner{
+			api: api,
+			exts: exts,
 			_hints_dir: None,
-		}).and_then(|a| a.check_version())
+		}))).and_then(|a| a.check_version())
 	}
 
 
@@ -302,11 +291,13 @@ impl Alto {
 	/// NOTE: This involves setting the value of the `ALSOFT_CONF` environment variable. If it is already set,
 	/// then the provided hints will be discarded.
 	pub fn load_with_soft_hints<P: AsRef<Path>>(path: P, hints: SoftHints) -> AltoResult<Alto> {
-		let api = Box::new(sys::AlApi::load(path)?);
-		Ok(Alto{
-			api: AlApi::new(api, |a| unsafe { ext::AlcNullCache::new(a, ptr::null_mut()) }),
+		let api = sys::AlApi::load(path)?;
+		let exts = unsafe { ext::AlcNullCache::new(&api, ptr::null_mut()) };
+		Ok(Alto(Arc::new(AltoInner{
+			api: api,
+			exts: exts,
 			_hints_dir: Alto::set_hints(hints),
-		}).and_then(|a| a.check_version())
+		}))).and_then(|a| a.check_version())
 	}
 
 
@@ -321,55 +312,50 @@ impl Alto {
 			return None;
 		}
 
-		if env::var_os("ALSOFT_CONF").is_none() {
-			if let Ok(hints_dir) = TempDir::new("alto") {
+		env::var_os("ALSOFT_CONF").and_then(|_| {
+			(|| -> ::std::io::Result<_> {
+				let hints_dir = TempDir::new("alto")?;
 				let hints_path = hints_dir.path().join("alsoft.conf");
-				if let Ok(mut config) = fs::File::create(&hints_path) {
-					let _ = writeln!(config, "[general]");
-					if let Some(period_size) = hints.period_size {
-						let _ = writeln!(config, "period_size = {}", period_size);
-					}
-					if let Some(periods) = hints.periods {
-						let _ = writeln!(config, "periods = {}", periods);
-					}
-					if let Some(stereo_mode) = hints.stereo_mode {
-						let _ = writeln!(config, "stereo-mode = {}", match stereo_mode { SoftStereoMode::Speakers => "speakers", SoftStereoMode::Headphones => "headphones" });
-					}
-					if let Some(cf_level) = hints.cf_level {
-						let _ = writeln!(config, "cf_level = {}", cf_level as u8);
-					}
-					if let Some(resampler) = hints.resampler {
-						let _ = writeln!(config, "resampler = {}", match resampler {
-							SoftResampler::Point => "point",
-							SoftResampler::Linear => "linear",
-							SoftResampler::Sinc4 => "sinc4",
-							SoftResampler::Sinc8 => "sinc8",
-							SoftResampler::BSinc => "bsinc",
-						});
-					}
-					if let Some(rt_prio) = hints.rt_prio {
-						let _ = writeln!(config, "rt-prio = {}", if rt_prio { 1 } else { 0 });
-					}
+				let mut config = fs::File::create(&hints_path)?;
 
-					env::set_var("ALSOFT_CONF", &hints_path);
-					Some(hints_dir)
-				} else {
-					None
+				let _ = writeln!(config, "[general]");
+				if let Some(period_size) = hints.period_size {
+					let _ = writeln!(config, "period_size = {}", period_size);
 				}
-			} else {
-				None
-			}
-		} else {
-			None
-		}
+				if let Some(periods) = hints.periods {
+					let _ = writeln!(config, "periods = {}", periods);
+				}
+				if let Some(stereo_mode) = hints.stereo_mode {
+					let _ = writeln!(config, "stereo-mode = {}", match stereo_mode { SoftStereoMode::Speakers => "speakers", SoftStereoMode::Headphones => "headphones" });
+				}
+				if let Some(cf_level) = hints.cf_level {
+					let _ = writeln!(config, "cf_level = {}", cf_level as u8);
+				}
+				if let Some(resampler) = hints.resampler {
+					let _ = writeln!(config, "resampler = {}", match resampler {
+						SoftResampler::Point => "point",
+						SoftResampler::Linear => "linear",
+						SoftResampler::Sinc4 => "sinc4",
+						SoftResampler::Sinc8 => "sinc8",
+						SoftResampler::BSinc => "bsinc",
+					});
+				}
+				if let Some(rt_prio) = hints.rt_prio {
+					let _ = writeln!(config, "rt-prio = {}", if rt_prio { 1 } else { 0 });
+				}
+
+				env::set_var("ALSOFT_CONF", &hints_path);
+				Ok(hints_dir)
+			})().ok()
+		})
 	}
 
 
 	fn check_version(self) -> AltoResult<Alto> {
 		let mut major = 0;
-		unsafe { self.api.head().alcGetIntegerv()(ptr::null_mut(), sys::ALC_MAJOR_VERSION, 1, &mut major); }
+		unsafe { self.0.api.alcGetIntegerv(ptr::null_mut(), sys::ALC_MAJOR_VERSION, 1, &mut major); }
 		let mut minor = 0;
-		unsafe { self.api.head().alcGetIntegerv()(ptr::null_mut(), sys::ALC_MINOR_VERSION, 1, &mut minor); }
+		unsafe { self.0.api.alcGetIntegerv(ptr::null_mut(), sys::ALC_MINOR_VERSION, 1, &mut minor); }
 
 		if major == 1 && minor >= 1 {
 			Ok(self)
@@ -380,51 +366,61 @@ impl Alto {
 
 
 	/// Raw entry points of the OpenAL API.
-	pub fn raw_api(&self) -> &AlApi { &self.api }
+	pub fn raw_api(&self) -> &sys::AlApi { &self.0.api }
 
 
 	/// `alcGetString(ALC_DEFAULT_DEVICE_SPECIFIER)`
-	pub fn default_output(&self) -> AltoResult<CString> {
-		self.api.rent(|exts| {
-			let spec = if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
-				unsafe { CStr::from_ptr(self.api.head().alcGetString()(ptr::null_mut(), ea.ALC_DEFAULT_ALL_DEVICES_SPECIFIER?)) }
-			} else {
-				unsafe { CStr::from_ptr(self.api.head().alcGetString()(ptr::null_mut(), sys::ALC_DEFAULT_DEVICE_SPECIFIER)) }
-			};
-			self.get_error(ptr::null_mut()).map(|_| spec.to_owned())
-		})
+	pub fn default_output(&self) -> Option<CString> {
+		let spec = if let Ok(ext::ALC_ENUMERATE_ALL_EXT{ALC_DEFAULT_ALL_DEVICES_SPECIFIER: Ok(dads), ..}) = self.0.exts.ALC_ENUMERATE_ALL_EXT {
+			unsafe { self.0.api.alcGetString(ptr::null_mut(), dads) }
+		} else {
+			unsafe { self.0.api.alcGetString(ptr::null_mut(), sys::ALC_DEFAULT_DEVICE_SPECIFIER) }
+		};
+
+		if spec == ptr::null() {
+			None
+		} else {
+			unsafe { Some(CStr::from_ptr(spec).to_owned()) }
+		}
 	}
 
 
 	/// `alcGetString(ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)`
-	pub fn default_capture(&self) -> AltoResult<CString> {
-		let spec = unsafe { CStr::from_ptr(self.api.head().alcGetString()(ptr::null_mut(), sys::ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER)) };
-		self.get_error(ptr::null_mut()).map(|_| spec.to_owned())
+	pub fn default_capture(&self) -> Option<CString> {
+		let spec = unsafe { self.0.api.alcGetString(ptr::null_mut(), sys::ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER) };
+
+		if spec == ptr::null() {
+			None
+		} else {
+			unsafe { Some(CStr::from_ptr(spec).to_owned()) }
+		}
 	}
 
 
 	/// `alcGetString(ALC_DEVICE_SPECIFIER)`
-	pub fn enumerate_outputs(&self) -> AltoResult<Vec<CString>> {
-		self.api.rent(|exts| {
-			let spec = if let Ok(ea) = exts.ALC_ENUMERATE_ALL_EXT() {
-				unsafe { self.api.head().alcGetString()(ptr::null_mut(), ea.ALC_ALL_DEVICES_SPECIFIER?) }
-			} else {
-				unsafe { self.api.head().alcGetString()(ptr::null_mut(), sys::ALC_DEVICE_SPECIFIER) }
-			};
-			self.get_error(ptr::null_mut()).and_then(|_| Alto::parse_enum_spec(spec as *const u8))
-		})
+	pub fn enumerate_outputs(&self) -> Vec<CString> {
+		let spec = if let Ok(ext::ALC_ENUMERATE_ALL_EXT{ALC_ALL_DEVICES_SPECIFIER: Ok(ads), ..}) = self.0.exts.ALC_ENUMERATE_ALL_EXT {
+			unsafe { self.0.api.alcGetString(ptr::null_mut(), ads) }
+		} else {
+			unsafe { self.0.api.alcGetString(ptr::null_mut(), sys::ALC_DEVICE_SPECIFIER) }
+		};
+		Alto::parse_enum_spec(spec as *const u8)
 	}
 
 
 	/// `alcGetString(ALC_CAPTURE_DEVICE_SPECIFIER)`
-	pub fn enumerate_captures(&self) -> AltoResult<Vec<CString>> {
-		let spec = unsafe { self.api.head().alcGetString()(ptr::null_mut(), sys::ALC_CAPTURE_DEVICE_SPECIFIER) };
-		self.get_error(ptr::null_mut()).and_then(|_| Alto::parse_enum_spec(spec as *const u8))
+	pub fn enumerate_captures(&self) -> Vec<CString> {
+		let spec = unsafe { self.0.api.alcGetString(ptr::null_mut(), sys::ALC_CAPTURE_DEVICE_SPECIFIER) };
+		Alto::parse_enum_spec(spec as *const u8)
 	}
 
 
-	fn parse_enum_spec(spec: *const u8) -> AltoResult<Vec<CString>> {
+	fn parse_enum_spec(spec: *const u8) -> Vec<CString> {
 		let mut specs = Vec::with_capacity(0);
+
+		if spec == ptr::null() {
+			return specs;
+		}
 
 		let mut i = 0;
 		loop {
@@ -437,87 +433,69 @@ impl Alto {
 
 		specs.extend(unsafe { ::std::slice::from_raw_parts(spec as *const u8, i as usize) }.split(|c| *c == 0).map(|d| CString::new(d).unwrap()));
 
-		Ok(specs)
+		specs
 	}
 
 
 	/// `alcOpenDevice()`
-	pub fn open<'s, S: Into<Option<&'s CStr>>>(&self, spec: S) -> AltoResult<Device> {
-		let spec = if let Some(spec) = spec.into() {
-			spec.to_owned()
-		} else {
-			self.default_output()?
-		};
-
-		let dev = unsafe { self.api.head().alcOpenDevice()(spec.as_ptr()) };
-		self.get_error(ptr::null_mut())?;
+	pub fn open<'s>(&self, spec: Option<&'s CStr>) -> AltoResult<OutputDevice> {
+		let spec = spec.map(|s| s.to_owned()).or_else(|| self.default_output());
+		let dev = unsafe { self.0.api.alcOpenDevice(spec.as_ref().map(|s| s.as_ptr()).unwrap_or(ptr::null())) };
 
 		if dev == ptr::null_mut() {
 			Err(AltoError::AlcInvalidDevice)
 		} else {
-			Ok(Device{
-				alto: self,
+			Ok(OutputDevice(Arc::new(DeviceInner{
+				alto: Alto(self.0.clone()),
 				spec: spec,
 				dev: dev,
-				exts: unsafe { ext::AlcCache::new(self.api.head(), dev) },
-				pause_rc: Arc::new(AtomicUsize::new(0))
-			})
+				exts: unsafe { ext::AlcCache::new(&self.0.api, dev) },
+			})))
 		}
 	}
 
 
 	/// `alcLoopbackOpenDeviceSOFT()`
 	/// Requires `ALC_SOFT_loopback`
-	pub fn open_loopback<'s, S: Into<Option<&'s CStr>>, F: LoopbackFrame>(&self, spec: S) -> AltoResult<LoopbackDevice<F>> {
-		self.api.rent(|exts| {
-			let sl = exts.ALC_SOFT_loopback()?;
+	pub fn open_loopback<'s, F: LoopbackFrame>(&self, spec: Option<&'s CStr>) -> AltoResult<LoopbackDevice<F>> {
+		let asl = self.0.exts.ALC_SOFT_loopback()?;
+		asl.alcRenderSamplesSOFT?;
 
-			let spec = if let Some(spec) = spec.into() {
-				spec.to_owned()
-			} else {
-				self.default_output()?
-			};
-
-			let dev = unsafe { sl.alcLoopbackOpenDeviceSOFT?(spec.as_ptr()) };
-			self.get_error(ptr::null_mut())?;
-
-			if dev == ptr::null_mut() {
-				Err(AltoError::AlcInvalidDevice)
-			} else {
-				Ok(LoopbackDevice{
-					alto: self,
-					spec: spec,
-					dev: dev,
-					exts: unsafe { ext::AlcCache::new(self.api.head(), dev) },
-					marker: PhantomData
-				})
-			}
-		})
-	}
-
-
-	/// `alcCaptureOpenDevice()`
-	pub fn open_capture<'s, S: Into<Option<&'s CStr>>, F: StandardFrame>(&self, spec: S, freq: sys::ALCuint, len: sys::ALCsizei) -> AltoResult<CaptureDevice<F>> {
-		let spec = if let Some(spec) = spec.into() {
-			spec.to_owned()
-		} else {
-			self.default_output()?
-		};
-
-		let dev = unsafe { self.api.head().alcCaptureOpenDevice()(spec.as_ptr(), freq, F::format().into_raw(None)?, len) };
-		self.get_error(ptr::null_mut())?;
+		let spec = spec.map(|s| s.to_owned()).or_else(|| self.default_output());
+		let dev = unsafe { asl.alcLoopbackOpenDeviceSOFT?(spec.as_ref().map(|s| s.as_ptr()).unwrap_or(ptr::null())) };
 
 		if dev == ptr::null_mut() {
 			Err(AltoError::AlcInvalidDevice)
 		} else {
-			Ok(CaptureDevice{alto: self, spec: spec, dev: dev, marker: PhantomData})
+			Ok(LoopbackDevice(
+				Arc::new(DeviceInner{
+					alto: Alto(self.0.clone()),
+					spec: spec,
+					dev: dev,
+					exts: unsafe { ext::AlcCache::new(&self.0.api, dev) },
+				}),
+				PhantomData,
+			))
+		}
+	}
+
+
+	/// `alcCaptureOpenDevice()`
+	pub fn open_capture<'s, F: StandardFrame>(&self, spec: Option<&'s CStr>, freq: sys::ALCuint, len: sys::ALCsizei) -> AltoResult<Capture<F>> {
+		let spec = spec.map(|s| s.to_owned()).or_else(|| self.default_capture());
+		let dev = unsafe { self.0.api.alcCaptureOpenDevice(spec.as_ref().map(|s| s.as_ptr()).unwrap_or(ptr::null()), freq, F::format().into_raw(None)?, len) };
+
+		if dev == ptr::null_mut() {
+			Err(AltoError::AlcInvalidDevice)
+		} else {
+			Ok(Capture{alto: Alto(self.0.clone()), spec: spec, dev: dev, marker: PhantomData})
 		}
 	}
 
 
 	#[doc(hidden)]
 	pub fn get_error(&self, dev: *mut sys::ALCdevice) -> AltoResult<()> {
-		match unsafe { self.api.head().alcGetError()(dev)} {
+		match unsafe { self.0.api.alcGetError(dev)} {
 			sys::ALC_NO_ERROR => Ok(()),
 			e => Err(AltoError::from_alc(e)),
 		}
@@ -525,15 +503,93 @@ impl Alto {
 }
 
 
-impl<'a> PartialEq for (DeviceTrait + 'a) {
-	fn eq(&self, other: &(DeviceTrait + 'a)) -> bool {
-		self.as_raw() == other.as_raw()
+impl Clone for Alto {
+	fn clone(&self) -> Alto { Alto(self.0.clone()) }
+}
+
+
+impl DeviceInner {
+	#[inline] fn alto(&self) -> &Alto { &self.alto }
+	#[inline] fn specifier(&self) -> Option<&CStr> { self.spec.as_ref().map(|s| s.as_ref()) }
+	#[inline] fn as_raw(&self) -> *mut sys::ALCdevice { self.dev }
+
+
+	pub fn is_extension_present(&self, ext: ext::Alc) -> bool {
+		match ext {
+			ext::Alc::Dedicated => self.exts.ALC_EXT_DEDICATED().is_ok(),
+			ext::Alc::Disconnect => self.exts.ALC_EXT_DISCONNECT().is_ok(),
+			ext::Alc::Efx => self.exts.ALC_EXT_EFX().is_ok(),
+			ext::Alc::SoftHrtf => self.exts.ALC_SOFT_HRTF().is_ok(),
+			ext::Alc::SoftPauseDevice => self.exts.ALC_SOFT_pause_device().is_ok(),
+		}
+	}
+
+
+	pub fn connected(&self) -> AltoResult<bool> {
+		let mut value = 0;
+		unsafe { self.alto.0.api.alcGetIntegerv(self.dev, self.exts.ALC_EXT_DISCONNECT()?.ALC_CONNECTED?, 1, &mut value); }
+		self.alto.get_error(self.dev).map(|_| value == sys::ALC_TRUE as sys::ALCint)
+	}
+
+
+	pub fn enumerate_soft_hrtfs(&self) -> Vec<CString> {
+		let mut spec_vec = Vec::with_capacity(0);
+
+		let _ = (|| -> AltoResult<_> {
+			let ash = self.exts.ALC_SOFT_HRTF()?;
+			let mut value = 0;
+			unsafe { self.alto.0.api.alcGetIntegerv(self.dev, ash.ALC_NUM_HRTF_SPECIFIERS_SOFT?, 1, &mut value); }
+
+			for i in 0 .. value {
+				unsafe {
+					let spec = ash.alcGetStringiSOFT?(self.dev, ash.ALC_HRTF_SPECIFIER_SOFT?, i) as *mut _;
+					spec_vec.push(self.alto.get_error(self.dev).map(|_| CString::from_raw(spec))?);
+				}
+			}
+
+			Ok(())
+		})();
+
+		spec_vec
+	}
+
+
+	pub fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> {
+		let ash = self.exts.ALC_SOFT_HRTF()?;
+
+		let mut value = 0;
+		unsafe { self.alto.0.api.alcGetIntegerv(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut value); }
+		self.alto.get_error(self.dev).and_then(|_| match value {
+			s if s == ash.ALC_HRTF_DISABLED_SOFT? => Ok(SoftHrtfStatus::Disabled),
+			s if s == ash.ALC_HRTF_ENABLED_SOFT? => Ok(SoftHrtfStatus::Enabled),
+			s if s == ash.ALC_HRTF_DENIED_SOFT? => Ok(SoftHrtfStatus::Denied),
+			s if s == ash.ALC_HRTF_REQUIRED_SOFT? => Ok(SoftHrtfStatus::Required),
+			s if s == ash.ALC_HRTF_HEADPHONES_DETECTED_SOFT? => Ok(SoftHrtfStatus::HeadphonesDetected),
+			s if s == ash.ALC_HRTF_UNSUPPORTED_FORMAT_SOFT? => Ok(SoftHrtfStatus::UnsupportedFormat),
+			s => Ok(SoftHrtfStatus::Unknown(s)),
+		})
+	}
+
+
+	pub fn max_aux_sends(&self) -> sys::ALCint {
+		let mut value = 0;
+		let _ = (|| -> AltoResult<_> {
+			unsafe { self.alto.0.api.alcGetIntegerv(self.dev, self.exts.ALC_EXT_EFX()?.ALC_MAX_AUXILIARY_SENDS?, 1, &mut value); }
+			Ok(())
+		})();
+		value
 	}
 }
-impl Eq for DeviceTrait { }
 
 
-impl<'a> Device<'a> {
+impl Drop for DeviceInner {
+	fn drop(&mut self) {
+		unsafe { self.alto.0.api.alcCloseDevice(self.dev); }
+	}
+}
+
+
+impl OutputDevice {
 	fn make_attrs_vec(&self, attrs: Option<ContextAttrs>) -> AltoResult<Option<Vec<sys::ALCint>>> {
 		let mut attrs_vec = Vec::with_capacity(15);
 		if let Some(attrs) = attrs {
@@ -550,7 +606,7 @@ impl<'a> Device<'a> {
 				attrs_vec.extend(&[sys::ALC_STEREO_SOURCES, stereo]);
 			}
 
-			if let Ok(ash) = self.exts.ALC_SOFT_HRTF() {
+			if let Ok(ash) = self.0.exts.ALC_SOFT_HRTF() {
 				if let Some(hrtf) = attrs.soft_hrtf {
 					attrs_vec.extend(&[ash.ALC_HRTF_SOFT?, if hrtf { sys::ALC_TRUE } else { sys::ALC_FALSE } as sys::ALCint]);
 				}
@@ -559,8 +615,8 @@ impl<'a> Device<'a> {
 				}
 			}
 
-			if let Ok(efx) = self.exts.ALC_EXT_EFX() {
-				if let Some(max_sends) = attrs.max_auxiliary_sends {
+			if let Ok(efx) = self.0.exts.ALC_EXT_EFX() {
+				if let Some(max_sends) = attrs.max_aux_sends {
 					attrs_vec.extend(&[efx.ALC_MAX_AUXILIARY_SENDS?, max_sends]);
 				}
 			}
@@ -574,392 +630,250 @@ impl<'a> Device<'a> {
 
 
 	/// `alcCreateContext()`
-	pub fn new_context<A: Into<Option<ContextAttrs>>>(&self, attrs: A) -> AltoResult<Context> {
-		let attrs_vec = self.make_attrs_vec(attrs.into())?;
-
-		let ctx = unsafe { self.alto.api.head().alcCreateContext()(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
+	pub fn new_context(&self, attrs: Option<ContextAttrs>) -> AltoResult<Context> {
+		let attrs_vec = self.make_attrs_vec(attrs)?;
+		let ctx = unsafe { self.0.alto.0.api.alcCreateContext(self.0.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
 		if ctx == ptr::null_mut() {
-			match self.alto.get_error(self.dev) {
+			match self.0.alto.get_error(self.0.dev) {
 				Ok(..) => Err(AltoError::AlcUnknownError),
 				Err(e) => Err(e),
 			}
 		} else {
-			unsafe { Ok(Context::new(self, &self.alto.api, ctx)) }
+			unsafe { Ok(Context::new(self.to_device(), ctx)) }
 		}
 	}
 
 
 	/// `alcDevicePauseSOFT()`
 	/// Requires `ALC_SOFT_pause_device`
-	pub fn soft_pause<'d>(&'d self) -> AltoResult<SoftPauseLock<'a, 'd>> {
-		SoftPauseLock::new(self)
+	pub fn soft_pause(&self) -> AltoResult<()> {
+		let adps = self.0.exts.ALC_SOFT_pause_device()?.alcDevicePauseSOFT?;
+
+		unsafe { adps(self.0.dev) }
+		if let Err(e) = self.0.alto.get_error(self.0.dev) {
+			return Err(e);
+		}
+
+		Ok(())
+	}
+
+
+	/// `alcDeviceResumeSOFT()`
+	/// Requires `ALC_SOFT_pause_device`
+	pub fn soft_resume(&self) {
+		if let Ok(aspd) = self.0.exts.ALC_SOFT_pause_device() {
+			if let Ok(adrs) = aspd.alcDeviceResumeSOFT {
+				unsafe { adrs(self.0.dev); }
+			}
+		}
 	}
 
 
 	/// `alcDevicePauseSOFT()`
 	/// Requires `ALC_SOFT_HRTF`
-	pub fn soft_reset<A: Into<Option<ContextAttrs>>>(&self, attrs: A) -> AltoResult<()> {
-		let ards = self.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
+	pub fn soft_reset(&self, attrs: Option<ContextAttrs>) -> AltoResult<()> {
+		let ards = self.0.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
 		let attrs_vec = self.make_attrs_vec(attrs.into())?;
-		unsafe { ards(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
-		self.alto.get_error(self.dev)
+		unsafe { ards(self.0.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
+		self.0.alto.get_error(self.0.dev)
 	}
 }
 
 
-unsafe impl<'a> DeviceTrait for Device<'a> {
-	#[inline]
-	fn alto(&self) -> &Alto { &self.alto }
-	#[inline]
-	fn specifier(&self) -> &CStr { &self.spec }
-	#[inline]
-	fn as_raw(&self) -> *mut sys::ALCdevice { self.dev }
+unsafe impl DeviceObject for OutputDevice {
+	#[inline] fn alto(&self) -> &Alto { self.0.alto() }
+	#[inline] fn specifier(&self) -> Option<&CStr> { self.0.specifier() }
+	#[inline] fn as_raw(&self) -> *mut sys::ALCdevice { self.0.as_raw() }
+	#[inline] fn connected(&self) -> AltoResult<bool> { self.0.connected() }
+
+	#[inline] fn is_extension_present(&self, ext: ext::Alc) -> bool { self.0.is_extension_present(ext) }
+	#[inline] fn enumerate_soft_hrtfs(&self) -> Vec<CString> { self.0.enumerate_soft_hrtfs() }
+	#[inline] fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> { self.0.soft_hrtf_status() }
+	#[inline] fn max_aux_sends(&self) -> sys::ALCint { self.0.max_aux_sends() }
+	#[inline] fn to_device(&self) -> Device { Device(self.0.clone()) }
+}
 
 
-	fn is_extension_present(&self, ext: ext::Alc) -> bool {
-		match ext {
-			ext::Alc::Dedicated => self.exts.ALC_EXT_DEDICATED().is_ok(),
-			ext::Alc::Disconnect => self.exts.ALC_EXT_DISCONNECT().is_ok(),
-			ext::Alc::Efx => self.exts.ALC_EXT_EFX().is_ok(),
-			ext::Alc::SoftHrtf => self.exts.ALC_SOFT_HRTF().is_ok(),
-			ext::Alc::SoftPauseDevice => self.exts.ALC_SOFT_pause_device().is_ok(),
-		}
+impl PartialEq for OutputDevice {
+	fn eq(&self, other: &OutputDevice) -> bool {
+		self.0.dev == other.0.dev
 	}
+}
+impl Eq for OutputDevice { }
 
 
-	fn extensions(&self) -> &ext::AlcCache { &self.exts }
+unsafe impl Send for OutputDevice { }
+unsafe impl Sync for OutputDevice { }
 
 
-	fn connected(&self) -> AltoResult<bool> {
-		let mut value = 0;
-		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_DISCONNECT()?.ALC_CONNECTED?, 1, &mut value); }
-		self.alto.get_error(self.dev).map(|_| value == sys::ALC_TRUE as sys::ALCint)
-	}
+impl<F: LoopbackFrame> LoopbackDevice<F> {
+	fn make_attrs_vec(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AltoResult<Vec<sys::ALCint>> {
+		let asl = self.0.alto.0.exts.ALC_SOFT_loopback()?;
 
-
-	fn enumerate_soft_hrtfs(&self) -> AltoResult<Vec<CString>> {
-		let ash = self.exts.ALC_SOFT_HRTF()?;
-
-		let mut value = 0;
-		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, ash.ALC_NUM_HRTF_SPECIFIERS_SOFT?, 1, &mut value); }
-		self.alto.get_error(self.dev)?;
-
-		let mut spec_vec = Vec::new();
-		for i in 0 .. value {
-			unsafe {
-				let spec = ash.alcGetStringiSOFT?(self.dev, ash.ALC_HRTF_SPECIFIER_SOFT?, i) as *mut _;
-				spec_vec.push(self.alto.get_error(self.dev).map(|_| CString::from_raw(spec))?);
+		let mut attrs_vec = Vec::with_capacity(17);
+		attrs_vec.extend(&[sys::ALC_FREQUENCY, freq]);
+		attrs_vec.extend(&[asl.ALC_FORMAT_CHANNELS_SOFT?, F::channels(&asl)?]);
+		attrs_vec.extend(&[asl.ALC_FORMAT_TYPE_SOFT?, F::sample_ty(&asl)?]);
+		if let Some(attrs) = attrs {
+			if let Some(mono) = attrs.mono_sources {
+				attrs_vec.extend(&[sys::ALC_MONO_SOURCES, mono]);
 			}
-		}
-		Ok(spec_vec)
-	}
-
-
-	fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> {
-		let ash = self.exts.ALC_SOFT_HRTF()?;
-
-		let mut value = 0;
-		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut value); }
-		self.alto.get_error(self.dev).and_then(|_| match value {
-			s if s == ash.ALC_HRTF_DISABLED_SOFT? => Ok(SoftHrtfStatus::Disabled),
-			s if s == ash.ALC_HRTF_ENABLED_SOFT? => Ok(SoftHrtfStatus::Enabled),
-			s if s == ash.ALC_HRTF_DENIED_SOFT? => Ok(SoftHrtfStatus::Denied),
-			s if s == ash.ALC_HRTF_REQUIRED_SOFT? => Ok(SoftHrtfStatus::Required),
-			s if s == ash.ALC_HRTF_HEADPHONES_DETECTED_SOFT? => Ok(SoftHrtfStatus::HeadphonesDetected),
-			s if s == ash.ALC_HRTF_UNSUPPORTED_FORMAT_SOFT? => Ok(SoftHrtfStatus::UnsupportedFormat),
-			s => Ok(SoftHrtfStatus::Unknown(s)),
-		})
-	}
-
-
-	fn max_auxiliary_sends(&self) -> AltoResult<sys::ALCint> {
-		let mut value = 0;
-		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_EFX()?.ALC_MAX_AUXILIARY_SENDS?, 1, &mut value); }
-		self.alto.get_error(self.dev).map(|_| value)
-	}
-}
-
-
-impl<'a> PartialEq for Device<'a> {
-	fn eq(&self, other: &Device<'a>) -> bool {
-		self.dev == other.dev
-	}
-}
-impl<'a> Eq for Device<'a> { }
-
-
-impl<'a> Drop for Device<'a> {
-	fn drop(&mut self) {
-		unsafe { self.alto.api.head().alcCloseDevice()(self.dev); }
-		if let Err(_) = self.alto.get_error(self.dev) {
-			let _ = writeln!(io::stderr(), "ALTO ERROR: `alcCloseDevice` failed in Device drop");
-		}
-	}
-}
-
-
-unsafe impl<'a> Send for Device<'a> { }
-unsafe impl<'a> Sync for Device<'a> { }
-
-
-impl<'a: 'd, 'd> SoftPauseLock<'a, 'd> {
-	fn new(dev: &'d Device<'a>) -> AltoResult<SoftPauseLock<'a, 'd>> {
-		let adps = dev.exts.ALC_SOFT_pause_device()?.alcDevicePauseSOFT?;
-
-		let old = dev.pause_rc.fetch_add(1, Ordering::SeqCst);
-		if old == 0 {
-			unsafe { adps(dev.dev) }
-			if let Err(e) = dev.alto.get_error(dev.dev) {
-				dev.pause_rc.fetch_sub(1, Ordering::SeqCst);
-				return Err(e);
+			if let Some(stereo) = attrs.stereo_sources {
+				attrs_vec.extend(&[sys::ALC_STEREO_SOURCES, stereo]);
 			}
-		}
 
-		Ok(SoftPauseLock(dev))
-	}
-}
-
-
-impl<'a: 'd, 'd> Deref for SoftPauseLock<'a, 'd> {
-	type Target = Device<'a>;
-
-	fn deref(&self) -> &Device<'a> { self.0 }
-}
-
-
-impl<'a: 'd, 'd> Drop for SoftPauseLock<'a, 'd> {
-	fn drop(&mut self) {
-		let old = self.0.pause_rc.fetch_sub(1, Ordering::SeqCst);
-		if old == 1 {
-			unsafe { self.0.exts.ALC_SOFT_pause_device().unwrap().alcDeviceResumeSOFT.unwrap()(self.0.dev); }
-			if let Err(_) = self.0.alto.get_error(self.0.dev) {
-				let _ = writeln!(io::stderr(), "ALTO ERROR: `alcDeviceResumeSOFT` failed in SoftPauseLock drop");
-			}
-		}
-	}
-}
-
-
-impl<'a, F: LoopbackFrame> LoopbackDevice<'a, F> {
-	fn make_attrs_vec<A: Into<Option<LoopbackAttrs>>>(&self, freq: sys::ALCint, attrs: A) -> AltoResult<Vec<sys::ALCint>> {
-		self.alto.api.rent(move|exts| {
-			let asl = exts.ALC_SOFT_loopback()?;
-
-			let mut attrs_vec = Vec::with_capacity(17);
-			attrs_vec.extend(&[sys::ALC_FREQUENCY, freq]);
-			attrs_vec.extend(&[asl.ALC_FORMAT_CHANNELS_SOFT?, F::channels(&asl)?]);
-			attrs_vec.extend(&[asl.ALC_FORMAT_TYPE_SOFT?, F::sample_ty(&asl)?]);
-			if let Some(attrs) = attrs.into() {
-				if let Some(mono) = attrs.mono_sources {
-					attrs_vec.extend(&[sys::ALC_MONO_SOURCES, mono]);
+			if let Ok(ash) = self.0.exts.ALC_SOFT_HRTF() {
+				if let Some(hrtf) = attrs.soft_hrtf {
+					attrs_vec.extend(&[ash.ALC_HRTF_SOFT?, if hrtf { sys::ALC_TRUE } else { sys::ALC_FALSE } as sys::ALCint]);
 				}
-				if let Some(stereo) = attrs.stereo_sources {
-					attrs_vec.extend(&[sys::ALC_STEREO_SOURCES, stereo]);
-				}
-
-				if let Ok(ash) = self.exts.ALC_SOFT_HRTF() {
-					if let Some(hrtf) = attrs.soft_hrtf {
-						attrs_vec.extend(&[ash.ALC_HRTF_SOFT?, if hrtf { sys::ALC_TRUE } else { sys::ALC_FALSE } as sys::ALCint]);
-					}
-					if let Some(hrtf_id) = attrs.soft_hrtf_id {
-						attrs_vec.extend(&[ash.ALC_HRTF_ID_SOFT?, hrtf_id]);
-					}
-				}
-
-				if let Ok(efx) = self.exts.ALC_EXT_EFX() {
-					if let Some(max_sends) = attrs.max_auxiliary_sends {
-						attrs_vec.extend(&[efx.ALC_MAX_AUXILIARY_SENDS?, max_sends]);
-					}
+				if let Some(hrtf_id) = attrs.soft_hrtf_id {
+					attrs_vec.extend(&[ash.ALC_HRTF_ID_SOFT?, hrtf_id]);
 				}
 			}
-			attrs_vec.push(0);
-			Ok(attrs_vec)
-		})
+
+			if let Ok(efx) = self.0.exts.ALC_EXT_EFX() {
+				if let Some(max_sends) = attrs.max_aux_sends {
+					attrs_vec.extend(&[efx.ALC_MAX_AUXILIARY_SENDS?, max_sends]);
+				}
+			}
+		}
+		attrs_vec.push(0);
+		Ok(attrs_vec)
 	}
 
 
 	/// `alcCreateContext()`
-	pub fn new_context<A: Into<Option<LoopbackAttrs>>>(&self, freq: sys::ALCint, attrs: A) -> AltoResult<Context> {
+	pub fn new_context(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AltoResult<Context> {
 		let attrs_vec = self.make_attrs_vec(freq, attrs.into())?;
-		let ctx = unsafe { self.alto.api.head().alcCreateContext()(self.dev, attrs_vec.as_slice().as_ptr()) };
+		let ctx = unsafe { self.0.alto.0.api.alcCreateContext(self.0.dev, attrs_vec.as_slice().as_ptr()) };
 		if ctx == ptr::null_mut() {
-			match self.alto.get_error(self.dev) {
+			match self.0.alto.get_error(self.0.dev) {
 				Ok(..) => Err(AltoError::AlcUnknownError),
 				Err(e) => Err(e),
 			}
 		} else {
-			unsafe { Ok(Context::new(self, &self.alto.api, ctx)) }
+			unsafe { Ok(Context::new(self.to_device(), ctx)) }
 		}
 	}
 
 
 	/// `alcRenderSamplesSOFT()`
-	pub fn soft_render_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> AltoResult<()> {
+	pub fn soft_render_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) {
 		let mut data = data.as_buffer_data_mut();
-		if sys::ALCsizei::max_value() as usize / mem::size_of::<F>() < data.len() { return Err(AltoError::AlcInvalidValue) }
+		if sys::ALCsizei::max_value() as usize / mem::size_of::<F>() < data.len() { panic!("ALTO ERROR: data slice is too long for `alcRenderSamplesSOFT()`") }
 
-		self.alto.api.rent(move|exts| {
-			let asl = exts.ALC_SOFT_loopback()?;
+		let asl = self.0.alto.0.exts.ALC_SOFT_loopback().unwrap();
 
-			unsafe { asl.alcRenderSamplesSOFT?(self.dev, data.as_mut_ptr() as *mut _, data.len() as sys::ALCsizei); }
-			self.alto.get_error(self.dev)
-		})
+		unsafe { asl.alcRenderSamplesSOFT.unwrap()(self.0.dev, data.as_mut_ptr() as *mut _, data.len() as sys::ALCsizei); }
 	}
 
 
 	/// `alcDevicePauseSOFT()`
 	/// Requires `ALC_SOFT_HRTF`
-	pub fn soft_reset<A: Into<Option<LoopbackAttrs>>>(&self, freq: sys::ALCint, attrs: A) -> AltoResult<()> {
-		let ards = self.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
+	pub fn soft_reset(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AltoResult<()> {
+		let ards = self.0.exts.ALC_SOFT_HRTF()?.alcResetDeviceSOFT?;
 
 		let attrs_vec = self.make_attrs_vec(freq, attrs.into());
-		unsafe { ards(self.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
-		self.alto.get_error(self.dev)
+		unsafe { ards(self.0.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
+		self.0.alto.get_error(self.0.dev)
 	}
 }
 
 
-unsafe impl<'a, F: LoopbackFrame> DeviceTrait for LoopbackDevice<'a, F> {
-	#[inline]
-	fn alto(&self) -> &Alto { &self.alto }
-	#[inline]
-	fn specifier(&self) -> &CStr { &self.spec }
-	#[inline]
-	fn as_raw(&self) -> *mut sys::ALCdevice { self.dev }
-	#[inline]
-	fn connected(&self) -> AltoResult<bool> { Ok(true) }
+unsafe impl<F: LoopbackFrame> DeviceObject for LoopbackDevice<F> {
+	#[inline] fn alto(&self) -> &Alto { self.0.alto() }
+	#[inline] fn specifier(&self) -> Option<&CStr> { self.0.specifier() }
+	#[inline] fn as_raw(&self) -> *mut sys::ALCdevice { self.0.as_raw() }
+	#[inline] fn connected(&self) -> AltoResult<bool> { self.0.connected() }
 
-
-	fn is_extension_present(&self, ext: ext::Alc) -> bool {
-		match ext {
-			ext::Alc::Dedicated => self.exts.ALC_EXT_DEDICATED().is_ok(),
-			ext::Alc::Disconnect => self.exts.ALC_EXT_DISCONNECT().is_ok(),
-			ext::Alc::Efx => self.exts.ALC_EXT_EFX().is_ok(),
-			ext::Alc::SoftHrtf => self.exts.ALC_SOFT_HRTF().is_ok(),
-			ext::Alc::SoftPauseDevice => self.exts.ALC_SOFT_pause_device().is_ok(),
-		}
-	}
-
-
-	fn extensions(&self) -> &ext::AlcCache { &self.exts }
-
-
-	fn enumerate_soft_hrtfs(&self) -> AltoResult<Vec<CString>> {
-		let ash = self.exts.ALC_SOFT_HRTF()?;
-
-		let mut value = 0;
-		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, ash.ALC_NUM_HRTF_SPECIFIERS_SOFT?, 1, &mut value); }
-		self.alto.get_error(self.dev)?;
-
-		let mut spec_vec = Vec::new();
-		for i in 0 .. value {
-			unsafe {
-				let spec = ash.alcGetStringiSOFT?(self.dev, ash.ALC_HRTF_SPECIFIER_SOFT?, i) as *mut _;
-				spec_vec.push(self.alto.get_error(self.dev).map(|_| CString::from_raw(spec))?);
-			}
-		}
-		Ok(spec_vec)
-	}
-
-
-	fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> {
-		let ash = self.exts.ALC_SOFT_HRTF()?;
-
-		let mut value = 0;
-		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut value); }
-		self.alto.get_error(self.dev).and_then(|_| match value {
-			s if s == ash.ALC_HRTF_DISABLED_SOFT? => Ok(SoftHrtfStatus::Disabled),
-			s if s == ash.ALC_HRTF_ENABLED_SOFT? => Ok(SoftHrtfStatus::Enabled),
-			s if s == ash.ALC_HRTF_DENIED_SOFT? => Ok(SoftHrtfStatus::Denied),
-			s if s == ash.ALC_HRTF_REQUIRED_SOFT? => Ok(SoftHrtfStatus::Required),
-			s if s == ash.ALC_HRTF_HEADPHONES_DETECTED_SOFT? => Ok(SoftHrtfStatus::HeadphonesDetected),
-			s if s == ash.ALC_HRTF_UNSUPPORTED_FORMAT_SOFT? => Ok(SoftHrtfStatus::UnsupportedFormat),
-			s => Ok(SoftHrtfStatus::Unknown(s)),
-		})
-	}
-
-
-	fn max_auxiliary_sends(&self) -> AltoResult<sys::ALCint> {
-		let mut value = 0;
-		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, self.exts.ALC_EXT_EFX()?.ALC_MAX_AUXILIARY_SENDS?, 1, &mut value); }
-		self.alto.get_error(self.dev).map(|_| value)
-	}
+	#[inline] fn is_extension_present(&self, ext: ext::Alc) -> bool { self.0.is_extension_present(ext) }
+	#[inline] fn enumerate_soft_hrtfs(&self) -> Vec<CString> { self.0.enumerate_soft_hrtfs() }
+	#[inline] fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> { self.0.soft_hrtf_status() }
+	#[inline] fn max_aux_sends(&self) -> sys::ALCint { self.0.max_aux_sends() }
+	#[inline] fn to_device(&self) -> Device { Device(self.0.clone()) }
 }
 
 
-impl<'a, F: LoopbackFrame> PartialEq for LoopbackDevice<'a, F> {
-	fn eq(&self, other: &LoopbackDevice<'a, F>) -> bool {
-		self.dev == other.dev
+impl<F: LoopbackFrame> PartialEq for LoopbackDevice<F> {
+	fn eq(&self, other: &LoopbackDevice<F>) -> bool {
+		self.0.dev == other.0.dev
 	}
 }
-impl<'a, F: LoopbackFrame> Eq for LoopbackDevice<'a, F> { }
+impl<F: LoopbackFrame> Eq for LoopbackDevice<F> { }
 
 
-impl<'a, F: LoopbackFrame> Drop for LoopbackDevice<'a, F> {
-	fn drop(&mut self) {
-		unsafe { self.alto.api.head().alcCloseDevice()(self.dev); }
-		if let Err(_) = self.alto.get_error(self.dev) {
-			let _ = writeln!(io::stderr(), "ALTO ERROR: `alcCloseDevice` failed in LoopbackDevice drop");
-		}
-	}
+unsafe impl<F: LoopbackFrame> Send for LoopbackDevice<F> { }
+unsafe impl<F: LoopbackFrame> Sync for LoopbackDevice<F> { }
+
+
+unsafe impl DeviceObject for Device {
+	#[inline] fn alto(&self) -> &Alto { self.0.alto() }
+	#[inline] fn specifier(&self) -> Option<&CStr> { self.0.specifier() }
+	#[inline] fn as_raw(&self) -> *mut sys::ALCdevice { self.0.as_raw() }
+	#[inline] fn connected(&self) -> AltoResult<bool> { self.0.connected() }
+
+	#[inline] fn is_extension_present(&self, ext: ext::Alc) -> bool { self.0.is_extension_present(ext) }
+	#[inline] fn enumerate_soft_hrtfs(&self) -> Vec<CString> { self.0.enumerate_soft_hrtfs() }
+	#[inline] fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> { self.0.soft_hrtf_status() }
+	#[inline] fn max_aux_sends(&self) -> sys::ALCint { self.0.max_aux_sends() }
+	#[inline] fn to_device(&self) -> Device { Device(self.0.clone()) }
 }
 
 
-unsafe impl<'a, F: LoopbackFrame> Send for LoopbackDevice<'a, F> { }
-unsafe impl<'a, F: LoopbackFrame> Sync for LoopbackDevice<'a, F> { }
+impl PartialEq for DeviceObject {
+	fn eq(&self, other: &DeviceObject) -> bool {
+		self.as_raw() == other.as_raw()
+	}
+}
+impl Eq for DeviceObject { }
 
 
-impl<'a, F: StandardFrame> CaptureDevice<'a, F> {
-	/// Alto struct from which this device was opened.
-	#[inline]
-	pub fn alto(&self) -> &Alto { &self.alto }
+impl<F: StandardFrame> Capture<F> {
+	/// AltoInner struct from which this device was opened.
+	#[inline] pub fn alto(&self) -> &Alto { &self.alto }
 	/// Specifier used to open this device.
-	#[inline]
-	pub fn specifier(&self) -> &CStr { &self.spec }
+	#[inline] pub fn specifier(&self) -> Option<&CStr> { self.spec.as_ref().map(|s| s.as_ref()) }
 	/// Raw device handle as reported by OpenAL.
-	#[inline]
-	pub fn as_raw(&self) -> *mut sys::ALCdevice { self.dev }
+	#[inline] pub fn as_raw(&self) -> *mut sys::ALCdevice { self.dev }
 
 
 	/// `alcCaptureStart()`
-	pub fn start(&mut self) -> AltoResult<()> {
-		unsafe { self.alto.api.head().alcCaptureStart()(self.dev); }
-		self.alto.get_error(self.dev)
+	pub fn start(&mut self) {
+		unsafe { self.alto.0.api.alcCaptureStart(self.dev); }
 	}
 
 
 	/// `alcCaptureStop()`
-	pub fn stop(&mut self) -> AltoResult<()> {
-		unsafe { self.alto.api.head().alcCaptureStop()(self.dev); }
-		self.alto.get_error(self.dev)
+	pub fn stop(&mut self) {
+		unsafe { self.alto.0.api.alcCaptureStop(self.dev); }
 	}
 
 
 	/// `alcGetIntegerv(ALC_CAPTURE_SAMPLES)`
-	pub fn samples_len(&self) -> AltoResult<sys::ALCint> {
+	pub fn samples_len(&self) -> sys::ALCint {
 		let mut samples = 0;
-		unsafe { self.alto.api.head().alcGetIntegerv()(self.dev, sys::ALC_CAPTURE_SAMPLES, 1, &mut samples); }
-		self.alto.get_error(self.dev).map(|_| samples)
+		unsafe { self.alto.0.api.alcGetIntegerv(self.dev, sys::ALC_CAPTURE_SAMPLES, 1, &mut samples); }
+		samples
 	}
 
 
 	/// `alcCaptureSamples()`
 	pub fn capture_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> AltoResult<()> {
 		let mut data = data.as_buffer_data_mut();
-		if data.len() > self.samples_len()? as usize { return Err(AltoError::AlcInvalidValue) }
+		if data.len() > self.samples_len() as usize { return Err(AltoError::AlcInvalidValue) }
 
-		unsafe { self.alto.api.head().alcCaptureSamples()(self.dev, data.as_mut_ptr() as *mut _, data.len() as sys::ALCsizei); }
-		self.alto.get_error(self.dev)
+		unsafe { self.alto.0.api.alcCaptureSamples(self.dev, data.as_mut_ptr() as *mut _, data.len() as sys::ALCsizei); }
+		Ok(())
 	}
 }
 
 
-impl<'a, F: StandardFrame> PartialEq for CaptureDevice<'a, F> {
-	fn eq(&self, other: &CaptureDevice<'a, F>) -> bool {
+impl<F: StandardFrame> PartialEq for Capture<F> {
+	fn eq(&self, other: &Capture<F>) -> bool {
 		self.dev == other.dev
 	}
 }
-impl<'a, F: StandardFrame> Eq for CaptureDevice<'a, F> { }
+impl<F: StandardFrame> Eq for Capture<F> { }
 
 
-unsafe impl<'a, F: StandardFrame> Send for CaptureDevice<'a, F> { }
+unsafe impl<F: StandardFrame> Send for Capture<F> { }

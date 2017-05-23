@@ -186,7 +186,7 @@ pub enum SoftMsadpcmFormat {
 /// Implemented by structs that represent a frame of audio samples.
 /// A sample frame is a grouping of audio samples from each channel
 /// of an output format.
-pub unsafe trait SampleFrame: Copy {
+pub unsafe trait SampleFrame: Copy + 'static {
 	/// Underlying sample type.
 	type Sample: Copy;
 
@@ -311,7 +311,7 @@ pub struct BFormat3D<S: Copy> {
 
 
 impl Format {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
 		match self {
 			Format::Standard(f) => Ok(f.into_raw()),
 			Format::ExtALaw(f) => f.into_raw(ctx),
@@ -342,122 +342,122 @@ impl StandardFormat {
 
 
 impl ExtALawFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
 		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
-			ExtALawFormat::Mono => Ok(ctx.extensions().AL_EXT_ALAW()?.AL_FORMAT_MONO_ALAW_EXT?),
-			ExtALawFormat::Stereo => Ok(ctx.extensions().AL_EXT_ALAW()?.AL_FORMAT_STEREO_ALAW_EXT?),
+			ExtALawFormat::Mono => Ok(ctx.0.exts.AL_EXT_ALAW()?.AL_FORMAT_MONO_ALAW_EXT?),
+			ExtALawFormat::Stereo => Ok(ctx.0.exts.AL_EXT_ALAW()?.AL_FORMAT_STEREO_ALAW_EXT?),
 		})
 	}
 }
 
 
 impl ExtBFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
 		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
-			ExtBFormat::B2DU8 => Ok(ctx.extensions().AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_8?),
-			ExtBFormat::B2DI16 => Ok(ctx.extensions().AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_16?),
-			ExtBFormat::B2DF32 => Ok(ctx.extensions().AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_FLOAT32?),
-			ExtBFormat::B3DU8 => Ok(ctx.extensions().AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT3D_8?),
-			ExtBFormat::B3DI16 => Ok(ctx.extensions().AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT3D_16?),
-			ExtBFormat::B3DF32 => Ok(ctx.extensions().AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT3D_FLOAT32?),
+			ExtBFormat::B2DU8 => Ok(ctx.0.exts.AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_8?),
+			ExtBFormat::B2DI16 => Ok(ctx.0.exts.AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_16?),
+			ExtBFormat::B2DF32 => Ok(ctx.0.exts.AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_FLOAT32?),
+			ExtBFormat::B3DU8 => Ok(ctx.0.exts.AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT3D_8?),
+			ExtBFormat::B3DI16 => Ok(ctx.0.exts.AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT3D_16?),
+			ExtBFormat::B3DF32 => Ok(ctx.0.exts.AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT3D_FLOAT32?),
 		})
 	}
 }
 
 
 impl ExtDoubleFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
 		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
-			ExtDoubleFormat::Mono => Ok(ctx.extensions().AL_EXT_double()?.AL_FORMAT_MONO_DOUBLE_EXT?),
-			ExtDoubleFormat::Stereo => Ok(ctx.extensions().AL_EXT_double()?.AL_FORMAT_STEREO_DOUBLE_EXT?),
+			ExtDoubleFormat::Mono => Ok(ctx.0.exts.AL_EXT_double()?.AL_FORMAT_MONO_DOUBLE_EXT?),
+			ExtDoubleFormat::Stereo => Ok(ctx.0.exts.AL_EXT_double()?.AL_FORMAT_STEREO_DOUBLE_EXT?),
 		})
 	}
 }
 
 
 impl ExtFloat32Format {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
 		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
-			ExtFloat32Format::Mono => Ok(ctx.extensions().AL_EXT_float32()?.AL_FORMAT_MONO_FLOAT32?),
-			ExtFloat32Format::Stereo => Ok(ctx.extensions().AL_EXT_float32()?.AL_FORMAT_STEREO_FLOAT32?),
+			ExtFloat32Format::Mono => Ok(ctx.0.exts.AL_EXT_float32()?.AL_FORMAT_MONO_FLOAT32?),
+			ExtFloat32Format::Stereo => Ok(ctx.0.exts.AL_EXT_float32()?.AL_FORMAT_STEREO_FLOAT32?),
 		})
 	}
 }
 
 
 impl ExtIma4Format {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
 		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
-			ExtIma4Format::Mono => Ok(ctx.extensions().AL_EXT_IMA4()?.AL_FORMAT_MONO_IMA4?),
-			ExtIma4Format::Stereo => Ok(ctx.extensions().AL_EXT_IMA4()?.AL_FORMAT_STEREO_IMA4?),
+			ExtIma4Format::Mono => Ok(ctx.0.exts.AL_EXT_IMA4()?.AL_FORMAT_MONO_IMA4?),
+			ExtIma4Format::Stereo => Ok(ctx.0.exts.AL_EXT_IMA4()?.AL_FORMAT_STEREO_IMA4?),
 		})
 	}
 }
 
 
 impl ExtMcFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
 		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
-			ExtMcFormat::QuadU8 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD8?),
-			ExtMcFormat::QuadI16 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD16?),
-			ExtMcFormat::QuadF32 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD32?),
-			ExtMcFormat::RearU8 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_REAR8?),
-			ExtMcFormat::RearI16 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_REAR16?),
-			ExtMcFormat::RearF32 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_REAR32?),
-			ExtMcFormat::Mc51ChnU8 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_51CHN8?),
-			ExtMcFormat::Mc51ChnI16 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_51CHN16?),
-			ExtMcFormat::Mc51ChnF32 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_51CHN32?),
-			ExtMcFormat::Mc61ChnU8 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_61CHN8?),
-			ExtMcFormat::Mc61ChnI16 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_61CHN16?),
-			ExtMcFormat::Mc61ChnF32 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_61CHN32?),
-			ExtMcFormat::Mc71ChnU8 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_71CHN8?),
-			ExtMcFormat::Mc71ChnI16 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_71CHN16?),
-			ExtMcFormat::Mc71ChnF32 => Ok(ctx.extensions().AL_EXT_MCFORMATS()?.AL_FORMAT_71CHN32?),
+			ExtMcFormat::QuadU8 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD8?),
+			ExtMcFormat::QuadI16 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD16?),
+			ExtMcFormat::QuadF32 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD32?),
+			ExtMcFormat::RearU8 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_REAR8?),
+			ExtMcFormat::RearI16 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_REAR16?),
+			ExtMcFormat::RearF32 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_REAR32?),
+			ExtMcFormat::Mc51ChnU8 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_51CHN8?),
+			ExtMcFormat::Mc51ChnI16 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_51CHN16?),
+			ExtMcFormat::Mc51ChnF32 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_51CHN32?),
+			ExtMcFormat::Mc61ChnU8 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_61CHN8?),
+			ExtMcFormat::Mc61ChnI16 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_61CHN16?),
+			ExtMcFormat::Mc61ChnF32 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_61CHN32?),
+			ExtMcFormat::Mc71ChnU8 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_71CHN8?),
+			ExtMcFormat::Mc71ChnI16 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_71CHN16?),
+			ExtMcFormat::Mc71ChnF32 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_71CHN32?),
 		})
 	}
 }
 
 
 impl ExtMuLawFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
 		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
-			ExtMuLawFormat::Mono => Ok(ctx.extensions().AL_EXT_MULAW()?.AL_FORMAT_MONO_MULAW_EXT?),
-			ExtMuLawFormat::Stereo => Ok(ctx.extensions().AL_EXT_MULAW()?.AL_FORMAT_STEREO_MULAW_EXT?),
+			ExtMuLawFormat::Mono => Ok(ctx.0.exts.AL_EXT_MULAW()?.AL_FORMAT_MONO_MULAW_EXT?),
+			ExtMuLawFormat::Stereo => Ok(ctx.0.exts.AL_EXT_MULAW()?.AL_FORMAT_STEREO_MULAW_EXT?),
 		})
 	}
 }
 
 
 impl ExtMuLawBFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
 		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
-			ExtMuLawBFormat::B2D => Ok(ctx.extensions().AL_EXT_MULAW_BFORMAT()?.AL_FORMAT_BFORMAT2D_MULAW?),
-			ExtMuLawBFormat::B3D => Ok(ctx.extensions().AL_EXT_MULAW_BFORMAT()?.AL_FORMAT_BFORMAT3D_MULAW?),
+			ExtMuLawBFormat::B2D => Ok(ctx.0.exts.AL_EXT_MULAW_BFORMAT()?.AL_FORMAT_BFORMAT2D_MULAW?),
+			ExtMuLawBFormat::B3D => Ok(ctx.0.exts.AL_EXT_MULAW_BFORMAT()?.AL_FORMAT_BFORMAT3D_MULAW?),
 		})
 	}
 }
 
 
 impl ExtMuLawMcFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
 		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
-			ExtMuLawMcFormat::Mono => Ok(ctx.extensions().AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_MONO_MULAW?),
-			ExtMuLawMcFormat::Stereo => Ok(ctx.extensions().AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_STEREO_MULAW?),
-			ExtMuLawMcFormat::Quad => Ok(ctx.extensions().AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_QUAD_MULAW?),
-			ExtMuLawMcFormat::Rear => Ok(ctx.extensions().AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_REAR_MULAW?),
-			ExtMuLawMcFormat::Mc51Chn => Ok(ctx.extensions().AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_51CHN_MULAW?),
-			ExtMuLawMcFormat::Mc61Chn => Ok(ctx.extensions().AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_61CHN_MULAW?),
-			ExtMuLawMcFormat::Mc71Chn => Ok(ctx.extensions().AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_71CHN_MULAW?),
+			ExtMuLawMcFormat::Mono => Ok(ctx.0.exts.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_MONO_MULAW?),
+			ExtMuLawMcFormat::Stereo => Ok(ctx.0.exts.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_STEREO_MULAW?),
+			ExtMuLawMcFormat::Quad => Ok(ctx.0.exts.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_QUAD_MULAW?),
+			ExtMuLawMcFormat::Rear => Ok(ctx.0.exts.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_REAR_MULAW?),
+			ExtMuLawMcFormat::Mc51Chn => Ok(ctx.0.exts.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_51CHN_MULAW?),
+			ExtMuLawMcFormat::Mc61Chn => Ok(ctx.0.exts.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_61CHN_MULAW?),
+			ExtMuLawMcFormat::Mc71Chn => Ok(ctx.0.exts.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_71CHN_MULAW?),
 		})
 	}
 }
 
 
 impl SoftMsadpcmFormat {
-	pub fn into_raw<'d>(self, ctx: Option<&Context<'d>>) -> AltoResult<sys::ALint> {
+	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
 		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
-			SoftMsadpcmFormat::Mono => Ok(ctx.extensions().AL_SOFT_MSADPCM()?.AL_FORMAT_MONO_MSADPCM_SOFT?),
-			SoftMsadpcmFormat::Stereo => Ok(ctx.extensions().AL_SOFT_MSADPCM()?.AL_FORMAT_STEREO_MSADPCM_SOFT?),
+			SoftMsadpcmFormat::Mono => Ok(ctx.0.exts.AL_SOFT_MSADPCM()?.AL_FORMAT_MONO_MSADPCM_SOFT?),
+			SoftMsadpcmFormat::Stereo => Ok(ctx.0.exts.AL_SOFT_MSADPCM()?.AL_FORMAT_STEREO_MSADPCM_SOFT?),
 		})
 	}
 }

@@ -13,4 +13,4 @@ categories = ["multimedia::audio", "api-bindings"]
 lazy_static = "0.2.1"
 enum_primitive = "0.1.0"
 tempdir = "0.3.5"
-al-sys = { path = "al-sys" }
+al-sys = "0.5.1"

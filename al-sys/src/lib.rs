@@ -106,7 +106,7 @@ macro_rules! al_api {
 				use super::*;
 
 				extern "C" {
-					$(pub fn $sym ($($param: $param_ty),*) -> $ret_ty),*
+					$(pub fn $sym ($($param: $param_ty),*) -> $ret_ty;)*
 				}
 			}
 
@@ -121,13 +121,13 @@ macro_rules! al_api {
 
 
 				pub fn load<P: AsRef<Path>>(_path: P) -> io::Result<AlApi> {
-					Err(io::ErrorKind::Other)
+					Err(io::Error::new(io::ErrorKind::Other, "Dynamic loading is not supported on emscripten"))
 				}
 
 
 				$(#[allow(non_snake_case)]
 				#[inline]
-				pub unsafe fn $sym(&self, $($param: $param:ty),*) -> $ret_ty {
+				pub unsafe fn $sym(&self, $($param: $param_ty),*) -> $ret_ty {
 					al_symbols::$sym($($param),*)
 				})*
 			}

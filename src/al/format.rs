@@ -202,11 +202,13 @@ pub unsafe trait SampleFrame: Copy + 'static {
 pub unsafe trait StandardFrame: SampleFrame { }
 
 
+/// Implemented for types that can be converted into a slice of audio buffer data.
 pub trait AsBufferData<F: SampleFrame> {
 	fn as_buffer_data(&self) -> &[F];
 }
 
 
+/// Implemented for types that can be converted into a mutable slice of audio buffer data.
 pub trait AsBufferDataMut<F: SampleFrame> {
 	fn as_buffer_data_mut(&mut self) -> &mut [F];
 }

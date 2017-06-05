@@ -194,6 +194,8 @@ pub enum Alc {
 	SoftHrtf,
 	/// `ALC_SOFT_pause_device`
 	SoftPauseDevice,
+	/// `ALC_SOFT_output_limiter`
+	SoftOutputLimiter,
 }
 
 
@@ -235,6 +237,16 @@ pub enum Al {
 	SoftSourceLength,
 	/// `AL_EXT_source_distance_model`
 	SourceDistanceModel,
+	/// `AL_SOFT_source_spatialize`
+	SoftSourceSpatialize,
+	/// `AL_SOFT_source_resampler`
+	SoftSourceResampler,
+	/// `AL_SOFT_gain_clamp_ex`
+	SoftGainClampEx,
+	/// `AL_EXT_STEREO_ANGLES`
+	StereoAngles,
+	/// `AL_EXT_SOURCE_RADIUS`
+	SourceRadius,
 }
 
 
@@ -490,6 +502,14 @@ alc_ext! {
 		pub fn alcDevicePauseSOFT: unsafe extern "C" fn(dev: *mut ALCdevice),
 		pub fn alcDeviceResumeSOFT: unsafe extern "C" fn(dev: *mut ALCdevice),
 	}
+
+
+	pub ext ALC_SOFT_output_limiter {
+		pub const ALC_OUTPUT_LIMITER_SOFT,
+		pub const ALC_DONT_CARE_SOFT,
+
+		pub fn alcResetDeviceSOFT: unsafe extern "C" fn(dev: *mut ALCdevice, attrList: *const ALCint) -> ALCboolean,
+	}
 }
 
 
@@ -697,6 +717,37 @@ al_ext! {
 
 	pub ext AL_EXT_source_distance_model {
 		pub const AL_SOURCE_DISTANCE_MODEL,
+	}
+
+
+	pub ext AL_EXT_STEREO_ANGLES {
+		pub const AL_STEREO_ANGLES,
+	}
+
+
+	pub ext AL_EXT_SOURCE_RADIUS {
+		pub const AL_SOURCE_RADIUS,
+	}
+
+
+	pub ext AL_SOFT_gain_clamp_ex {
+		pub const AL_GAIN_LIMIT_SOFT,
+	}
+
+
+	pub ext AL_SOFT_source_resampler {
+		pub const AL_NUM_RESAMPLERS_SOFT,
+		pub const AL_DEFAULT_RESAMPLER_SOFT,
+		pub const AL_SOURCE_RESAMPLER_SOFT,
+		pub const AL_RESAMPLER_NAME_SOFT,
+
+		pub fn alGetStringiSOFT: unsafe extern "C" fn(paramName: ALenum, index: ALsizei) -> *const ALchar,
+	}
+
+
+	pub ext AL_SOFT_source_spatialize {
+		pub const AL_SOURCE_SPATIALIZE_SOFT,
+		pub const AL_AUTO_SOFT,
 	}
 }
 

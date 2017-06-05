@@ -87,6 +87,9 @@ pub struct ContextAttrs {
 	/// `ALC_HRTF_ID_SOFT`
 	/// Requires `ALC_SOFT_HRTF`
 	pub soft_hrtf_id: Option<sys::ALCint>,
+	/// `ALC_OUTPUT_LIMITER_SOFT`
+	/// Requires `ALC_SOFT_output_limiter`
+	pub soft_output_limiter: Option<bool>,
 	/// `ALC_MAX_AUXILIARY_SENDS`
 	/// Requires `ALC_EXT_EFX`
 	pub max_aux_sends: Option<sys::ALCint>,
@@ -107,6 +110,9 @@ pub struct LoopbackAttrs {
 	/// `ALC_HRTF_ID_SOFT`
 	/// Requires `ALC_SOFT_HRTF`
 	pub soft_hrtf_id: Option<sys::ALCint>,
+	/// `ALC_OUTPUT_LIMITER_SOFT`
+	/// Requires `ALC_SOFT_output_limiter`
+	pub soft_output_limiter: Option<bool>,
 	/// `ALC_MAX_AUXILIARY_SENDS`
 	/// Requires `ALC_EXT_EFX`
 	pub max_aux_sends: Option<sys::ALCint>,
@@ -196,7 +202,10 @@ pub unsafe trait DeviceObject: Any {
 	fn enumerate_soft_hrtfs(&self) -> Vec<CString>;
 	/// `alcGetIntegerv(ALC_HRTF_STATUS_SOFT)`
 	/// Requires `ALC_SOFT_HRTF`
-	fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus>;
+	fn soft_hrtf_status(&self) -> SoftHrtfStatus;
+	/// `alcGetIntegerv(ALC_OUTPUT_LIMITER_SOFT)`
+	/// Requires `ALC_SOFT_output_limiter`
+	fn soft_output_limiter(&self) -> bool;
 	/// `alcGetIntegerv(ALC_MAX_AUXILIARY_SENDS)`
 	/// Requires `ALC_EXT_EFX`
 	fn max_aux_sends(&self) -> sys::ALCint;
@@ -520,6 +529,7 @@ impl DeviceInner {
 			ext::Alc::Disconnect => self.exts.ALC_EXT_DISCONNECT().is_ok(),
 			ext::Alc::Efx => self.exts.ALC_EXT_EFX().is_ok(),
 			ext::Alc::SoftHrtf => self.exts.ALC_SOFT_HRTF().is_ok(),
+			ext::Alc::SoftOutputLimiter => self.exts.ALC_SOFT_output_limiter().is_ok(),
 			ext::Alc::SoftPauseDevice => self.exts.ALC_SOFT_pause_device().is_ok(),
 		}
 	}
@@ -528,7 +538,7 @@ impl DeviceInner {
 	pub fn connected(&self) -> AltoResult<bool> {
 		let mut value = 0;
 		unsafe { self.alto.0.api.alcGetIntegerv(self.dev, self.exts.ALC_EXT_DISCONNECT()?.ALC_CONNECTED?, 1, &mut value); }
-		self.alto.get_error(self.dev).map(|_| value == sys::ALC_TRUE as sys::ALCint)
+		Ok(value == sys::ALC_TRUE as sys::ALCint)
 	}
 
 
@@ -543,7 +553,7 @@ impl DeviceInner {
 			for i in 0 .. value {
 				unsafe {
 					let spec = ash.alcGetStringiSOFT?(self.dev, ash.ALC_HRTF_SPECIFIER_SOFT?, i) as *mut _;
-					spec_vec.push(self.alto.get_error(self.dev).map(|_| CString::from_raw(spec))?);
+					spec_vec.push(self.alto.get_error(self.dev).map(|_| CStr::from_ptr(spec).to_owned())?);
 				}
 			}
 
@@ -554,20 +564,33 @@ impl DeviceInner {
 	}
 
 
-	pub fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> {
-		let ash = self.exts.ALC_SOFT_HRTF()?;
+	pub fn soft_hrtf_status(&self) -> SoftHrtfStatus {
+		(|| -> AltoResult<_> {
+			let ash = self.exts.ALC_SOFT_HRTF()?;
 
-		let mut value = 0;
-		unsafe { self.alto.0.api.alcGetIntegerv(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut value); }
-		self.alto.get_error(self.dev).and_then(|_| match value {
-			s if s == ash.ALC_HRTF_DISABLED_SOFT? => Ok(SoftHrtfStatus::Disabled),
-			s if s == ash.ALC_HRTF_ENABLED_SOFT? => Ok(SoftHrtfStatus::Enabled),
-			s if s == ash.ALC_HRTF_DENIED_SOFT? => Ok(SoftHrtfStatus::Denied),
-			s if s == ash.ALC_HRTF_REQUIRED_SOFT? => Ok(SoftHrtfStatus::Required),
-			s if s == ash.ALC_HRTF_HEADPHONES_DETECTED_SOFT? => Ok(SoftHrtfStatus::HeadphonesDetected),
-			s if s == ash.ALC_HRTF_UNSUPPORTED_FORMAT_SOFT? => Ok(SoftHrtfStatus::UnsupportedFormat),
-			s => Ok(SoftHrtfStatus::Unknown(s)),
-		})
+			let mut value = 0;
+			unsafe { self.alto.0.api.alcGetIntegerv(self.dev, ash.ALC_HRTF_STATUS_SOFT?, 1, &mut value); }
+			self.alto.get_error(self.dev).and_then(|_| match value {
+				s if s == ash.ALC_HRTF_DISABLED_SOFT? => Ok(SoftHrtfStatus::Disabled),
+				s if s == ash.ALC_HRTF_ENABLED_SOFT? => Ok(SoftHrtfStatus::Enabled),
+				s if s == ash.ALC_HRTF_DENIED_SOFT? => Ok(SoftHrtfStatus::Denied),
+				s if s == ash.ALC_HRTF_REQUIRED_SOFT? => Ok(SoftHrtfStatus::Required),
+				s if s == ash.ALC_HRTF_HEADPHONES_DETECTED_SOFT? => Ok(SoftHrtfStatus::HeadphonesDetected),
+				s if s == ash.ALC_HRTF_UNSUPPORTED_FORMAT_SOFT? => Ok(SoftHrtfStatus::UnsupportedFormat),
+				s => Ok(SoftHrtfStatus::Unknown(s)),
+			})
+		})().unwrap_or(SoftHrtfStatus::Disabled)
+	}
+
+
+	pub fn soft_output_limiter(&self) -> bool {
+		(|| -> AltoResult<_> {
+			let asol = self.exts.ALC_SOFT_output_limiter()?;
+
+			let mut value = 0;
+			unsafe { self.alto.0.api.alcGetIntegerv(self.dev, asol.ALC_OUTPUT_LIMITER_SOFT?, 1, &mut value); }
+			Ok(value == sys::ALC_TRUE as sys::ALCint)
+		})().unwrap_or(false)
 	}
 
 
@@ -591,7 +614,7 @@ impl Drop for DeviceInner {
 
 impl OutputDevice {
 	fn make_attrs_vec(&self, attrs: Option<ContextAttrs>) -> AltoResult<Option<Vec<sys::ALCint>>> {
-		let mut attrs_vec = Vec::with_capacity(15);
+		let mut attrs_vec = Vec::with_capacity(17);
 		if let Some(attrs) = attrs {
 			if let Some(freq) = attrs.frequency {
 				attrs_vec.extend(&[sys::ALC_FREQUENCY, freq]);
@@ -612,6 +635,12 @@ impl OutputDevice {
 				}
 				if let Some(hrtf_id) = attrs.soft_hrtf_id {
 					attrs_vec.extend(&[ash.ALC_HRTF_ID_SOFT?, hrtf_id]);
+				}
+			}
+
+			if let Ok(asol) = self.0.exts.ALC_SOFT_output_limiter() {
+				if let Some(lim) = attrs.soft_output_limiter {
+					attrs_vec.extend(&[asol.ALC_OUTPUT_LIMITER_SOFT?, if lim { sys::ALC_TRUE } else { sys::ALC_FALSE } as sys::ALCint]);
 				}
 			}
 
@@ -688,7 +717,8 @@ unsafe impl DeviceObject for OutputDevice {
 
 	#[inline] fn is_extension_present(&self, ext: ext::Alc) -> bool { self.0.is_extension_present(ext) }
 	#[inline] fn enumerate_soft_hrtfs(&self) -> Vec<CString> { self.0.enumerate_soft_hrtfs() }
-	#[inline] fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> { self.0.soft_hrtf_status() }
+	#[inline] fn soft_hrtf_status(&self) -> SoftHrtfStatus { self.0.soft_hrtf_status() }
+	#[inline] fn soft_output_limiter(&self) -> bool { self.0.soft_output_limiter() }
 	#[inline] fn max_aux_sends(&self) -> sys::ALCint { self.0.max_aux_sends() }
 	#[inline] fn to_device(&self) -> Device { Device(self.0.clone()) }
 }
@@ -710,7 +740,7 @@ impl<F: LoopbackFrame> LoopbackDevice<F> {
 	fn make_attrs_vec(&self, freq: sys::ALCint, attrs: Option<LoopbackAttrs>) -> AltoResult<Vec<sys::ALCint>> {
 		let asl = self.0.alto.0.exts.ALC_SOFT_loopback()?;
 
-		let mut attrs_vec = Vec::with_capacity(17);
+		let mut attrs_vec = Vec::with_capacity(19);
 		attrs_vec.extend(&[sys::ALC_FREQUENCY, freq]);
 		attrs_vec.extend(&[asl.ALC_FORMAT_CHANNELS_SOFT?, F::channels(&asl)?]);
 		attrs_vec.extend(&[asl.ALC_FORMAT_TYPE_SOFT?, F::sample_ty(&asl)?]);
@@ -728,6 +758,12 @@ impl<F: LoopbackFrame> LoopbackDevice<F> {
 				}
 				if let Some(hrtf_id) = attrs.soft_hrtf_id {
 					attrs_vec.extend(&[ash.ALC_HRTF_ID_SOFT?, hrtf_id]);
+				}
+			}
+
+			if let Ok(asol) = self.0.exts.ALC_SOFT_output_limiter() {
+				if let Some(lim) = attrs.soft_output_limiter {
+					attrs_vec.extend(&[asol.ALC_OUTPUT_LIMITER_SOFT?, if lim { sys::ALC_TRUE } else { sys::ALC_FALSE } as sys::ALCint]);
 				}
 			}
 
@@ -788,7 +824,8 @@ unsafe impl<F: LoopbackFrame> DeviceObject for LoopbackDevice<F> {
 
 	#[inline] fn is_extension_present(&self, ext: ext::Alc) -> bool { self.0.is_extension_present(ext) }
 	#[inline] fn enumerate_soft_hrtfs(&self) -> Vec<CString> { self.0.enumerate_soft_hrtfs() }
-	#[inline] fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> { self.0.soft_hrtf_status() }
+	#[inline] fn soft_hrtf_status(&self) -> SoftHrtfStatus { self.0.soft_hrtf_status() }
+	#[inline] fn soft_output_limiter(&self) -> bool { self.0.soft_output_limiter() }
 	#[inline] fn max_aux_sends(&self) -> sys::ALCint { self.0.max_aux_sends() }
 	#[inline] fn to_device(&self) -> Device { Device(self.0.clone()) }
 }
@@ -814,7 +851,8 @@ unsafe impl DeviceObject for Device {
 
 	#[inline] fn is_extension_present(&self, ext: ext::Alc) -> bool { self.0.is_extension_present(ext) }
 	#[inline] fn enumerate_soft_hrtfs(&self) -> Vec<CString> { self.0.enumerate_soft_hrtfs() }
-	#[inline] fn soft_hrtf_status(&self) -> AltoResult<SoftHrtfStatus> { self.0.soft_hrtf_status() }
+	#[inline] fn soft_hrtf_status(&self) -> SoftHrtfStatus { self.0.soft_hrtf_status() }
+	#[inline] fn soft_output_limiter(&self) -> bool { self.0.soft_output_limiter() }
 	#[inline] fn max_aux_sends(&self) -> sys::ALCint { self.0.max_aux_sends() }
 	#[inline] fn to_device(&self) -> Device { Device(self.0.clone()) }
 }

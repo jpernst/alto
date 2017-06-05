@@ -6,6 +6,7 @@ use std::collections::VecDeque;
 use std::mem;
 use std::ptr;
 use std::hash::{Hash, Hasher};
+use std::ffi::{CString, CStr};
 
 use ::{AltoError, AltoResult};
 use sys;
@@ -42,6 +43,19 @@ pub enum DistanceModel {
 	Exponent,
 	/// `AL_EXPONENT_DISTANCE_CLAMPLED`
 	ExponentClamped,
+}
+
+
+/// The spatialization mode of a source.
+/// Requires `ALC_SOFT_source_spatialization`
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum SoftSourceSpatialize {
+	/// `AL_FALSE`
+	Disabled,
+	/// `AL_TRUE`
+	Enabled,
+	/// `AL_AUTO_SOFT`
+	Auto,
 }
 
 
@@ -165,12 +179,12 @@ pub unsafe trait SourceTrait {
 	/// `alSourcef(AL_SEC_OFFSET)`
 	fn set_sec_offset(&mut self, f32) -> AltoResult<()>;
 
-	/// `alSetSourcei(AL_SAMPLE_OFFSET)`
+	/// `alGetSourcei(AL_SAMPLE_OFFSET)`
 	fn sample_offset(&self) -> sys::ALint;
 	/// `alSourcei(AL_SAMPLE_OFFSET)`
 	fn set_sample_offset(&mut self, sys::ALint) -> AltoResult<()>;
 
-	/// `alSetSourcei(AL_BYTE_OFFSET)`
+	/// `alGetSourcei(AL_BYTE_OFFSET)`
 	fn byte_offset(&self) -> sys::ALint;
 	/// `alSourcei(AL_BYTE_OFFSET)`
 	fn set_byte_offset(&mut self, sys::ALint) -> AltoResult<()>;
@@ -208,6 +222,34 @@ pub unsafe trait SourceTrait {
 	/// `alSourcei(AL_DISTANCE_MODEL)`
 	/// Requires `AL_EXT_source_distance_model`
 	fn set_distance_model(&mut self, DistanceModel) -> AltoResult<()>;
+
+	/// `alGetSourcei(AL_SOURCE_SPATIALIZATION_SOFT)`
+	/// Requires `AL_SOFT_source_spatialization`
+	fn soft_spatialization(&self) -> SoftSourceSpatialize;
+	/// `alSourcei(AL_SOURCE_SPATIALIZATION_SOFT)`
+	/// Requires `AL_SOFT_source_spatialization`
+	fn set_soft_spatialization(&mut self, value: SoftSourceSpatialize) -> AltoResult<()>;
+
+	/// `alGetSourcei(AL_SOURCE_RESAMPLER_SOFT)`
+	/// Requires `AL_SOFT_source_resampler`
+	fn soft_resampler(&self) -> AltoResult<sys::ALint>;
+	/// `alSourcei(AL_SOURCE_RESAMPLER_SOFT)`
+	/// Requires `AL_SOFT_source_resampler`
+	fn set_soft_resampler(&mut self, value: sys::ALint) -> AltoResult<()>;
+
+	/// `alGetSourcefv(AL_SOURCE_SPATIALIZATION_SOFT)`
+	/// Requires `AL_SOFT_source_spatialization`
+	fn stereo_angles<V: From<[f32; 2]>>(&self) -> AltoResult<V>;
+	/// `alSourcefv(AL_SOURCE_SPATIALIZATION_SOFT)`
+	/// Requires `AL_SOFT_source_spatialization`
+	fn set_stereo_angles<V: Into<[f32; 2]>>(&mut self, value: V) -> AltoResult<()>;
+
+	/// `alGetSourcef(AL_SOURCE_RADIUS)`
+	/// Requires `AL_EXT_SOURCE_RADIUS`
+	fn radius(&self) -> f32;
+	/// `alSourcef(AL_SOURCE_RADIUS)`
+	/// Requires `AL_EXT_SOURCE_RADIUS`
+	fn set_radius(&self, value: f32) -> AltoResult<()>;
 
 	/// `alSourcei(AL_DIRECT_FILTER)`
 	/// Requires `ALC_EXT_EFX`
@@ -335,6 +377,11 @@ impl Context {
 			ext::Al::SoftSourceLatency => self.0.exts.AL_SOFT_source_latency().is_ok(),
 			ext::Al::SoftSourceLength => self.0.exts.AL_SOFT_source_length().is_ok(),
 			ext::Al::SourceDistanceModel => self.0.exts.AL_EXT_source_distance_model().is_ok(),
+			ext::Al::SoftSourceSpatialize => self.0.exts.AL_SOFT_source_spatialize().is_ok(),
+			ext::Al::SoftSourceResampler => self.0.exts.AL_SOFT_source_resampler().is_ok(),
+			ext::Al::SoftGainClampEx => self.0.exts.AL_SOFT_gain_clamp_ex().is_ok(),
+			ext::Al::StereoAngles => self.0.exts.AL_EXT_STEREO_ANGLES().is_ok(),
+			ext::Al::SourceRadius => self.0.exts.AL_EXT_SOURCE_RADIUS().is_ok(),
 		}
 	}
 
@@ -342,8 +389,7 @@ impl Context {
 	/// `alGetInteger(AL_DISTANCE_MODEL)`
 	pub fn distance_model(&self) -> DistanceModel {
 		let _lock = self.make_current(true);
-		let value = unsafe { self.0.dev.0.alto.0.api.alGetInteger(sys::AL_DISTANCE_MODEL) };
-		match value {
+		match unsafe { self.0.dev.0.alto.0.api.alGetInteger(sys::AL_DISTANCE_MODEL) } {
 			sys::AL_NONE => DistanceModel::None,
 			sys::AL_INVERSE_DISTANCE => DistanceModel::Inverse,
 			sys::AL_INVERSE_DISTANCE_CLAMPED => DistanceModel::InverseClamped,
@@ -375,10 +421,9 @@ impl Context {
 	/// Requires `AL_EXT_source_distance_model`
 	pub fn using_source_distance_model(&self) -> bool {
 		let _lock = self.make_current(true);
-		let value = (|| -> AltoResult<_> {
+		(|| -> AltoResult<_> {
 			unsafe { Ok(self.0.dev.0.alto.0.api.alIsEnabled(self.0.exts.AL_EXT_source_distance_model()?.AL_SOURCE_DISTANCE_MODEL?)) }
-		})();
-		value.unwrap_or(sys::AL_FALSE) == sys::AL_TRUE
+		})().unwrap_or(sys::AL_FALSE) == sys::AL_TRUE
 	}
 	/// `alEnable/alDisable(AL_SOURCE_DISTANCE_MODEL)`
 	/// Requires `AL_EXT_source_distance_model`
@@ -396,8 +441,7 @@ impl Context {
 	/// `alGetFloat(AL_DOPPLER_FACTOR)`
 	pub fn doppler_factor(&self) -> f32 {
 		let _lock = self.make_current(true);
-		let value = unsafe { self.0.dev.0.alto.0.api.alGetFloat(sys::AL_DOPPLER_FACTOR) };
-		value
+		unsafe { self.0.dev.0.alto.0.api.alGetFloat(sys::AL_DOPPLER_FACTOR) }
 	}
 	/// `alDopplerFactor()`
 	pub fn set_doppler_factor(&self, value: f32) -> AltoResult<()> {
@@ -410,8 +454,7 @@ impl Context {
 	/// `alGetFloat(AL_SPEED_OF_SOUND)`
 	pub fn speed_of_sound(&self) -> f32 {
 		let _lock = self.make_current(true);
-		let value = unsafe { self.0.dev.0.alto.0.api.alGetFloat(sys::AL_SPEED_OF_SOUND) };
-		value
+		unsafe { self.0.dev.0.alto.0.api.alGetFloat(sys::AL_SPEED_OF_SOUND) }
 	}
 	/// `alSpeedOfSound()`
 	pub fn set_speed_of_sound(&self, value: f32) -> AltoResult<()> {
@@ -484,17 +527,48 @@ impl Context {
 	}
 
 
+	/// `alGetListenerf(AL_GAIN_LIMIT_SOFT)`
+	/// Requires `AL_SOFT_gain_clamp_ex`
+	pub fn soft_gain_limit(&self) -> AltoResult<f32> {
+		let asgce = self.0.exts.AL_SOFT_gain_clamp_ex()?;
+		let _lock = self.make_current(true);
+		Ok(unsafe { self.0.dev.0.alto.0.api.alGetFloat(asgce.AL_GAIN_LIMIT_SOFT?) })
+	}
+
+
+	/// `alGetStringiSOFT(AL_RESAMPLER_NAME_SOFT)`
+	/// Requires `AL_SOFT_source_resampler`
+	pub fn enumerate_soft_resamplers(&self) -> Vec<CString> {
+		let mut name_vec = Vec::with_capacity(0);
+
+		let _ = (|| -> AltoResult<_> {
+			let assr = self.0.exts.AL_SOFT_source_resampler()?;
+			let value = unsafe { self.0.dev.0.alto.0.api.alGetInteger(assr.AL_NUM_RESAMPLERS_SOFT?) };
+
+			for i in 0 .. value {
+				unsafe {
+					let name = assr.alGetStringiSOFT?(assr.AL_RESAMPLER_NAME_SOFT?, i) as *mut _;
+					name_vec.push(CStr::from_ptr(name).to_owned());
+				}
+			}
+
+			Ok(())
+		})();
+
+		name_vec
+	}
+
+
 	/// `alGetListenerf(AL_METERS_PER_UNIT)`
 	/// Requires `ALC_EXT_EFX`
 	pub fn meters_per_unit(&self) -> f32 {
-		let mut value = 1.0;
-		let _ = (|| -> AltoResult<_> {
+		(|| -> AltoResult<_> {
 			let efx = self.0.dev.0.exts.ALC_EXT_EFX()?;
 			let _lock = self.make_current(true);
+			let mut value = 0.0;
 			unsafe { self.0.dev.0.alto.0.api.alGetListenerf(efx.AL_METERS_PER_UNIT?, &mut value); }
-			Ok(())
-		})();
-		value
+			Ok(value)
+		})().unwrap_or(1.0)
 	}
 	/// `alListenerf(AL_METERS_PER_UNIT)`
 	/// Requires `ALC_EXT_EFX`
@@ -526,7 +600,7 @@ impl Context {
 
 	/// `alDeferUpdatesSOFT()`
 	/// requires `AL_SOFT_deferred_updates` is available.
-	pub fn defer_updates(& self) -> AltoResult<DeferLock> {
+	pub fn defer_updates(&self) -> AltoResult<DeferLock> {
 		DeferLock::new(self)
 	}
 
@@ -725,12 +799,11 @@ impl Buffer {
 	/// Requires `AL_SOFT_loop_points`
 	pub fn soft_loop_points(&self) -> (sys::ALint, sys::ALint) {
 		let _lock = self.ctx.make_current(true);
-		let mut value = [0, self.len];
-		let _ = (|| -> AltoResult<_> {
+		(|| -> AltoResult<_> {
+			let mut value = [0, self.len];
 			unsafe { self.ctx.0.dev.0.alto.0.api.alGetBufferiv(self.buf, self.ctx.0.exts.AL_SOFT_loop_points()?.AL_LOOP_POINTS_SOFT?, &mut value as *mut [sys::ALint; 2] as *mut sys::ALint) }
-			Ok(())
-		})();
-		(value[0], value[1])
+			Ok((value[0], value[1]))
+		})().unwrap_or((0, self.len))
 	}
 	/// `alBufferiv(AL_LOOP_POINTS_SOFT)`
 	/// Requires `AL_SOFT_loop_points`
@@ -1032,12 +1105,11 @@ impl SourceInner {
 
 	fn soft_direct_channels(&self) -> bool {
 		let _lock = self.ctx.make_current(true);
-		let mut value = 0;
-		let _ = (|| -> AltoResult<_> {
+		(|| -> AltoResult<_> {
+			let mut value = 0;
 			unsafe { self.ctx.0.dev.0.alto.0.api.alGetSourcei(self.src, self.ctx.0.exts.AL_SOFT_direct_channels()?.AL_DIRECT_CHANNELS_SOFT?, &mut value); }
-			Ok(())
-		})();
-		value == sys::AL_TRUE as sys::ALint
+			Ok(value)
+		})().unwrap_or(sys::AL_FALSE as sys::ALint) == sys::AL_TRUE as sys::ALint
 	}
 	fn set_soft_direct_channels(&self, value: bool) -> AltoResult<()> {
 		let _lock = self.ctx.make_current(true);
@@ -1071,23 +1143,22 @@ impl SourceInner {
 
 
 	fn distance_model(&self) -> DistanceModel {
-		let mut value = sys::AL_INVERSE_DISTANCE_CLAMPED;
-		let _ = (|| -> AltoResult<_> {
+		(|| -> AltoResult<_> {
 			self.ctx.0.exts.AL_EXT_source_distance_model()?;
 			let _lock = self.ctx.make_current(true);
+			let mut value = 0;
 			unsafe { self.ctx.0.dev.0.alto.0.api.alGetSourcei(self.src, sys::AL_DISTANCE_MODEL, &mut value); }
-			Ok(())
-		})();
-		match value {
-			sys::AL_NONE => DistanceModel::None,
-			sys::AL_INVERSE_DISTANCE => DistanceModel::Inverse,
-			sys::AL_INVERSE_DISTANCE_CLAMPED => DistanceModel::InverseClamped,
-			sys::AL_LINEAR_DISTANCE => DistanceModel::Linear,
-			sys::AL_LINEAR_DISTANCE_CLAMPED => DistanceModel::LinearClamped,
-			sys::AL_EXPONENT_DISTANCE => DistanceModel::Exponent,
-			sys::AL_EXPONENT_DISTANCE_CLAMPED => DistanceModel::ExponentClamped,
-			_ => panic!("ALTO ERROR: Unknown distance model")
-		}
+			Ok(match value {
+				sys::AL_NONE => DistanceModel::None,
+				sys::AL_INVERSE_DISTANCE => DistanceModel::Inverse,
+				sys::AL_INVERSE_DISTANCE_CLAMPED => DistanceModel::InverseClamped,
+				sys::AL_LINEAR_DISTANCE => DistanceModel::Linear,
+				sys::AL_LINEAR_DISTANCE_CLAMPED => DistanceModel::LinearClamped,
+				sys::AL_EXPONENT_DISTANCE => DistanceModel::Exponent,
+				sys::AL_EXPONENT_DISTANCE_CLAMPED => DistanceModel::ExponentClamped,
+				_ => panic!("ALTO ERROR: Unknown distance model")
+			})
+		})().unwrap_or(DistanceModel::InverseClamped)
 	}
 	fn set_distance_model(&self, value: DistanceModel) -> AltoResult<()> {
 		self.ctx.0.exts.AL_EXT_source_distance_model()?;
@@ -1102,6 +1173,90 @@ impl SourceInner {
 				DistanceModel::Exponent => sys::AL_EXPONENT_DISTANCE,
 				DistanceModel::ExponentClamped => sys::AL_EXPONENT_DISTANCE_CLAMPED,
 			});
+		}
+		self.ctx.get_error()
+	}
+
+
+	fn soft_spatialization(&self) -> SoftSourceSpatialize {
+		(|| -> AltoResult<_> {
+			let assp = self.ctx.0.exts.AL_SOFT_source_spatialize()?;
+			let _lock = self.ctx.make_current(true);
+			let mut value = 0;
+			unsafe { self.ctx.0.dev.0.alto.0.api.alGetSourcei(self.src, assp.AL_SOURCE_SPATIALIZE_SOFT?, &mut value); }
+			Ok(match value as sys::ALboolean {
+				sys::AL_FALSE => SoftSourceSpatialize::Disabled,
+				sys::AL_TRUE => SoftSourceSpatialize::Enabled,
+				v if v == assp.AL_AUTO_SOFT? as sys::ALboolean => SoftSourceSpatialize::Auto,
+				_ => panic!("ALTO ERROR: Unknown source spatialization")
+			})
+		})().unwrap_or(SoftSourceSpatialize::Auto)
+	}
+	fn set_soft_spatialization(&self, value: SoftSourceSpatialize) -> AltoResult<()> {
+		let assp = self.ctx.0.exts.AL_SOFT_source_spatialize()?;
+		let _lock = self.ctx.make_current(true);
+		unsafe {
+			self.ctx.0.dev.0.alto.0.api.alSourcei(self.src, assp.AL_SOURCE_SPATIALIZE_SOFT?, match value {
+				SoftSourceSpatialize::Disabled => sys::AL_FALSE as sys::ALint,
+				SoftSourceSpatialize::Enabled => sys::AL_TRUE as sys::ALint,
+				SoftSourceSpatialize::Auto => assp.AL_AUTO_SOFT?,
+			});
+		}
+		self.ctx.get_error()
+	}
+
+
+	fn soft_resampler(&self) -> AltoResult<sys::ALint> {
+		let assr = self.ctx.0.exts.AL_SOFT_source_resampler()?;
+		let _lock = self.ctx.make_current(true);
+		let mut value = 0;
+		unsafe { self.ctx.0.dev.0.alto.0.api.alGetSourceiv(self.src, assr.AL_SOURCE_RESAMPLER_SOFT?, &mut value); }
+		Ok(value.into())
+	}
+	fn set_soft_resampler(&self, value: sys::ALint) -> AltoResult<()> {
+		let assr = self.ctx.0.exts.AL_SOFT_source_resampler()?;
+		let _lock = self.ctx.make_current(true);
+		unsafe {
+			let value = value.into();
+			self.ctx.0.dev.0.alto.0.api.alSourceiv(self.src, assr.AL_SOURCE_RESAMPLER_SOFT?, &value);
+		}
+		self.ctx.get_error()
+	}
+
+
+	fn stereo_angles<V: From<[f32; 2]>>(&self) -> AltoResult<V> {
+		let aesa = self.ctx.0.exts.AL_EXT_STEREO_ANGLES()?;
+		let _lock = self.ctx.make_current(true);
+		let mut value = [0.0, 0.0];
+		unsafe { self.ctx.0.dev.0.alto.0.api.alGetSourcefv(self.src, aesa.AL_STEREO_ANGLES?, &mut value as *mut [f32; 2] as *mut f32); }
+		Ok(value.into())
+	}
+	fn set_stereo_angles<V: Into<[f32; 2]>>(&self, value: V) -> AltoResult<()> {
+		let aesa = self.ctx.0.exts.AL_EXT_STEREO_ANGLES()?;
+		let _lock = self.ctx.make_current(true);
+		unsafe {
+			let value = value.into();
+			self.ctx.0.dev.0.alto.0.api.alSourcefv(self.src, aesa.AL_STEREO_ANGLES?, &value as *const [f32; 2] as *const f32);
+		}
+		self.ctx.get_error()
+	}
+
+
+	fn radius(&self) -> f32 {
+		(|| -> AltoResult<_> {
+			let aesr = self.ctx.0.exts.AL_EXT_SOURCE_RADIUS()?;
+			let _lock = self.ctx.make_current(true);
+			let mut value = 0.0;
+			unsafe { self.ctx.0.dev.0.alto.0.api.alGetSourcefv(self.src, aesr.AL_SOURCE_RADIUS?, &mut value); }
+			Ok(value.into())
+		})().unwrap_or(0.0)
+	}
+	fn set_radius(&self, value: f32) -> AltoResult<()> {
+		let aesr = self.ctx.0.exts.AL_EXT_SOURCE_RADIUS()?;
+		let _lock = self.ctx.make_current(true);
+		unsafe {
+			let value = value.into();
+			self.ctx.0.dev.0.alto.0.api.alSourcefv(self.src, aesr.AL_SOURCE_RADIUS?, &value);
 		}
 		self.ctx.get_error()
 	}
@@ -1178,14 +1333,13 @@ impl SourceInner {
 
 
 	fn air_absorption_factor(&self) -> f32 {
-		let mut value = 0.0;
-		let _ = (|| -> AltoResult<_> {
+		(|| -> AltoResult<_> {
 			let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
 			let _lock = self.ctx.make_current(true);
+			let mut value = 0.0;
 			unsafe { self.ctx.0.dev.0.alto.0.api.alGetSourcef(self.src, efx.AL_AIR_ABSORPTION_FACTOR?, &mut value); }
-			Ok(())
-		})();
-		value
+			Ok(value)
+		})().unwrap_or(0.0)
 	}
 	fn set_air_absorption_factor(&self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
@@ -1196,14 +1350,13 @@ impl SourceInner {
 
 
 	fn room_rolloff_factor(&self) -> f32 {
-		let mut value = 0.0;
-		let _ = (|| -> AltoResult<_> {
+		(|| -> AltoResult<_> {
 			let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
 			let _lock = self.ctx.make_current(true);
+			let mut value = 0.0;
 			unsafe { self.ctx.0.dev.0.alto.0.api.alGetSourcef(self.src, efx.AL_ROOM_ROLLOFF_FACTOR?, &mut value); }
-			Ok(())
-		})();
-		value
+			Ok(value)
+		})().unwrap_or(0.0)
 	}
 	fn set_room_rolloff_factor(&self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
@@ -1214,14 +1367,13 @@ impl SourceInner {
 
 
 	fn cone_outer_gainhf(&self) -> f32 {
-		let mut value = 0.0;
-		let _ = (|| -> AltoResult<_> {
+		(|| -> AltoResult<_> {
 			let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
 			let _lock = self.ctx.make_current(true);
+			let mut value = 0.0;
 			unsafe { self.ctx.0.dev.0.alto.0.api.alGetSourcef(self.src, efx.AL_CONE_OUTER_GAINHF?, &mut value); }
-			Ok(())
-		})();
-		value
+			Ok(value)
+		})().unwrap_or(0.0)
 	}
 	fn set_cone_outer_gainhf(&self, value: f32) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
@@ -1232,14 +1384,13 @@ impl SourceInner {
 
 
 	fn direct_filter_gainhf_auto(&self) -> bool {
-		let mut value = sys::AL_TRUE as sys::ALint;
-		let _ = (|| -> AltoResult<_> {
+		(|| -> AltoResult<_> {
 			let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
 			let _lock = self.ctx.make_current(true);
+			let mut value = 0;
 			unsafe { self.ctx.0.dev.0.alto.0.api.alGetSourcei(self.src, efx.AL_CONE_OUTER_GAINHF?, &mut value); }
-			Ok(())
-		})();
-		value == sys::AL_TRUE as sys::ALint
+			Ok(value)
+		})().unwrap_or(sys::AL_TRUE as sys::ALint) == sys::AL_TRUE as sys::ALint
 	}
 	fn set_direct_filter_gainhf_auto(&self, value: bool) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
@@ -1406,6 +1557,18 @@ unsafe impl SourceTrait for StaticSource {
 	#[inline] fn distance_model(&self) -> DistanceModel { self.src.distance_model() }
 	#[inline] fn set_distance_model(&mut self, value: DistanceModel) -> AltoResult<()> { self.src.set_distance_model(value) }
 
+	#[inline] fn soft_spatialization(&self) -> SoftSourceSpatialize { self.src.soft_spatialization() }
+	#[inline] fn set_soft_spatialization(&mut self, value: SoftSourceSpatialize) -> AltoResult<()> { self.src.set_soft_spatialization(value) }
+
+	#[inline] fn soft_resampler(&self) -> AltoResult<sys::ALint> { self.src.soft_resampler() }
+	#[inline] fn set_soft_resampler(&mut self, value: sys::ALint) -> AltoResult<()> { self.src.set_soft_resampler(value) }
+
+	#[inline] fn stereo_angles<V: From<[f32; 2]>>(&self) -> AltoResult<V> { self.src.stereo_angles() }
+	#[inline] fn set_stereo_angles<V: Into<[f32; 2]>>(&mut self, value: V) -> AltoResult<()> { self.src.set_stereo_angles(value) }
+
+	#[inline] fn radius(&self) -> f32 { self.src.radius() }
+	#[inline] fn set_radius(&self, value: f32) -> AltoResult<()> { self.src.set_radius(value) }
+
 	#[inline] fn set_direct_filter<F: FilterTrait>(&mut self, value: &F) -> AltoResult<()> { self.src.set_direct_filter(value) }
 	#[inline] fn clear_direct_filter(&mut self) { self.src.clear_direct_filter() }
 
@@ -1568,6 +1731,18 @@ unsafe impl SourceTrait for StreamingSource {
 
 	#[inline] fn distance_model(&self) -> DistanceModel { self.src.distance_model() }
 	#[inline] fn set_distance_model(&mut self, value: DistanceModel) -> AltoResult<()> { self.src.set_distance_model(value) }
+
+	#[inline] fn soft_spatialization(&self) -> SoftSourceSpatialize { self.src.soft_spatialization() }
+	#[inline] fn set_soft_spatialization(&mut self, value: SoftSourceSpatialize) -> AltoResult<()> { self.src.set_soft_spatialization(value) }
+
+	#[inline] fn soft_resampler(&self) -> AltoResult<sys::ALint> { self.src.soft_resampler() }
+	#[inline] fn set_soft_resampler(&mut self, value: sys::ALint) -> AltoResult<()> { self.src.set_soft_resampler(value) }
+
+	#[inline] fn stereo_angles<V: From<[f32; 2]>>(&self) -> AltoResult<V> { self.src.stereo_angles() }
+	#[inline] fn set_stereo_angles<V: Into<[f32; 2]>>(&mut self, value: V) -> AltoResult<()> { self.src.set_stereo_angles(value) }
+
+	#[inline] fn radius(&self) -> f32 { self.src.radius() }
+	#[inline] fn set_radius(&self, value: f32) -> AltoResult<()> { self.src.set_radius(value) }
 
 	#[inline] fn set_direct_filter<F: FilterTrait>(&mut self, value: &F) -> AltoResult<()> { self.src.set_direct_filter(value) }
 	#[inline] fn clear_direct_filter(&mut self) { self.src.clear_direct_filter() }

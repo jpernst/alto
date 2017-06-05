@@ -523,6 +523,7 @@ impl DeviceInner {
 	#[inline] fn as_raw(&self) -> *mut sys::ALCdevice { self.dev }
 
 
+	/// `alcIsExtensionPresent()`
 	pub fn is_extension_present(&self, ext: ext::Alc) -> bool {
 		match ext {
 			ext::Alc::Dedicated => self.exts.ALC_EXT_DEDICATED().is_ok(),
@@ -535,6 +536,8 @@ impl DeviceInner {
 	}
 
 
+	/// `alcGetIntegerv(ALC_CONNECTED)`
+	/// Requires `ALC_EXT_DISCONNECT`
 	pub fn connected(&self) -> AltoResult<bool> {
 		let mut value = 0;
 		unsafe { self.alto.0.api.alcGetIntegerv(self.dev, self.exts.ALC_EXT_DISCONNECT()?.ALC_CONNECTED?, 1, &mut value); }
@@ -542,6 +545,8 @@ impl DeviceInner {
 	}
 
 
+	/// `alcGetStringiSOFT(ALC_NUM_HRTF_SPECIFIERS_SOFT)`
+	/// Requires `ALC_SOFT_HRTF`
 	pub fn enumerate_soft_hrtfs(&self) -> Vec<CString> {
 		let mut spec_vec = Vec::with_capacity(0);
 
@@ -564,6 +569,8 @@ impl DeviceInner {
 	}
 
 
+	/// `alcGetIntegerv(ALC_HRTF_STATUS_SOFT)`
+	/// Requires `ALC_SOFT_HRTF`
 	pub fn soft_hrtf_status(&self) -> SoftHrtfStatus {
 		(|| -> AltoResult<_> {
 			let ash = self.exts.ALC_SOFT_HRTF()?;
@@ -583,6 +590,8 @@ impl DeviceInner {
 	}
 
 
+	/// `alcGetIntegerv(ALC_OUTPUT_LIMITER_SOFT)`
+	/// Requires `ALC_SOFT_output_limiter`
 	pub fn soft_output_limiter(&self) -> bool {
 		(|| -> AltoResult<_> {
 			let asol = self.exts.ALC_SOFT_output_limiter()?;
@@ -594,6 +603,8 @@ impl DeviceInner {
 	}
 
 
+	/// `alcGetIntegerv(ALC_MAX_AUXILIARY_SENDS)`
+	/// Requires `ALC_EXT_EFX`
 	pub fn max_aux_sends(&self) -> sys::ALCint {
 		let mut value = 0;
 		let _ = (|| -> AltoResult<_> {

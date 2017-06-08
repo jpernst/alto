@@ -599,8 +599,8 @@ impl Context {
 
 
 	/// `alDeferUpdatesSOFT()`
-	/// requires `AL_SOFT_deferred_updates` is available.
-	pub fn defer_updates(&self) -> AltoResult<DeferLock> {
+	/// Requires `AL_SOFT_deferred_updates`
+	pub fn defer_updates(&self) -> DeferLock {
 		DeferLock::new(self)
 	}
 
@@ -677,22 +677,22 @@ unsafe impl Sync for Context { }
 
 
 impl<'c> DeferLock<'c> {
-	fn new(ctx: &'c Context) -> AltoResult<DeferLock> {
-		let asdu = ctx.0.exts.AL_SOFT_deferred_updates()?;
-		let adus = asdu.alDeferUpdatesSOFT?;
-		asdu.alProcessUpdatesSOFT?;
-		let _lock = ctx.make_current(true);
+	fn new(ctx: &'c Context) -> DeferLock {
+		let _ = (|| -> AltoResult<_> {
+			let asdu = ctx.0.exts.AL_SOFT_deferred_updates()?;
+			let adus = asdu.alDeferUpdatesSOFT?;
+			asdu.alProcessUpdatesSOFT?;
 
-		let old = ctx.0.defer_rc.fetch_add(1, Ordering::SeqCst);
-		if old == 0 {
-			unsafe { adus(); }
-			if let Err(e) = ctx.get_error() {
-				ctx.0.defer_rc.fetch_sub(1, Ordering::SeqCst);
-				return Err(e.into());
+			let old = ctx.0.defer_rc.fetch_add(1, Ordering::SeqCst);
+			if old == 0 {
+				let _lock = ctx.make_current(true);
+				unsafe { adus(); }
 			}
-		}
 
-		Ok(DeferLock{ctx: ctx})
+			Ok(())
+		})();
+
+		DeferLock{ctx: ctx}
 	}
 }
 
@@ -706,12 +706,16 @@ impl<'c> Deref for DeferLock<'c> {
 
 impl<'c> Drop for DeferLock<'c> {
 	fn drop(&mut self) {
-		let old = self.0.defer_rc.fetch_sub(1, Ordering::SeqCst);
-		if old == 1 {
-			let apus = self.0.exts.AL_SOFT_deferred_updates().and_then(|asdu| asdu.alProcessUpdatesSOFT).unwrap();
-			let _lock = self.ctx.make_current(true);
-			unsafe { apus(); }
-		}
+		let _ = (|| -> AltoResult<_> {
+			let apus = self.0.exts.AL_SOFT_deferred_updates().and_then(|asdu| asdu.alProcessUpdatesSOFT)?;
+			let old = self.0.defer_rc.fetch_sub(1, Ordering::SeqCst);
+			if old == 1 {
+				let _lock = self.ctx.make_current(true);
+				unsafe { apus(); }
+			}
+
+			Ok(())
+		})();
 	}
 }
 

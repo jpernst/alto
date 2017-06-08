@@ -49,7 +49,7 @@ pub enum DistanceModel {
 /// The spatialization mode of a source.
 /// Requires `ALC_SOFT_source_spatialization`
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum SoftSourceSpatialize {
+pub enum SoftSourceSpatialization {
 	/// `AL_FALSE`
 	Disabled,
 	/// `AL_TRUE`
@@ -87,7 +87,7 @@ pub struct Buffer {
 
 
 /// Capabilities common to both static and streaming sources.
-pub unsafe trait SourceTrait {
+pub unsafe trait Source {
 	/// The context from which this source was created.
 	fn context(&self) -> &Context;
 	/// Raw handle as provided by OpenAL.
@@ -225,10 +225,10 @@ pub unsafe trait SourceTrait {
 
 	/// `alGetSourcei(AL_SOURCE_SPATIALIZATION_SOFT)`
 	/// Requires `AL_SOFT_source_spatialization`
-	fn soft_spatialization(&self) -> SoftSourceSpatialize;
+	fn soft_spatialization(&self) -> SoftSourceSpatialization;
 	/// `alSourcei(AL_SOURCE_SPATIALIZATION_SOFT)`
 	/// Requires `AL_SOFT_source_spatialization`
-	fn set_soft_spatialization(&mut self, value: SoftSourceSpatialize) -> AltoResult<()>;
+	fn set_soft_spatialization(&mut self, value: SoftSourceSpatialization) -> AltoResult<()>;
 
 	/// `alGetSourcei(AL_SOURCE_RESAMPLER_SOFT)`
 	/// Requires `AL_SOFT_source_resampler`
@@ -237,11 +237,11 @@ pub unsafe trait SourceTrait {
 	/// Requires `AL_SOFT_source_resampler`
 	fn set_soft_resampler(&mut self, value: sys::ALint) -> AltoResult<()>;
 
-	/// `alGetSourcefv(AL_SOURCE_SPATIALIZATION_SOFT)`
-	/// Requires `AL_SOFT_source_spatialization`
+	/// `alGetSourcefv(AL_STEREO_ANGLES)`
+	/// Requires `AL_EXT_STEREO_ANGLES`
 	fn stereo_angles<V: From<[f32; 2]>>(&self) -> AltoResult<V>;
-	/// `alSourcefv(AL_SOURCE_SPATIALIZATION_SOFT)`
-	/// Requires `AL_SOFT_source_spatialization`
+	/// `alSourcefv(AL_STEREO_ANGLES)`
+	/// Requires `AL_EXT_STEREO_ANGLES`
 	fn set_stereo_angles<V: Into<[f32; 2]>>(&mut self, value: V) -> AltoResult<()>;
 
 	/// `alGetSourcef(AL_SOURCE_RADIUS)`
@@ -253,7 +253,7 @@ pub unsafe trait SourceTrait {
 
 	/// `alSourcei(AL_DIRECT_FILTER)`
 	/// Requires `ALC_EXT_EFX`
-	fn set_direct_filter<F: FilterTrait>(&mut self, value: &F) -> AltoResult<()>;
+	fn set_direct_filter<F: Filter>(&mut self, value: &F) -> AltoResult<()>;
 	/// `alSourcei(AL_DIRECT_FILTER)`
 	/// Requires `ALC_EXT_EFX`
 	fn clear_direct_filter(&mut self);
@@ -263,7 +263,7 @@ pub unsafe trait SourceTrait {
 	fn set_aux_send(&mut self, send: sys::ALint, value: &mut AuxEffectSlot) -> AltoResult<()>;
 	/// `alSourceiv(AL_AUXILIARY_SEND_FILTER)`
 	/// Requires `ALC_EXT_EFX`
-	fn set_aux_send_filter<F: FilterTrait>(&mut self, send: sys::ALint, slot: &mut AuxEffectSlot, filter: &F) -> AltoResult<()>;
+	fn set_aux_send_filter<F: Filter>(&mut self, send: sys::ALint, slot: &mut AuxEffectSlot, filter: &F) -> AltoResult<()>;
 	/// `alSourceiv(AL_AUXILIARY_SEND_FILTER)`
 	/// Requires `ALC_EXT_EFX`
 	fn clear_aux_send(&mut self, send: sys::ALint);
@@ -614,14 +614,14 @@ impl Context {
 
 	/// `alGenEffects()`
 	/// Requires `ALC_EXT_EFX`
-	pub fn new_effect<E: EffectTrait>(&self) -> AltoResult<E> {
+	pub fn new_effect<E: Effect>(&self) -> AltoResult<E> {
 		E::new(self.clone())
 	}
 
 
 	/// `alGenFilters()`
 	/// Requires `ALC_EXT_EFX`
-	pub fn new_filter<F: FilterTrait>(&self) -> AltoResult<F> {
+	pub fn new_filter<F: Filter>(&self) -> AltoResult<F> {
 		F::new(self.clone())
 	}
 
@@ -1178,28 +1178,28 @@ impl SourceInner {
 	}
 
 
-	fn soft_spatialization(&self) -> SoftSourceSpatialize {
+	fn soft_spatialization(&self) -> SoftSourceSpatialization {
 		(|| -> AltoResult<_> {
 			let assp = self.ctx.0.exts.AL_SOFT_source_spatialize()?;
 			let _lock = self.ctx.make_current(true);
 			let mut value = 0;
 			unsafe { self.ctx.0.dev.0.alto.0.api.alGetSourcei(self.src, assp.AL_SOURCE_SPATIALIZE_SOFT?, &mut value); }
 			Ok(match value as sys::ALboolean {
-				sys::AL_FALSE => SoftSourceSpatialize::Disabled,
-				sys::AL_TRUE => SoftSourceSpatialize::Enabled,
-				v if v == assp.AL_AUTO_SOFT? as sys::ALboolean => SoftSourceSpatialize::Auto,
+				sys::AL_FALSE => SoftSourceSpatialization::Disabled,
+				sys::AL_TRUE => SoftSourceSpatialization::Enabled,
+				v if v == assp.AL_AUTO_SOFT? as sys::ALboolean => SoftSourceSpatialization::Auto,
 				_ => panic!("ALTO ERROR: Unknown source spatialization")
 			})
-		})().unwrap_or(SoftSourceSpatialize::Auto)
+		})().unwrap_or(SoftSourceSpatialization::Auto)
 	}
-	fn set_soft_spatialization(&self, value: SoftSourceSpatialize) -> AltoResult<()> {
+	fn set_soft_spatialization(&self, value: SoftSourceSpatialization) -> AltoResult<()> {
 		let assp = self.ctx.0.exts.AL_SOFT_source_spatialize()?;
 		let _lock = self.ctx.make_current(true);
 		unsafe {
 			self.ctx.0.dev.0.alto.0.api.alSourcei(self.src, assp.AL_SOURCE_SPATIALIZE_SOFT?, match value {
-				SoftSourceSpatialize::Disabled => sys::AL_FALSE as sys::ALint,
-				SoftSourceSpatialize::Enabled => sys::AL_TRUE as sys::ALint,
-				SoftSourceSpatialize::Auto => assp.AL_AUTO_SOFT?,
+				SoftSourceSpatialization::Disabled => sys::AL_FALSE as sys::ALint,
+				SoftSourceSpatialization::Enabled => sys::AL_TRUE as sys::ALint,
+				SoftSourceSpatialization::Auto => assp.AL_AUTO_SOFT?,
 			});
 		}
 		self.ctx.get_error()
@@ -1262,7 +1262,7 @@ impl SourceInner {
 	}
 
 
-	fn set_direct_filter<F: FilterTrait>(&self, value: &F) -> AltoResult<()> {
+	fn set_direct_filter<F: Filter>(&self, value: &F) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
 		if *value.context() != self.ctx {
 			panic!("ALTO ERROR: Filter used on wrong context");
@@ -1285,7 +1285,7 @@ impl SourceInner {
 	fn set_aux_send(arc_self: &Arc<SourceInner>, send: sys::ALint, slot: &mut AuxEffectSlot) -> AltoResult<()> {
 		SourceInner::set_aux_send_impl(arc_self, send, slot, 0)
 	}
-	fn set_aux_send_filter<F: FilterTrait>(arc_self: &Arc<SourceInner>, send: sys::ALint, slot: &mut AuxEffectSlot, filter: &F) -> AltoResult<()> {
+	fn set_aux_send_filter<F: Filter>(arc_self: &Arc<SourceInner>, send: sys::ALint, slot: &mut AuxEffectSlot, filter: &F) -> AltoResult<()> {
 		if *filter.context() != arc_self.ctx {
 			panic!("ALTO ERROR: Filter used on wrong context");
 		}
@@ -1480,7 +1480,7 @@ impl StaticSource {
 }
 
 
-unsafe impl SourceTrait for StaticSource {
+unsafe impl Source for StaticSource {
 	#[inline] fn context(&self) -> &Context { self.src.context() }
 	#[inline] fn as_raw(&self) -> sys::ALuint { self.src.as_raw() }
 
@@ -1557,8 +1557,8 @@ unsafe impl SourceTrait for StaticSource {
 	#[inline] fn distance_model(&self) -> DistanceModel { self.src.distance_model() }
 	#[inline] fn set_distance_model(&mut self, value: DistanceModel) -> AltoResult<()> { self.src.set_distance_model(value) }
 
-	#[inline] fn soft_spatialization(&self) -> SoftSourceSpatialize { self.src.soft_spatialization() }
-	#[inline] fn set_soft_spatialization(&mut self, value: SoftSourceSpatialize) -> AltoResult<()> { self.src.set_soft_spatialization(value) }
+	#[inline] fn soft_spatialization(&self) -> SoftSourceSpatialization { self.src.soft_spatialization() }
+	#[inline] fn set_soft_spatialization(&mut self, value: SoftSourceSpatialization) -> AltoResult<()> { self.src.set_soft_spatialization(value) }
 
 	#[inline] fn soft_resampler(&self) -> AltoResult<sys::ALint> { self.src.soft_resampler() }
 	#[inline] fn set_soft_resampler(&mut self, value: sys::ALint) -> AltoResult<()> { self.src.set_soft_resampler(value) }
@@ -1569,11 +1569,11 @@ unsafe impl SourceTrait for StaticSource {
 	#[inline] fn radius(&self) -> f32 { self.src.radius() }
 	#[inline] fn set_radius(&self, value: f32) -> AltoResult<()> { self.src.set_radius(value) }
 
-	#[inline] fn set_direct_filter<F: FilterTrait>(&mut self, value: &F) -> AltoResult<()> { self.src.set_direct_filter(value) }
+	#[inline] fn set_direct_filter<F: Filter>(&mut self, value: &F) -> AltoResult<()> { self.src.set_direct_filter(value) }
 	#[inline] fn clear_direct_filter(&mut self) { self.src.clear_direct_filter() }
 
 	#[inline] fn set_aux_send(&mut self, send: sys::ALint, slot: &mut AuxEffectSlot) -> AltoResult<()> { SourceInner::set_aux_send(&self.src, send, slot) }
-	#[inline] fn set_aux_send_filter<F: FilterTrait>(&mut self, send: sys::ALint, slot: &mut AuxEffectSlot, filter: &F) -> AltoResult<()> { SourceInner::set_aux_send_filter(&self.src, send, slot, filter) }
+	#[inline] fn set_aux_send_filter<F: Filter>(&mut self, send: sys::ALint, slot: &mut AuxEffectSlot, filter: &F) -> AltoResult<()> { SourceInner::set_aux_send_filter(&self.src, send, slot, filter) }
 	#[inline] fn clear_aux_send(&mut self, send: sys::ALint) { self.src.clear_aux_send(send) }
 
 	#[inline] fn air_absorption_factor(&self) -> f32 { self.src.air_absorption_factor() }
@@ -1655,7 +1655,7 @@ impl StreamingSource {
 }
 
 
-unsafe impl SourceTrait for StreamingSource {
+unsafe impl Source for StreamingSource {
 	#[inline] fn context(&self) -> &Context { self.src.context() }
 	#[inline] fn as_raw(&self) -> sys::ALuint { self.src.as_raw() }
 
@@ -1732,8 +1732,8 @@ unsafe impl SourceTrait for StreamingSource {
 	#[inline] fn distance_model(&self) -> DistanceModel { self.src.distance_model() }
 	#[inline] fn set_distance_model(&mut self, value: DistanceModel) -> AltoResult<()> { self.src.set_distance_model(value) }
 
-	#[inline] fn soft_spatialization(&self) -> SoftSourceSpatialize { self.src.soft_spatialization() }
-	#[inline] fn set_soft_spatialization(&mut self, value: SoftSourceSpatialize) -> AltoResult<()> { self.src.set_soft_spatialization(value) }
+	#[inline] fn soft_spatialization(&self) -> SoftSourceSpatialization { self.src.soft_spatialization() }
+	#[inline] fn set_soft_spatialization(&mut self, value: SoftSourceSpatialization) -> AltoResult<()> { self.src.set_soft_spatialization(value) }
 
 	#[inline] fn soft_resampler(&self) -> AltoResult<sys::ALint> { self.src.soft_resampler() }
 	#[inline] fn set_soft_resampler(&mut self, value: sys::ALint) -> AltoResult<()> { self.src.set_soft_resampler(value) }
@@ -1744,11 +1744,11 @@ unsafe impl SourceTrait for StreamingSource {
 	#[inline] fn radius(&self) -> f32 { self.src.radius() }
 	#[inline] fn set_radius(&self, value: f32) -> AltoResult<()> { self.src.set_radius(value) }
 
-	#[inline] fn set_direct_filter<F: FilterTrait>(&mut self, value: &F) -> AltoResult<()> { self.src.set_direct_filter(value) }
+	#[inline] fn set_direct_filter<F: Filter>(&mut self, value: &F) -> AltoResult<()> { self.src.set_direct_filter(value) }
 	#[inline] fn clear_direct_filter(&mut self) { self.src.clear_direct_filter() }
 
 	#[inline] fn set_aux_send(&mut self, send: sys::ALint, slot: &mut AuxEffectSlot) -> AltoResult<()> { SourceInner::set_aux_send(&self.src, send, slot) }
-	#[inline] fn set_aux_send_filter<F: FilterTrait>(&mut self, send: sys::ALint, slot: &mut AuxEffectSlot, filter: &F) -> AltoResult<()> { SourceInner::set_aux_send_filter(&self.src, send, slot, filter) }
+	#[inline] fn set_aux_send_filter<F: Filter>(&mut self, send: sys::ALint, slot: &mut AuxEffectSlot, filter: &F) -> AltoResult<()> { SourceInner::set_aux_send_filter(&self.src, send, slot, filter) }
 	#[inline] fn clear_aux_send(&mut self, send: sys::ALint) { self.src.clear_aux_send(send) }
 
 	#[inline] fn air_absorption_factor(&self) -> f32 { self.src.air_absorption_factor() }

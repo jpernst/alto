@@ -4,34 +4,12 @@ use std::ffi::{CString, CStr};
 use std::sync::Arc;
 use std::path::Path;
 use std::marker::PhantomData;
-use std::io::Write;
 use std::mem;
-use std::env;
-use std::fs;
-use tempdir::TempDir;
 
 use ::{AltoError, AltoResult};
 use sys;
 use al::*;
 use ext;
-
-
-/// Configuration hints for OpenAL-Soft.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Default, Debug)]
-pub struct SoftHints {
-	/// Size in sample frames of an output update period [64-8192].
-	pub period_size: Option<u16>,
-	/// Number of periods in output ring buffer [2-16].
-	pub periods: Option<u8>,
-	/// Speakers or headphones.
-	pub stereo_mode: Option<SoftStereoMode>,
-	/// Separation of stereo channels.
-	pub cf_level: Option<SoftStereoCrossfeedLevel>,
-	/// Resampler algorithm used in the internal mixer.
-	pub resampler: Option<SoftResampler>,
-	/// Realtime priority for the mixer thread.
-	pub rt_prio: Option<bool>,
-}
 
 
 /// OpenAL-Soft stereo mode.
@@ -175,7 +153,6 @@ pub enum SoftHrtfStatus {
 pub(crate) struct AltoInner {
 	pub(crate) api: sys::AlApi,
 	pub(crate) exts: ::ext::AlcNullCache,
-	_hints_dir: Option<TempDir>,
 }
 
 
@@ -261,23 +238,6 @@ impl Alto {
 		Ok(Alto(Arc::new(AltoInner{
 			api: api,
 			exts: exts,
-			_hints_dir: None,
-		}))).and_then(|a| a.check_version())
-	}
-
-
-	/// Load the default OpenAL implementation for the platform.
-	/// This will prefer OpenAL-Soft if it is present, and will pass along the specified hints in a temporary
-	/// configuration file that will be read by OpenAL-Soft.
-	/// NOTE: This involves setting the value of the `ALSOFT_CONF` environment variable. If it is already set,
-	/// then the provided hints will be discarded.
-	pub fn load_default_with_soft_hints(hints: SoftHints) -> AltoResult<Alto> {
-		let api = sys::AlApi::load_default()?;
-		let exts = unsafe { ext::AlcNullCache::new(&api, ptr::null_mut()) };
-		Ok(Alto(Arc::new(AltoInner{
-			api: api,
-			exts: exts,
-			_hints_dir: Alto::set_hints(hints),
 		}))).and_then(|a| a.check_version())
 	}
 
@@ -289,74 +249,7 @@ impl Alto {
 		Ok(Alto(Arc::new(AltoInner{
 			api: api,
 			exts: exts,
-			_hints_dir: None,
 		}))).and_then(|a| a.check_version())
-	}
-
-
-	/// Loads a specific OpenAL implementation from a specififed path.
-	/// If that implementation is OpenAL-Soft, the specified hints will be passed along in a temporary
-	/// configuration file.
-	/// NOTE: This involves setting the value of the `ALSOFT_CONF` environment variable. If it is already set,
-	/// then the provided hints will be discarded.
-	pub fn load_with_soft_hints<P: AsRef<Path>>(path: P, hints: SoftHints) -> AltoResult<Alto> {
-		let api = sys::AlApi::load(path)?;
-		let exts = unsafe { ext::AlcNullCache::new(&api, ptr::null_mut()) };
-		Ok(Alto(Arc::new(AltoInner{
-			api: api,
-			exts: exts,
-			_hints_dir: Alto::set_hints(hints),
-		}))).and_then(|a| a.check_version())
-	}
-
-
-	fn set_hints(hints: SoftHints) -> Option<TempDir> {
-		if hints.period_size.is_none()
-			&& hints.periods.is_none()
-			&& hints.stereo_mode.is_none()
-			&& hints.cf_level.is_none()
-			&& hints.resampler.is_none()
-			&& hints.rt_prio.is_none()
-		{
-			return None;
-		}
-
-		env::var_os("ALSOFT_CONF").and_then(|_| {
-			(|| -> ::std::io::Result<_> {
-				let hints_dir = TempDir::new("alto")?;
-				let hints_path = hints_dir.path().join("alsoft.conf");
-				let mut config = fs::File::create(&hints_path)?;
-
-				let _ = writeln!(config, "[general]");
-				if let Some(period_size) = hints.period_size {
-					let _ = writeln!(config, "period_size = {}", period_size);
-				}
-				if let Some(periods) = hints.periods {
-					let _ = writeln!(config, "periods = {}", periods);
-				}
-				if let Some(stereo_mode) = hints.stereo_mode {
-					let _ = writeln!(config, "stereo-mode = {}", match stereo_mode { SoftStereoMode::Speakers => "speakers", SoftStereoMode::Headphones => "headphones" });
-				}
-				if let Some(cf_level) = hints.cf_level {
-					let _ = writeln!(config, "cf_level = {}", cf_level as u8);
-				}
-				if let Some(resampler) = hints.resampler {
-					let _ = writeln!(config, "resampler = {}", match resampler {
-						SoftResampler::Point => "point",
-						SoftResampler::Linear => "linear",
-						SoftResampler::Sinc4 => "sinc4",
-						SoftResampler::Sinc8 => "sinc8",
-						SoftResampler::BSinc => "bsinc",
-					});
-				}
-				if let Some(rt_prio) = hints.rt_prio {
-					let _ = writeln!(config, "rt-prio = {}", if rt_prio { 1 } else { 0 });
-				}
-
-				env::set_var("ALSOFT_CONF", &hints_path);
-				Ok(hints_dir)
-			})().ok()
-		})
 	}
 
 
@@ -447,7 +340,7 @@ impl Alto {
 
 
 	/// `alcOpenDevice()`
-	pub fn open<'s>(&self, spec: Option<&'s CStr>) -> AltoResult<OutputDevice> {
+	pub fn open(&self, spec: Option<&CStr>) -> AltoResult<OutputDevice> {
 		let spec = spec.map(|s| s.to_owned()).or_else(|| self.default_output());
 		let dev = unsafe { self.0.api.alcOpenDevice(spec.as_ref().map(|s| s.as_ptr()).unwrap_or(ptr::null())) };
 
@@ -466,7 +359,7 @@ impl Alto {
 
 	/// `alcLoopbackOpenDeviceSOFT()`
 	/// Requires `ALC_SOFT_loopback`
-	pub fn open_loopback<'s, F: LoopbackFrame>(&self, spec: Option<&'s CStr>) -> AltoResult<LoopbackDevice<F>> {
+	pub fn open_loopback<F: LoopbackFrame>(&self, spec: Option<&CStr>) -> AltoResult<LoopbackDevice<F>> {
 		let asl = self.0.exts.ALC_SOFT_loopback()?;
 		asl.alcRenderSamplesSOFT?;
 
@@ -490,7 +383,7 @@ impl Alto {
 
 
 	/// `alcCaptureOpenDevice()`
-	pub fn open_capture<'s, F: StandardFrame>(&self, spec: Option<&'s CStr>, freq: sys::ALCuint, len: sys::ALCsizei) -> AltoResult<Capture<F>> {
+	pub fn open_capture<F: StandardFrame>(&self, spec: Option<&CStr>, freq: sys::ALCuint, len: sys::ALCsizei) -> AltoResult<Capture<F>> {
 		let spec = spec.map(|s| s.to_owned()).or_else(|| self.default_capture());
 		let dev = unsafe { self.0.api.alcCaptureOpenDevice(spec.as_ref().map(|s| s.as_ptr()).unwrap_or(ptr::null()), freq, F::format().into_raw(None)?, len) };
 

@@ -21,7 +21,7 @@ pub struct AuxEffectSlot {
 
 
 /// Implemented for effects defined by EFX.
-pub unsafe trait EffectTrait: Sized {
+pub unsafe trait Effect: Sized {
 	#[doc(hidden)]
 	fn new(ctx: al::Context) -> AltoResult<Self>;
 
@@ -230,8 +230,8 @@ pub struct DedicatedDialogueEffect {
 }
 
 
-/// Implemented for filters as defined by EFX.
-pub unsafe trait FilterTrait: Sized {
+/// Implemented for filters defined by EFX.
+pub unsafe trait Filter: Sized {
 	#[doc(hidden)]
 	fn new(ctx: al::Context) -> AltoResult<Self>;
 
@@ -300,7 +300,7 @@ impl AuxEffectSlot {
 
 
 	/// `alAuxiliaryEffectSloti(AL_EFFECTSLOT_EFFECT)`
-	pub fn set_effect<E: EffectTrait>(&mut self, value: &E) -> AltoResult<()> {
+	pub fn set_effect<E: Effect>(&mut self, value: &E) -> AltoResult<()> {
 		if *value.context() != self.ctx {
 			return Err(AltoError::AlInvalidValue);
 		}
@@ -382,7 +382,7 @@ fn check_effect_symbols(efx: &ext::ALC_EXT_EFX) -> AltoResult<()> {
 }
 
 
-unsafe impl EffectTrait for EaxReverbEffect {
+unsafe impl Effect for EaxReverbEffect {
 	fn new(ctx: al::Context) -> AltoResult<EaxReverbEffect> {
 		let mut effect = 0;
 		{
@@ -864,7 +864,7 @@ impl Drop for EaxReverbEffect {
 }
 
 
-unsafe impl EffectTrait for ReverbEffect {
+unsafe impl Effect for ReverbEffect {
 	fn new(ctx: al::Context) -> AltoResult<ReverbEffect> {
 		let mut effect = 0;
 		{
@@ -1156,7 +1156,7 @@ impl Drop for ReverbEffect {
 }
 
 
-unsafe impl EffectTrait for ChorusEffect {
+unsafe impl Effect for ChorusEffect {
 	fn new(ctx: al::Context) -> AltoResult<ChorusEffect> {
 		let mut effect = 0;
 		{
@@ -1300,7 +1300,7 @@ impl Drop for ChorusEffect {
 }
 
 
-unsafe impl EffectTrait for DistortionEffect {
+unsafe impl Effect for DistortionEffect {
 	fn new(ctx: al::Context) -> AltoResult<DistortionEffect> {
 		let mut effect = 0;
 		{
@@ -1409,7 +1409,7 @@ impl Drop for DistortionEffect {
 }
 
 
-unsafe impl EffectTrait for EchoEffect {
+unsafe impl Effect for EchoEffect {
 	fn new(ctx: al::Context) -> AltoResult<EchoEffect> {
 		let mut effect = 0;
 		{
@@ -1535,7 +1535,7 @@ impl Drop for EchoEffect {
 }
 
 
-unsafe impl EffectTrait for FlangerEffect {
+unsafe impl Effect for FlangerEffect {
 	fn new(ctx: al::Context) -> AltoResult<FlangerEffect> {
 		let mut effect = 0;
 		{
@@ -1679,7 +1679,7 @@ impl Drop for FlangerEffect {
 }
 
 
-unsafe impl EffectTrait for FrequencyShifterEffect {
+unsafe impl Effect for FrequencyShifterEffect {
 	fn new(ctx: al::Context) -> AltoResult<FrequencyShifterEffect> {
 		let mut effect = 0;
 		{
@@ -1769,7 +1769,7 @@ impl Drop for FrequencyShifterEffect {
 }
 
 
-unsafe impl EffectTrait for VocalMorpherEffect {
+unsafe impl Effect for VocalMorpherEffect {
 	fn new(ctx: al::Context) -> AltoResult<VocalMorpherEffect> {
 		let mut effect = 0;
 		{
@@ -1913,7 +1913,7 @@ impl Drop for VocalMorpherEffect {
 }
 
 
-unsafe impl EffectTrait for PitchShifterEffect {
+unsafe impl Effect for PitchShifterEffect {
 	fn new(ctx: al::Context) -> AltoResult<PitchShifterEffect> {
 		let mut effect = 0;
 		{
@@ -1985,7 +1985,7 @@ impl Drop for PitchShifterEffect {
 }
 
 
-unsafe impl EffectTrait for RingModulatorEffect {
+unsafe impl Effect for RingModulatorEffect {
 	fn new(ctx: al::Context) -> AltoResult<RingModulatorEffect> {
 		let mut effect = 0;
 		{
@@ -2075,7 +2075,7 @@ impl Drop for RingModulatorEffect {
 }
 
 
-unsafe impl EffectTrait for AutowahEffect {
+unsafe impl Effect for AutowahEffect {
 	fn new(ctx: al::Context) -> AltoResult<AutowahEffect> {
 		let mut effect = 0;
 		{
@@ -2183,7 +2183,7 @@ impl Drop for AutowahEffect {
 }
 
 
-unsafe impl EffectTrait for CompressorEffect {
+unsafe impl Effect for CompressorEffect {
 	fn new(ctx: al::Context) -> AltoResult<CompressorEffect> {
 		let mut effect = 0;
 		{
@@ -2237,7 +2237,7 @@ impl Drop for CompressorEffect {
 }
 
 
-unsafe impl EffectTrait for EqualizerEffect {
+unsafe impl Effect for EqualizerEffect {
 	fn new(ctx: al::Context) -> AltoResult<EqualizerEffect> {
 		let mut effect = 0;
 		{
@@ -2453,7 +2453,7 @@ impl Drop for EqualizerEffect {
 }
 
 
-unsafe impl EffectTrait for DedicatedLowFrequencyEffect {
+unsafe impl Effect for DedicatedLowFrequencyEffect {
 	fn new(ctx: al::Context) -> AltoResult<DedicatedLowFrequencyEffect> {
 		let mut effect = 0;
 		{
@@ -2510,7 +2510,7 @@ impl Drop for DedicatedLowFrequencyEffect {
 }
 
 
-unsafe impl EffectTrait for DedicatedDialogueEffect {
+unsafe impl Effect for DedicatedDialogueEffect {
 	fn new(ctx: al::Context) -> AltoResult<DedicatedDialogueEffect> {
 		let mut effect = 0;
 		{
@@ -2581,7 +2581,7 @@ fn check_filter_symbols(efx: &ext::ALC_EXT_EFX) -> AltoResult<()> {
 }
 
 
-unsafe impl FilterTrait for LowpassFilter {
+unsafe impl Filter for LowpassFilter {
 	fn new(ctx: al::Context) -> AltoResult<LowpassFilter> {
 		let mut filter = 0;
 		{
@@ -2653,7 +2653,7 @@ impl Drop for LowpassFilter {
 }
 
 
-unsafe impl FilterTrait for HighpassFilter {
+unsafe impl Filter for HighpassFilter {
 	fn new(ctx: al::Context) -> AltoResult<HighpassFilter> {
 		let mut filter = 0;
 		{
@@ -2725,7 +2725,7 @@ impl Drop for HighpassFilter {
 }
 
 
-unsafe impl FilterTrait for BandpassFilter {
+unsafe impl Filter for BandpassFilter {
 	fn new(ctx: al::Context) -> AltoResult<BandpassFilter> {
 		let mut filter = 0;
 		{

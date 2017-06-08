@@ -19,8 +19,8 @@ fn main() {
 	let mut slot = if dev.is_extension_present(alto::ext::Alc::Efx) {
 		println!("Using EFX reverb");
 		let mut slot = ctx.new_aux_effect_slot().unwrap();
-		let mut reverb: EaxReverbEffect = ctx.new_effect().unwrap();
-		reverb.set_preset(&alto::REVERB_PRESET_GENERIC).unwrap();
+		let mut reverb: efx::EaxReverbEffect = ctx.new_effect().unwrap();
+		reverb.set_preset(&efx::REVERB_PRESET_GENERIC).unwrap();
 		slot.set_effect(&reverb).unwrap();
 		Some(slot)
 	} else {

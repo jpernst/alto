@@ -13,7 +13,6 @@
 extern crate lazy_static;
 #[macro_use]
 extern crate enum_primitive;
-extern crate tempdir;
 extern crate al_sys;
 
 use std::error::Error as StdError;
@@ -32,8 +31,7 @@ pub use al::*;
 pub mod ext;
 
 
-mod efx;
-pub use efx::*;
+pub mod efx;
 
 
 pub mod sys {

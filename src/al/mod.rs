@@ -581,7 +581,7 @@ impl Context {
 
 
 	/// `alGenBuffers()`
-	/// To ensure well defined state, the buffer is assigned data immediately. The data slice must have non-zero length.
+	/// To ensure well defined state, the buffer is assigned data immediately.
 	pub fn new_buffer<F: SampleFrame, B: AsBufferData<F>>(&self, data: B, freq: i32) -> AltoResult<Buffer> {
 		Buffer::new(self.clone(), data, freq)
 	}
@@ -741,10 +741,8 @@ impl Buffer {
 
 
 	/// `alBufferData()`
-	/// To ensure well defined state, the data slice must have non-zero length.
 	pub fn set_data<F: SampleFrame, B: AsBufferData<F>>(&mut self, data: B, freq: i32) -> AltoResult<()> {
 		let data = data.as_buffer_data();
-		if data.len() == 0 { return Err(AltoError::AlInvalidValue) }
 		if sys::ALsizei::max_value() as usize / mem::size_of::<F>() < data.len() { return Err(AltoError::AlInvalidValue) }
 		let size = data.len() * mem::size_of::<F>();
 

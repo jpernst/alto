@@ -1,4 +1,4 @@
-//! #Overview
+//! # Overview
 //! Alto is an idiomatic wrapper for the OpenAL 3D audio API and associated extensions (including EFX).
 //! This documentation does not describe how to use the OpenAL API itself, but rather explains how
 //! it has been adapted for rust and provides the native symbols associated with each function
@@ -7,6 +7,10 @@
 //! The core of the API is the [`Alto`](struct.Alto.html) struct. It has no analog in raw OpenAL and
 //! represents an implementation of the API itself. From there, instances of familiar OpenAL objects
 //! can be instantiated.
+//!
+//! # WARNING
+//! Because Alto interacts with global C state via dynamic linking, having multiple versions of Alto in one project could lead to unsafetly.
+//! Please make sure only one version of Alto is in your dependency tree at any given time.
 
 
 #[macro_use]

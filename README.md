@@ -3,6 +3,11 @@
 `alto` provides idiomatic Rust bindings for [OpenAL 1.1](http://connect.creativelabs.com/openal/)
 and extensions (including EFX).
 
+## WARNING
+
+Because Alto interacts with global C state via dynamic linking, having multiple versions of Alto in one project could lead to unsafetly.
+Please make sure only one version of Alto is in your dependency tree at any given time.
+
 ## API Usage
 
 ```rust

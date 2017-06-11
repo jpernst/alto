@@ -1,12 +1,13 @@
 use std::ops::Deref;
 use std::iter;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::collections::VecDeque;
 use std::mem;
 use std::ptr;
 use std::hash::{Hash, Hasher};
 use std::ffi::{CString, CStr};
+use parking_lot::{Mutex, MutexGuard};
 
 use ::{AltoError, AltoResult};
 use sys;
@@ -21,8 +22,7 @@ pub use self::format::*;
 
 lazy_static! {
 	#[doc(hidden)]
-	#[no_mangle]
-    pub static ref ALTO_CTX_LOCK__: Mutex<()> = Mutex::new(());
+    static ref ALTO_CTX_LOCK: Mutex<()> = Mutex::new(());
 }
 
 
@@ -638,7 +638,7 @@ impl Context {
 			None
 		} else {
 			unsafe { dev.0.alto.0.api.alcMakeContextCurrent(ctx); }
-			Some(ALTO_CTX_LOCK__.lock().unwrap())
+			Some(ALTO_CTX_LOCK.lock())
 		}
 	}
 
@@ -1303,7 +1303,7 @@ impl SourceInner {
 		}
 
 		let _lock = arc_self.ctx.make_current(true);
-		let mut sends = arc_self.sends.lock().unwrap();
+		let mut sends = arc_self.sends.lock();
 		unsafe { arc_self.ctx.0.dev.0.alto.0.api.alSourceiv(arc_self.src, efx.AL_AUXILIARY_SEND_FILTER?, &mut [slot.as_raw() as sys::ALint, send, filter as sys::ALint] as *mut [sys::ALint; 3] as *mut sys::ALint); }
 		arc_self.ctx.get_error()?;
 		sends[send as usize] = 0;
@@ -1318,7 +1318,7 @@ impl SourceInner {
 			}
 
 			let _lock = self.ctx.make_current(true);
-			let mut sends = self.sends.lock().unwrap();
+			let mut sends = self.sends.lock();
 			unsafe { self.ctx.0.dev.0.alto.0.api.alSourceiv(self.src, efx.AL_AUXILIARY_SEND_FILTER?, &mut [0, send, 0] as *mut [sys::ALint; 3] as *mut sys::ALint); }
 			sends[send as usize] = 0;
 			Ok(())
@@ -1326,7 +1326,7 @@ impl SourceInner {
 	}
 	pub fn clear_aux_effect_slot(&self, slot: sys::ALuint) {
 		if let Ok(&ext::ALC_EXT_EFX{AL_AUXILIARY_SEND_FILTER: Ok(aasf), ..}) = self.ctx.0.dev.0.exts.ALC_EXT_EFX() {
-			for (i, s) in self.sends.lock().unwrap().iter_mut().enumerate() {
+			for (i, s) in self.sends.lock().iter_mut().enumerate() {
 				if *s == slot {
 					unsafe { self.ctx.0.dev.0.alto.0.api.alSourceiv(self.src, aasf, &mut [0, i as sys::ALint, 0] as *mut [sys::ALint; 3] as *mut sys::ALint); }
 					*s = 0;

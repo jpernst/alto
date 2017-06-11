@@ -13,6 +13,7 @@
 extern crate lazy_static;
 #[macro_use]
 extern crate enum_primitive;
+extern crate parking_lot;
 extern crate al_sys;
 
 use std::error::Error as StdError;

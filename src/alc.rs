@@ -817,5 +817,10 @@ impl<F: StandardFrame> PartialEq for Capture<F> {
 }
 impl<F: StandardFrame> Eq for Capture<F> { }
 
+impl<F: StandardFrame> Drop for Capture<F> {
+	fn drop(&mut self) {
+		unsafe { self.alto.0.api.alcCaptureCloseDevice(self.dev); }
+	}
+}
 
 unsafe impl<F: StandardFrame> Send for Capture<F> { }

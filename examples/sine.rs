@@ -18,11 +18,18 @@ fn main() {
 
 	let mut slot = if dev.is_extension_present(alto::ext::Alc::Efx) {
 		println!("Using EFX reverb");
-		let mut slot = ctx.new_aux_effect_slot().unwrap();
-		let mut reverb: efx::EaxReverbEffect = ctx.new_effect().unwrap();
-		reverb.set_preset(&efx::REVERB_PRESET_GENERIC).unwrap();
-		slot.set_effect(&reverb).unwrap();
-		Some(slot)
+		if let Ok(slot) = (|| -> AltoResult<_> {
+			let mut slot = ctx.new_aux_effect_slot()?;
+			let mut reverb: efx::EaxReverbEffect = ctx.new_effect()?;
+			reverb.set_preset(&efx::REVERB_PRESET_GENERIC)?;
+			slot.set_effect(&reverb)?;
+			Ok(slot)
+		})() {
+			Some(slot)
+		} else {
+			println!("Broken router detected; disabling EFX");
+			None
+		}
 	} else {
 		println!("EFX not present");
 		None

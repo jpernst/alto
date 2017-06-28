@@ -238,7 +238,7 @@ impl Alto {
 		Ok(Alto(Arc::new(AltoInner{
 			api: api,
 			exts: exts,
-		}))).and_then(|a| a.check_version())
+		}))).and_then(|a| a.check_version(ptr::null_mut()).map(|_| a))
 	}
 
 
@@ -249,18 +249,20 @@ impl Alto {
 		Ok(Alto(Arc::new(AltoInner{
 			api: api,
 			exts: exts,
-		}))).and_then(|a| a.check_version())
+		}))).and_then(|a| a.check_version(ptr::null_mut()).map(|_| a))
 	}
 
 
-	fn check_version(self) -> AltoResult<Alto> {
+	fn check_version(&self, dev: *mut sys::ALCdevice) -> AltoResult<()> {
 		let mut major = 0;
-		unsafe { self.0.api.alcGetIntegerv(ptr::null_mut(), sys::ALC_MAJOR_VERSION, 1, &mut major); }
+		unsafe { self.0.api.alcGetIntegerv(dev, sys::ALC_MAJOR_VERSION, 1, &mut major); }
 		let mut minor = 0;
-		unsafe { self.0.api.alcGetIntegerv(ptr::null_mut(), sys::ALC_MINOR_VERSION, 1, &mut minor); }
+		unsafe { self.0.api.alcGetIntegerv(dev, sys::ALC_MINOR_VERSION, 1, &mut minor); }
 
-		if major == 1 && minor >= 1 {
-			Ok(self)
+		if (major == 1 && minor >= 1)
+			|| (dev == ptr::null_mut() && major == 0 && minor == 0) // Creative's buggy router DLL won't report a version until you open a device
+		{
+			Ok(())
 		} else {
 			Err(AltoError::AlcUnsupportedVersion)
 		}
@@ -347,12 +349,13 @@ impl Alto {
 		if dev == ptr::null_mut() {
 			Err(AltoError::AlcInvalidDevice)
 		} else {
-			Ok(OutputDevice(Arc::new(DeviceInner{
+			let dev = OutputDevice(Arc::new(DeviceInner{
 				alto: Alto(self.0.clone()),
 				spec: spec,
 				dev: dev,
 				exts: unsafe { ext::AlcCache::new(&self.0.api, dev) },
-			})))
+			}));
+			self.check_version(dev.0.dev).map(|_| dev)
 		}
 	}
 
@@ -369,7 +372,7 @@ impl Alto {
 		if dev == ptr::null_mut() {
 			Err(AltoError::AlcInvalidDevice)
 		} else {
-			Ok(LoopbackDevice(
+			let dev = LoopbackDevice(
 				Arc::new(DeviceInner{
 					alto: Alto(self.0.clone()),
 					spec: spec,
@@ -377,7 +380,8 @@ impl Alto {
 					exts: unsafe { ext::AlcCache::new(&self.0.api, dev) },
 				}),
 				PhantomData,
-			))
+			);
+			self.check_version(dev.0.dev).map(|_| dev)
 		}
 	}
 
@@ -390,7 +394,8 @@ impl Alto {
 		if dev == ptr::null_mut() {
 			Err(AltoError::AlcInvalidDevice)
 		} else {
-			Ok(Capture{alto: Alto(self.0.clone()), spec: spec, dev: dev, marker: PhantomData})
+			let dev = Capture{alto: Alto(self.0.clone()), spec: spec, dev: dev, marker: PhantomData};
+			self.check_version(dev.dev).map(|_| dev)
 		}
 	}
 

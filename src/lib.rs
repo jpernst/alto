@@ -15,8 +15,6 @@
 
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
-extern crate enum_primitive;
 extern crate parking_lot;
 extern crate al_sys;
 
@@ -44,29 +42,50 @@ pub mod sys {
 }
 
 
-/// An error as reported by `alcGetError` or `alGetError`.
+/// An error as reported by `alcGetError` or `alGetError`, plus some Alto specific variants.
 #[derive(Debug)]
 pub enum AltoError {
+	/// `ALC_INVALID_DEVICE`
 	AlcInvalidDevice,
+	/// `ALC_INVALID_CONTEXT`
 	AlcInvalidContext,
+	/// `ALC_INVALID_ENUM`
 	AlcInvalidEnum,
+	/// `ALC_INVALID_VALUE`
 	AlcInvalidValue,
+	/// `ALC_OUT_OF_MEMORY`
 	AlcOutOfMemory,
 
-	AlcUnsupportedVersion,
+	/// The underlying implementation is not compatible with the 1.1 spec. Alto specific.
+	AlcUnsupportedVersion{major: sys::ALCint, minor: sys::ALCint},
+	/// The requested action can't be performed because the required extension is unavaiable. Alto specific.
 	AlcExtensionNotPresent,
-	AlcUnknownError,
+	/// Resource creation failed without setting an error code.
+	AlcNullError,
+	AlcUnknownError(sys::ALCint),
 
+	/// `AL_INVALID_NAME`
 	AlInvalidName,
+	/// `AL_INVALID_ENUM`
 	AlInvalidEnum,
+	/// `AL_INVALID_VALUE`
 	AlInvalidValue,
+	/// `AL_INVALID_OPERATION`
 	AlInvalidOperation,
+	/// `AL_OUT_OF_MEMORY`
 	AlOutOfMemory,
 
+	/// The requested action can't be performed because the required extension is unavaiable. Alto specific.
 	AlExtensionNotPresent,
+	/// A resource belongs to another device and is not eligible.
 	AlWrongDevice,
-	AlUnknownError,
+	/// A resource belongs to another context and is not eligible.
+	AlWrongContext,
+	/// Resource creation failed without setting an error code.
+	AlNullError,
+	AlUnknownError(sys::ALint),
 
+	/// There was an underlying IO error, usually from a failure when loading the OpenAL dylib. Alto specific.
 	Io(io::Error),
 }
 
@@ -82,7 +101,7 @@ impl AltoError {
 			sys::ALC_INVALID_ENUM => AltoError::AlcInvalidEnum,
 			sys::ALC_INVALID_VALUE => AltoError::AlcInvalidValue,
 			sys::ALC_OUT_OF_MEMORY => AltoError::AlcOutOfMemory,
-			_ => AltoError::AlcUnknownError,
+			e => AltoError::AlcUnknownError(e),
 		}
 	}
 
@@ -94,7 +113,7 @@ impl AltoError {
 			sys::AL_INVALID_VALUE => AltoError::AlInvalidValue,
 			sys::AL_INVALID_OPERATION => AltoError::AlInvalidOperation,
 			sys::AL_OUT_OF_MEMORY => AltoError::AlOutOfMemory,
-			_ => AltoError::AlUnknownError,
+			e => AltoError::AlUnknownError(e),
 		}
 	}
 }
@@ -116,9 +135,10 @@ impl StdError for AltoError {
 			AltoError::AlcInvalidValue => "ALC ERROR: Invalid Value",
 			AltoError::AlcOutOfMemory => "ALC ERROR: Invalid Memory",
 
-			AltoError::AlcUnsupportedVersion => "ALC ERROR: Unsupported Version",
+			AltoError::AlcUnsupportedVersion{..} => "ALC ERROR: Unsupported Version",
 			AltoError::AlcExtensionNotPresent => "ALC ERROR: Extension Not Present",
-			AltoError::AlcUnknownError => "ALC ERROR: Unknown Error",
+			AltoError::AlcNullError => "ALC ERROR: Return value is NULL with no error code",
+			AltoError::AlcUnknownError(..) => "AL ERROR: Unknown ALC error",
 
 			AltoError::AlInvalidName => "AL ERROR: Invalid Name",
 			AltoError::AlInvalidEnum => "AL ERROR: Invalid Enum",
@@ -127,8 +147,10 @@ impl StdError for AltoError {
 			AltoError::AlOutOfMemory => "AL ERROR: Invalid Memory",
 
 			AltoError::AlExtensionNotPresent => "AL ERROR: Extension Not Present",
-			AltoError::AlWrongDevice => "AL ERROR: Wrong Device",
-			AltoError::AlUnknownError => "AL ERROR: Unknown Error",
+			AltoError::AlWrongDevice => "AL ERROR: Resource used on wrong device",
+			AltoError::AlWrongContext => "AL ERROR: Resource used on wrong device",
+			AltoError::AlNullError => "AL ERROR: Return value is NULL with no error code",
+			AltoError::AlUnknownError(..) => "AL ERROR: Unknown AL error",
 
 			AltoError::Io(ref io) => io.description(),
 		}

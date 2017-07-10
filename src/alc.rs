@@ -1,10 +1,10 @@
+use std::cmp;
 use std::any::Any;
 use std::ptr;
 use std::ffi::{CString, CStr};
 use std::sync::Arc;
 use std::path::Path;
 use std::marker::PhantomData;
-use std::mem;
 
 use ::{AltoError, AltoResult};
 use sys;
@@ -264,7 +264,7 @@ impl Alto {
 		{
 			Ok(())
 		} else {
-			Err(AltoError::AlcUnsupportedVersion)
+			Err(AltoError::AlcUnsupportedVersion{major, minor})
 		}
 	}
 
@@ -573,7 +573,7 @@ impl OutputDevice {
 		let ctx = unsafe { self.0.alto.0.api.alcCreateContext(self.0.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
 		if ctx == ptr::null_mut() {
 			match self.0.alto.get_error(self.0.dev) {
-				Ok(..) => Err(AltoError::AlcUnknownError),
+				Ok(..) => Err(AltoError::AlcNullError),
 				Err(e) => Err(e),
 			}
 		} else {
@@ -693,7 +693,7 @@ impl<F: LoopbackFrame> LoopbackDevice<F> {
 		let ctx = unsafe { self.0.alto.0.api.alcCreateContext(self.0.dev, attrs_vec.as_slice().as_ptr()) };
 		if ctx == ptr::null_mut() {
 			match self.0.alto.get_error(self.0.dev) {
-				Ok(..) => Err(AltoError::AlcUnknownError),
+				Ok(..) => Err(AltoError::AlcNullError),
 				Err(e) => Err(e),
 			}
 		} else {
@@ -703,13 +703,15 @@ impl<F: LoopbackFrame> LoopbackDevice<F> {
 
 
 	/// `alcRenderSamplesSOFT()`
-	pub fn soft_render_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) {
+	pub fn soft_render_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> usize {
 		let mut data = data.as_buffer_data_mut();
-		if sys::ALCsizei::max_value() as usize / mem::size_of::<F>() < data.len() { panic!("ALTO ERROR: data slice is too long for `alcRenderSamplesSOFT()`") }
+		let len = cmp::min(data.len(), sys::ALCsizei::max_value() as usize);
 
 		let asl = self.0.alto.0.exts.ALC_SOFT_loopback().unwrap();
 
-		unsafe { asl.alcRenderSamplesSOFT.unwrap()(self.0.dev, data.as_mut_ptr() as *mut _, data.len() as sys::ALCsizei); }
+		unsafe { asl.alcRenderSamplesSOFT.unwrap()(self.0.dev, data.as_mut_ptr() as *mut _, len as sys::ALCsizei); }
+
+		len
 	}
 
 

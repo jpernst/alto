@@ -19,7 +19,6 @@ for s in alto.enumerate_outputs() {
 
 let device = alto.open(None)?; // Opens the default audio device
 let context = device.new_context(None)?; // Creates a default context
-// The context automatically becomes the current one
 
 // Configure listener
 context.set_position([1.0, 4.0, 5.0]);

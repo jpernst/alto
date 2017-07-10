@@ -43,6 +43,7 @@ pub enum DistanceModel {
 	Exponent,
 	/// `AL_EXPONENT_DISTANCE_CLAMPLED`
 	ExponentClamped,
+	Unknown(sys::ALint),
 }
 
 
@@ -56,6 +57,7 @@ pub enum SoftSourceSpatialization {
 	Enabled,
 	/// `AL_AUTO_SOFT`
 	Auto,
+	Unknown(sys::ALboolean),
 }
 
 
@@ -309,6 +311,7 @@ pub enum SourceState {
 	Paused,
 	/// `AL_STOPPED`
 	Stopped,
+	Unknown(sys::ALint),
 }
 
 
@@ -397,7 +400,7 @@ impl Context {
 			sys::AL_LINEAR_DISTANCE_CLAMPED => DistanceModel::LinearClamped,
 			sys::AL_EXPONENT_DISTANCE => DistanceModel::Exponent,
 			sys::AL_EXPONENT_DISTANCE_CLAMPED => DistanceModel::ExponentClamped,
-			_ => panic!("ALTO ERROR: Unknown distance model"),
+			dm => DistanceModel::Unknown(dm),
 		}
 	}
 	/// `alDistanceModel()`
@@ -412,6 +415,7 @@ impl Context {
 				DistanceModel::LinearClamped => sys::AL_LINEAR_DISTANCE_CLAMPED,
 				DistanceModel::Exponent => sys::AL_EXPONENT_DISTANCE,
 				DistanceModel::ExponentClamped => sys::AL_EXPONENT_DISTANCE_CLAMPED,
+				DistanceModel::Unknown(dm) => dm,
 			})
 		};
 	}
@@ -845,7 +849,7 @@ impl SourceInner {
 			sys::AL_PLAYING => SourceState::Playing,
 			sys::AL_PAUSED => SourceState::Paused,
 			sys::AL_STOPPED => SourceState::Stopped,
-			_ => panic!("ALTO ERROR: Unknown source state"),
+			ss => SourceState::Unknown(ss),
 		}
 	}
 	fn play(&self) {
@@ -1160,7 +1164,7 @@ impl SourceInner {
 				sys::AL_LINEAR_DISTANCE_CLAMPED => DistanceModel::LinearClamped,
 				sys::AL_EXPONENT_DISTANCE => DistanceModel::Exponent,
 				sys::AL_EXPONENT_DISTANCE_CLAMPED => DistanceModel::ExponentClamped,
-				_ => panic!("ALTO ERROR: Unknown distance model")
+				dm => DistanceModel::Unknown(dm),
 			})
 		})().unwrap_or(DistanceModel::InverseClamped)
 	}
@@ -1176,6 +1180,7 @@ impl SourceInner {
 				DistanceModel::LinearClamped => sys::AL_LINEAR_DISTANCE_CLAMPED,
 				DistanceModel::Exponent => sys::AL_EXPONENT_DISTANCE,
 				DistanceModel::ExponentClamped => sys::AL_EXPONENT_DISTANCE_CLAMPED,
+				DistanceModel::Unknown(dm) => dm,
 			});
 		}
 		self.ctx.get_error()
@@ -1192,7 +1197,7 @@ impl SourceInner {
 				sys::AL_FALSE => SoftSourceSpatialization::Disabled,
 				sys::AL_TRUE => SoftSourceSpatialization::Enabled,
 				v if v == assp.AL_AUTO_SOFT? as sys::ALboolean => SoftSourceSpatialization::Auto,
-				_ => panic!("ALTO ERROR: Unknown source spatialization")
+				v => SoftSourceSpatialization::Unknown(v),
 			})
 		})().unwrap_or(SoftSourceSpatialization::Auto)
 	}
@@ -1204,6 +1209,7 @@ impl SourceInner {
 				SoftSourceSpatialization::Disabled => sys::AL_FALSE as sys::ALint,
 				SoftSourceSpatialization::Enabled => sys::AL_TRUE as sys::ALint,
 				SoftSourceSpatialization::Auto => assp.AL_AUTO_SOFT?,
+				SoftSourceSpatialization::Unknown(ssp) => ssp as sys::ALint,
 			});
 		}
 		self.ctx.get_error()
@@ -1269,7 +1275,7 @@ impl SourceInner {
 	fn set_direct_filter<F: Filter>(&self, value: &F) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
 		if *value.context() != self.ctx {
-			panic!("ALTO ERROR: Filter used on wrong context");
+			return Err(AltoError::AlWrongContext);
 		}
 
 		let _lock = self.ctx.make_current(true);
@@ -1291,7 +1297,7 @@ impl SourceInner {
 	}
 	fn set_aux_send_filter<F: Filter>(arc_self: &Arc<SourceInner>, send: sys::ALint, slot: &mut AuxEffectSlot, filter: &F) -> AltoResult<()> {
 		if *filter.context() != arc_self.ctx {
-			panic!("ALTO ERROR: Filter used on wrong context");
+			return Err(AltoError::AlWrongContext);
 		}
 
 		SourceInner::set_aux_send_impl(arc_self, send, slot, filter.as_raw())
@@ -1299,7 +1305,7 @@ impl SourceInner {
 	fn set_aux_send_impl(arc_self: &Arc<SourceInner>, send: sys::ALint, slot: &mut AuxEffectSlot, filter: sys::ALuint) -> AltoResult<()> {
 		let efx = arc_self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
 		if send >= arc_self.ctx.0.dev.max_aux_sends() || *slot.context() != arc_self.ctx {
-			panic!("ALTO ERROR: AuxEffectSlot used on wrong context");
+			return Err(AltoError::AlWrongContext);
 		}
 
 		let _lock = arc_self.ctx.make_current(true);
@@ -1446,9 +1452,9 @@ impl StaticSource {
 
 
 	/// `alSourcei(AL_BUFFER)`
-	pub fn set_buffer(&mut self, buf: Arc<Buffer>) {
+	pub fn set_buffer(&mut self, buf: Arc<Buffer>) -> AltoResult<()> {
 		if buf.ctx.device().as_raw() != self.src.ctx.device().as_raw() {
-			panic!("ALTO ERROR: Buffer used on wrong device");
+			return Err(AltoError::AlWrongDevice);
 		}
 
 		{
@@ -1457,6 +1463,7 @@ impl StaticSource {
 		}
 
 		self.buf = Some(buf);
+		Ok(())
 	}
 	/// `alSourcei(AL_BUFFER)`
 	pub fn clear_buffer(&mut self) {
@@ -1631,10 +1638,10 @@ impl StreamingSource {
 
 
 	/// `alSourceQueueBuffers()`
-	pub fn queue_buffer(&mut self, buf: Buffer) {
+	pub fn queue_buffer(&mut self, buf: Buffer) -> AltoResult<()> {
 		{
 			if buf.ctx.device().as_raw() != self.src.ctx.device().as_raw() {
-				panic!("ALTO ERROR: Buffer used on wrong device");
+				return Err(AltoError::AlWrongDevice);
 			}
 			let _lock = self.src.ctx.make_current(true);
 
@@ -1642,6 +1649,7 @@ impl StreamingSource {
 		}
 
 		self.bufs.push_back(buf);
+		Ok(())
 	}
 
 

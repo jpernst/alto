@@ -40,7 +40,7 @@ fn main() {
 		let buf = Arc::new(buf);
 
 		let mut src = ctx.new_static_source().unwrap();
-		src.set_buffer(buf);
+		src.set_buffer(buf).unwrap();
 		src.set_looping(true);
 		if let Some(ref mut slot) = slot {
 			src.set_aux_send(0, slot).unwrap();
@@ -63,7 +63,7 @@ fn main() {
 		}
 		for _ in 0 .. 5 {
 			let buf = ctx.new_buffer(wave.render().take(44_000 / 10).collect::<Vec<_>>(), 44_000).unwrap();
-			src.queue_buffer(buf);
+			src.queue_buffer(buf).unwrap();
 		}
 
 		println!("Playing streaming 220hz sine wave...");
@@ -74,7 +74,7 @@ fn main() {
 
 			let mut buf = src.unqueue_buffer().unwrap();
 			buf.set_data(wave.render().take(44_000 / 10).collect::<Vec<_>>(), 44_000).unwrap();
-			src.queue_buffer(buf);
+			src.queue_buffer(buf).unwrap();
 		}
 
 		while src.buffers_processed() < 5 { }

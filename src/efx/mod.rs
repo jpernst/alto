@@ -1,5 +1,4 @@
 use std::sync::Weak;
-use enum_primitive::FromPrimitive;
 
 use ::{AltoError, AltoResult};
 use sys;
@@ -53,13 +52,11 @@ pub struct ChorusEffect {
 }
 
 
-enum_from_primitive! {
-	#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-	#[repr(C)]
-	pub enum ChorusWaveform {
-		Sinusoid = 0,
-		Triangle,
-	}
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum ChorusWaveform {
+	Sinusoid,
+	Triangle,
+	Unknown(sys::ALint),
 }
 
 
@@ -84,13 +81,11 @@ pub struct FlangerEffect {
 }
 
 
-enum_from_primitive! {
-	#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-	#[repr(C)]
-	pub enum FlangerWaveform {
-		Sinusoid = 0,
-		Triangle,
-	}
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum FlangerWaveform {
+	Sinusoid,
+	Triangle,
+	Unknown(sys::ALint),
 }
 
 
@@ -101,14 +96,12 @@ pub struct FrequencyShifterEffect {
 }
 
 
-enum_from_primitive! {
-	#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-	#[repr(C)]
-	pub enum FrequencyShifterDirection {
-		Down = 0,
-		Up,
-		Off,
-	}
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum FrequencyShifterDirection {
+	Down,
+	Up,
+	Off,
+	Unknown(sys::ALint),
 }
 
 
@@ -119,52 +112,48 @@ pub struct VocalMorpherEffect {
 }
 
 
-enum_from_primitive! {
-	#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-	#[repr(C)]
-	pub enum VocalMorpherPhoneme {
-		A = 0,
-		E,
-		I,
-		O,
-		U,
-		AA,
-		AE,
-		AH,
-		AO,
-		EH,
-		ER,
-		IH,
-		IY,
-		UH,
-		UW,
-		B,
-		D,
-		F,
-		G,
-		J,
-		K,
-		L,
-		M,
-		N,
-		P,
-		R,
-		S,
-		T,
-		V,
-		Z,
-	}
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum VocalMorpherPhoneme {
+	A,
+	E,
+	I,
+	O,
+	U,
+	AA,
+	AE,
+	AH,
+	AO,
+	EH,
+	ER,
+	IH,
+	IY,
+	UH,
+	UW,
+	B,
+	D,
+	F,
+	G,
+	J,
+	K,
+	L,
+	M,
+	N,
+	P,
+	R,
+	S,
+	T,
+	V,
+	Z,
+	Unknown(sys::ALint),
 }
 
 
-enum_from_primitive! {
-	#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-	#[repr(C)]
-	pub enum VocalMorpherWaveform {
-		Sinusoid = 0,
-		Triangle,
-		Sawtooth,
-	}
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum VocalMorpherWaveform {
+	Sinusoid,
+	Triangle,
+	Sawtooth,
+	Unknown(sys::ALint),
 }
 
 
@@ -182,14 +171,12 @@ pub struct RingModulatorEffect {
 }
 
 
-enum_from_primitive! {
-	#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-	#[repr(C)]
-	pub enum RingModulatorWaveform {
-		Sinusoid = 0,
-		Sawtooth,
-		Square,
-	}
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum RingModulatorWaveform {
+	Sinusoid,
+	Sawtooth,
+	Square,
+	Unknown(sys::ALint),
 }
 
 
@@ -260,6 +247,188 @@ pub struct HighpassFilter {
 pub struct BandpassFilter {
 	ctx: al::Context,
 	filter: sys::ALuint,
+}
+
+
+impl From<sys::ALint> for ChorusWaveform {
+	fn from(value: sys::ALint) -> ChorusWaveform {
+		match value {
+			0 => ChorusWaveform::Sinusoid,
+			1 => ChorusWaveform::Triangle,
+			u => ChorusWaveform::Unknown(u),
+		}
+	}
+}
+impl From<ChorusWaveform> for sys::ALint {
+	fn from(value: ChorusWaveform) -> sys::ALint {
+		match value {
+			ChorusWaveform::Sinusoid => 0,
+			ChorusWaveform::Triangle => 1,
+			ChorusWaveform::Unknown(u) => u,
+		}
+	}
+}
+
+
+impl From<sys::ALint> for FlangerWaveform {
+	fn from(value: sys::ALint) -> FlangerWaveform {
+		match value {
+			0 => FlangerWaveform::Sinusoid,
+			1 => FlangerWaveform::Triangle,
+			u => FlangerWaveform::Unknown(u),
+		}
+	}
+}
+impl From<FlangerWaveform> for sys::ALint {
+	fn from(value: FlangerWaveform) -> sys::ALint {
+		match value {
+			FlangerWaveform::Sinusoid => 0,
+			FlangerWaveform::Triangle => 1,
+			FlangerWaveform::Unknown(u) => u,
+		}
+	}
+}
+
+
+impl From<sys::ALint> for FrequencyShifterDirection {
+	fn from(value: sys::ALint) -> FrequencyShifterDirection {
+		match value {
+			0 => FrequencyShifterDirection::Down,
+			1 => FrequencyShifterDirection::Up,
+			2 => FrequencyShifterDirection::Off,
+			u => FrequencyShifterDirection::Unknown(u),
+		}
+	}
+}
+impl From<FrequencyShifterDirection> for sys::ALint {
+	fn from(value: FrequencyShifterDirection) -> sys::ALint {
+		match value {
+			FrequencyShifterDirection::Down => 0,
+			FrequencyShifterDirection::Up => 1,
+			FrequencyShifterDirection::Off => 2,
+			FrequencyShifterDirection::Unknown(u) => u,
+		}
+	}
+}
+
+
+impl From<sys::ALint> for VocalMorpherWaveform {
+	fn from(value: sys::ALint) -> VocalMorpherWaveform {
+		match value {
+			0 => VocalMorpherWaveform::Sinusoid,
+			1 => VocalMorpherWaveform::Triangle,
+			2 => VocalMorpherWaveform::Sawtooth,
+			u => VocalMorpherWaveform::Unknown(u),
+		}
+	}
+}
+impl From<VocalMorpherWaveform> for sys::ALint {
+	fn from(value: VocalMorpherWaveform) -> sys::ALint {
+		match value {
+			VocalMorpherWaveform::Sinusoid => 0,
+			VocalMorpherWaveform::Triangle => 1,
+			VocalMorpherWaveform::Sawtooth => 2,
+			VocalMorpherWaveform::Unknown(u) => u,
+		}
+	}
+}
+
+
+impl From<sys::ALint> for VocalMorpherPhoneme {
+	fn from(value: sys::ALint) -> VocalMorpherPhoneme {
+		match value {
+			0 => VocalMorpherPhoneme::A,
+			1 => VocalMorpherPhoneme::E,
+			2 => VocalMorpherPhoneme::I,
+			3 => VocalMorpherPhoneme::O,
+			4 => VocalMorpherPhoneme::U,
+			5 => VocalMorpherPhoneme::AA,
+			6 => VocalMorpherPhoneme::AE,
+			7 => VocalMorpherPhoneme::AH,
+			8 => VocalMorpherPhoneme::AO,
+			9 => VocalMorpherPhoneme::EH,
+			10 => VocalMorpherPhoneme::ER,
+			11 => VocalMorpherPhoneme::IH,
+			12 => VocalMorpherPhoneme::IY,
+			13 => VocalMorpherPhoneme::UH,
+			14 => VocalMorpherPhoneme::UW,
+			15 => VocalMorpherPhoneme::B,
+			16 => VocalMorpherPhoneme::D,
+			17 => VocalMorpherPhoneme::F,
+			18 => VocalMorpherPhoneme::G,
+			19 => VocalMorpherPhoneme::J,
+			20 => VocalMorpherPhoneme::K,
+			21 => VocalMorpherPhoneme::L,
+			22 => VocalMorpherPhoneme::M,
+			23 => VocalMorpherPhoneme::N,
+			24 => VocalMorpherPhoneme::P,
+			25 => VocalMorpherPhoneme::R,
+			26 => VocalMorpherPhoneme::S,
+			27 => VocalMorpherPhoneme::T,
+			28 => VocalMorpherPhoneme::V,
+			29 => VocalMorpherPhoneme::Z,
+			u => VocalMorpherPhoneme::Unknown(u),
+		}
+	}
+}
+impl From<VocalMorpherPhoneme> for sys::ALint {
+	fn from(value: VocalMorpherPhoneme) -> sys::ALint {
+		match value {
+			VocalMorpherPhoneme::A => 0,
+			VocalMorpherPhoneme::E => 1,
+			VocalMorpherPhoneme::I => 2,
+			VocalMorpherPhoneme::O => 3,
+			VocalMorpherPhoneme::U => 4,
+			VocalMorpherPhoneme::AA => 5,
+			VocalMorpherPhoneme::AE => 6,
+			VocalMorpherPhoneme::AH => 7,
+			VocalMorpherPhoneme::AO => 8,
+			VocalMorpherPhoneme::EH => 9,
+			VocalMorpherPhoneme::ER => 10,
+			VocalMorpherPhoneme::IH => 11,
+			VocalMorpherPhoneme::IY => 12,
+			VocalMorpherPhoneme::UH => 13,
+			VocalMorpherPhoneme::UW => 14,
+			VocalMorpherPhoneme::B => 15,
+			VocalMorpherPhoneme::D => 16,
+			VocalMorpherPhoneme::F => 17,
+			VocalMorpherPhoneme::G => 18,
+			VocalMorpherPhoneme::J => 19,
+			VocalMorpherPhoneme::K => 20,
+			VocalMorpherPhoneme::L => 21,
+			VocalMorpherPhoneme::M => 22,
+			VocalMorpherPhoneme::N => 23,
+			VocalMorpherPhoneme::P => 24,
+			VocalMorpherPhoneme::R => 25,
+			VocalMorpherPhoneme::S => 26,
+			VocalMorpherPhoneme::T => 27,
+			VocalMorpherPhoneme::V => 28,
+			VocalMorpherPhoneme::Z => 29,
+			VocalMorpherPhoneme::Unknown(u) => u,
+		}
+	}
+}
+
+
+impl From<sys::ALint> for RingModulatorWaveform {
+	fn from(value: sys::ALint) -> RingModulatorWaveform {
+		match value {
+			0 => RingModulatorWaveform::Sinusoid,
+			1 => RingModulatorWaveform::Sawtooth,
+			2 => RingModulatorWaveform::Square,
+			u => RingModulatorWaveform::Unknown(u),
+		}
+	}
+}
+impl From<RingModulatorWaveform> for sys::ALint {
+	fn from(value: RingModulatorWaveform) -> sys::ALint {
+		match value {
+			RingModulatorWaveform::Sinusoid => 0,
+			RingModulatorWaveform::Sawtooth => 1,
+			RingModulatorWaveform::Square => 2,
+			RingModulatorWaveform::Unknown(u) => u,
+		}
+	}
 }
 
 
@@ -1193,13 +1362,13 @@ impl ChorusEffect {
 		let _lock = self.ctx.make_current(true);
 		let mut value = 0;
 		unsafe { efx.alGetEffecti.unwrap()(self.effect, efx.AL_CHORUS_WAVEFORM.unwrap(), &mut value); }
-		ChorusWaveform::from_i32(value as i32).expect("ALTO ERROR: Unknown chorus waveform")
+		value.into()
 	}
 	/// `alEffecti(AL_CHORUS_WAVEFORM)`
 	pub fn set_waveform(&mut self, value: ChorusWaveform) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX().unwrap();
 		let _lock = self.ctx.make_current(true);
-		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_CHORUS_WAVEFORM.unwrap(), value as sys::ALint) };
+		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_CHORUS_WAVEFORM.unwrap(), value.into()) };
 		self.ctx.get_error()
 	}
 
@@ -1572,13 +1741,13 @@ impl FlangerEffect {
 		let _lock = self.ctx.make_current(true);
 		let mut value = 0;
 		unsafe { efx.alGetEffecti.unwrap()(self.effect, efx.AL_FLANGER_WAVEFORM.unwrap(), &mut value); }
-		FlangerWaveform::from_i32(value as i32).expect("ALTO ERROR: Unknown flanger waveform")
+		value.into()
 	}
 	/// `alEffecti(AL_FLANGER_WAVEFORM)`
 	pub fn set_waveform(&mut self, value: FlangerWaveform) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX().unwrap();
 		let _lock = self.ctx.make_current(true);
-		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_FLANGER_WAVEFORM.unwrap(), value as sys::ALint) };
+		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_FLANGER_WAVEFORM.unwrap(), value.into()) };
 		self.ctx.get_error()
 	}
 
@@ -1730,13 +1899,13 @@ impl FrequencyShifterEffect {
 		let _lock = self.ctx.make_current(true);
 		let mut value = 0;
 		unsafe { efx.alGetEffecti.unwrap()(self.effect, efx.AL_FREQUENCY_SHIFTER_LEFT_DIRECTION.unwrap(), &mut value); }
-		FrequencyShifterDirection::from_i32(value as i32).expect("ALTO ERROR: Unknown frequency shifter direction")
+		value.into()
 	}
 	/// `alEffecti(AL_FREQUENCY_SHIFTER_LEFT_DIRECTION)`
 	pub fn set_left_direction(&mut self, value: FrequencyShifterDirection) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX().unwrap();
 		let _lock = self.ctx.make_current(true);
-		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_FREQUENCY_SHIFTER_LEFT_DIRECTION.unwrap(), value as sys::ALint); }
+		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_FREQUENCY_SHIFTER_LEFT_DIRECTION.unwrap(), value.into()); }
 		self.ctx.get_error()
 	}
 
@@ -1747,13 +1916,13 @@ impl FrequencyShifterEffect {
 		let _lock = self.ctx.make_current(true);
 		let mut value = 0;
 		unsafe { efx.alGetEffecti.unwrap()(self.effect, efx.AL_FREQUENCY_SHIFTER_RIGHT_DIRECTION.unwrap(), &mut value); }
-		FrequencyShifterDirection::from_i32(value as i32).expect("ALTO ERROR: Unknown frequency shifter direction")
+		value.into()
 	}
 	/// `alEffecti(AL_FREQUENCY_SHIFTER_RIGHT_DIRECTION)`
 	pub fn set_right_direction(&mut self, value: FrequencyShifterDirection) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX().unwrap();
 		let _lock = self.ctx.make_current(true);
-		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_FREQUENCY_SHIFTER_RIGHT_DIRECTION.unwrap(), value as sys::ALint); }
+		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_FREQUENCY_SHIFTER_RIGHT_DIRECTION.unwrap(), value.into()); }
 		self.ctx.get_error()
 	}
 }
@@ -1806,13 +1975,13 @@ impl VocalMorpherEffect {
 		let _lock = self.ctx.make_current(true);
 		let mut value = 0;
 		unsafe { efx.alGetEffecti.unwrap()(self.effect, efx.AL_VOCAL_MORPHER_PHONEMEA.unwrap(), &mut value); }
-		VocalMorpherPhoneme::from_i32(value as i32).expect("ALTO ERROR: Unknown vocal morpher phoneme")
+		value.into()
 	}
 	/// `alEffecti(AL_VOCAL_MORPHER_PHONEMEA)`
 	pub fn set_phonemea(&mut self, value: VocalMorpherPhoneme) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX().unwrap();
 		let _lock = self.ctx.make_current(true);
-		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_VOCAL_MORPHER_PHONEMEA.unwrap(), value as sys::ALint); }
+		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_VOCAL_MORPHER_PHONEMEA.unwrap(), value.into()); }
 		self.ctx.get_error()
 	}
 
@@ -1823,13 +1992,13 @@ impl VocalMorpherEffect {
 		let _lock = self.ctx.make_current(true);
 		let mut value = 0;
 		unsafe { efx.alGetEffecti.unwrap()(self.effect, efx.AL_VOCAL_MORPHER_PHONEMEB.unwrap(), &mut value); }
-		VocalMorpherPhoneme::from_i32(value as i32).expect("ALTO ERROR: Unknown vocal morpher phoneme")
+		value.into()
 	}
 	/// `alEffecti(AL_VOCAL_MORPHER_PHONEMEB)`
 	pub fn set_phonemeb(&mut self, value: VocalMorpherPhoneme) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX().unwrap();
 		let _lock = self.ctx.make_current(true);
-		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_VOCAL_MORPHER_PHONEMEB.unwrap(), value as sys::ALint); }
+		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_VOCAL_MORPHER_PHONEMEB.unwrap(), value.into()); }
 		self.ctx.get_error()
 	}
 
@@ -1874,13 +2043,13 @@ impl VocalMorpherEffect {
 		let _lock = self.ctx.make_current(true);
 		let mut value = 0;
 		unsafe { efx.alGetEffecti.unwrap()(self.effect, efx.AL_VOCAL_MORPHER_WAVEFORM.unwrap(), &mut value); }
-		VocalMorpherWaveform::from_i32(value as i32).expect("ALTO ERROR: Unknown vocal morpher waveform")
+		value.into()
 	}
 	/// `alEffecti(AL_VOCAL_MORPHER_WAVEFORM)`
 	pub fn set_waveform(&mut self, value: VocalMorpherWaveform) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX().unwrap();
 		let _lock = self.ctx.make_current(true);
-		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_VOCAL_MORPHER_WAVEFORM.unwrap(), value as sys::ALint); }
+		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_VOCAL_MORPHER_WAVEFORM.unwrap(), value.into()); }
 		self.ctx.get_error()
 	}
 
@@ -2053,13 +2222,13 @@ impl RingModulatorEffect {
 		let _lock = self.ctx.make_current(true);
 		let mut value = 0;
 		unsafe { efx.alGetEffecti.unwrap()(self.effect, efx.AL_RING_MODULATOR_WAVEFORM.unwrap(), &mut value); }
-		RingModulatorWaveform::from_i32(value as i32).expect("ALTO ERROR: Unknown ring modulator waveform")
+		value.into()
 	}
 	/// `alEffecti(AL_RING_MODULATOR_WAVEFORM)`
-	pub fn set_waveform(&mut self, value: ChorusWaveform) -> AltoResult<()> {
+	pub fn set_waveform(&mut self, value: RingModulatorWaveform) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX().unwrap();
 		let _lock = self.ctx.make_current(true);
-		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_RING_MODULATOR_WAVEFORM.unwrap(), value as sys::ALint) };
+		unsafe { efx.alEffecti.unwrap()(self.effect, efx.AL_RING_MODULATOR_WAVEFORM.unwrap(), value.into()) };
 		self.ctx.get_error()
 	}
 }

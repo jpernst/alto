@@ -6,6 +6,7 @@ authors = ["Jameson Ernst <jameson@jpernst.com>"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/jpernst/alto.git"
 documentation = "https://docs.rs/al-sys"
+homepage = "https://www.jpernst.com"
 keywords = ["openal", "al", "sound", "audio"]
 categories = ["multimedia::audio", "external-ffi-bindings"]
 

@@ -471,7 +471,7 @@ impl AuxEffectSlot {
 	/// `alAuxiliaryEffectSloti(AL_EFFECTSLOT_EFFECT)`
 	pub fn set_effect<E: Effect>(&mut self, value: &E) -> AltoResult<()> {
 		if *value.context() != self.ctx {
-			return Err(AltoError::AlInvalidValue);
+			return Err(AltoError::InvalidValue);
 		}
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX().unwrap();
 		let _lock = self.ctx.make_current(true);

@@ -16,7 +16,7 @@ macro_rules! alc_ext {
 	} => {
 		#[allow(non_snake_case)]
 		pub(crate) struct $cache {
-			pub $($ext: AlcExtResult<$ext>,)*
+			pub $($ext: ExtResult<$ext>,)*
 		}
 
 
@@ -29,7 +29,7 @@ macro_rules! alc_ext {
 			}
 
 
-			$(pub fn $ext(&self) -> AlcExtResult<&$ext> {
+			$(pub fn $ext(&self) -> ExtResult<&$ext> {
 				self.$ext.as_ref().map_err(|e| *e)
 			})*
 		}
@@ -42,13 +42,13 @@ macro_rules! alc_ext {
 		$(#[allow(non_camel_case_types, non_snake_case)]
 		#[derive(Debug)]
 		pub struct $ext {
-			$(pub $const_: AlcExtResult<ALCenum>,)*
-			$(pub $fn_: AlcExtResult<$fn_ty>,)*
+			$(pub $const_: ExtResult<ALCenum>,)*
+			$(pub $fn_: ExtResult<$fn_ty>,)*
 		}
 
 
 		impl $ext {
-			pub fn load(api: &AlApi, dev: *mut ALCdevice) -> AlcExtResult<$ext> {
+			pub fn load(api: &AlApi, dev: *mut ALCdevice) -> ExtResult<$ext> {
 				unsafe { api.alcGetError(dev); }
 				if unsafe { api.alcIsExtensionPresent(dev, concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALCchar) } == ALC_TRUE {
 					Ok($ext{
@@ -62,7 +62,7 @@ macro_rules! alc_ext {
 									"AL_EFFECTSLOT_EFFECT" => Ok(1),
 									"AL_EFFECTSLOT_GAIN" => Ok(2),
 									"AL_EFFECTSLOT_AUXILIARY_SEND_AUTO" => Ok(3),
-									_ => Err(AlcExtensionError),
+									_ => Err(ExtensionError),
 								}
 							}
 						},)*
@@ -71,12 +71,12 @@ macro_rules! alc_ext {
 							if p != ptr::null_mut() && unsafe { api.alcGetError(dev) } == ALC_NO_ERROR {
 								Ok(unsafe { mem::transmute(p) })
 							} else {
-								Err(AlcExtensionError)
+								Err(ExtensionError)
 							}
 						},)*
 					})
 				} else {
-					Err(AlcExtensionError)
+					Err(ExtensionError)
 				}
 			}
 		})*
@@ -96,7 +96,7 @@ macro_rules! al_ext {
 	} => {
 		#[allow(non_snake_case)]
 		pub(crate) struct $cache {
-			pub $($ext: AlExtResult<$ext>,)*
+			pub $($ext: ExtResult<$ext>,)*
 		}
 
 
@@ -109,7 +109,7 @@ macro_rules! al_ext {
 			}
 
 
-			$(pub fn $ext(&self) -> AlExtResult<&$ext> {
+			$(pub fn $ext(&self) -> ExtResult<&$ext> {
 				self.$ext.as_ref().map_err(|e| *e)
 			})*
 		}
@@ -121,13 +121,13 @@ macro_rules! al_ext {
 		$(#[allow(non_camel_case_types, non_snake_case)]
 		#[derive(Debug)]
 		pub struct $ext {
-			$(pub $const_: AlExtResult<ALenum>,)*
-			$(pub $fn_: AlExtResult<$fn_ty>,)*
+			$(pub $const_: ExtResult<ALenum>,)*
+			$(pub $fn_: ExtResult<$fn_ty>,)*
 		}
 
 
 		impl $ext {
-			pub fn load(api: &AlApi) -> AlExtResult<$ext> {
+			pub fn load(api: &AlApi) -> ExtResult<$ext> {
 				unsafe { api.alGetError(); }
 				if unsafe { api.alIsExtensionPresent(concat!(stringify!($ext), "\0").as_bytes().as_ptr() as *const ALchar) } == AL_TRUE {
 					Ok($ext{
@@ -136,7 +136,7 @@ macro_rules! al_ext {
 							if e != 0 && unsafe { api.alGetError() } == AL_NO_ERROR {
 								Ok(e)
 							} else {
-								Err(AlExtensionError)
+								Err(ExtensionError)
 							}
 						},)*
 						$($fn_: {
@@ -144,12 +144,12 @@ macro_rules! al_ext {
 							if p != ptr::null_mut() && unsafe { api.alGetError() } == AL_NO_ERROR {
 								Ok(unsafe { mem::transmute(p) })
 							} else {
-								Err(AlExtensionError)
+								Err(ExtensionError)
 							}
 						},)*
 					})
 				} else {
-					Err(AlExtensionError)
+					Err(ExtensionError)
 				}
 			}
 		})*
@@ -159,16 +159,11 @@ macro_rules! al_ext {
 
 #[doc(hidden)]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct AlcExtensionError;
-#[doc(hidden)]
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct AlExtensionError;
+pub struct ExtensionError;
 
 
 #[doc(hidden)]
-pub type AlcExtResult<T> = ::std::result::Result<T, AlcExtensionError>;
-#[doc(hidden)]
-pub type AlExtResult<T> = ::std::result::Result<T, AlExtensionError>;
+pub type ExtResult<T> = ::std::result::Result<T, ExtensionError>;
 
 
 #[derive(Copy, Clone, PartialEq, Hash, Eq, Debug)]

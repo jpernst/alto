@@ -1,6 +1,7 @@
 use std::cmp;
 use std::any::Any;
 use std::ptr;
+use std::mem;
 use std::ffi::{CString, CStr};
 use std::sync::Arc;
 use std::path::Path;
@@ -10,42 +11,6 @@ use ::{AltoError, AltoResult};
 use sys;
 use al::*;
 use ext;
-
-
-/// OpenAL-Soft stereo mode.
-/// In headphones mode, stereo crossfeed or HRTF may be used automatically.
-/// HRTF can be explicitly enabled regardless of this setting.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum SoftStereoMode {
-	Speakers,
-	Headphones,
-}
-
-
-/// OpenAL-Soft stereo crossfeed modes.
-/// Reduces the perceived separation between the left and right channels.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-#[repr(C)]
-pub enum SoftStereoCrossfeedLevel {
-	No = 0,
-	Low,
-	Middle,
-	High,
-	LowEasy,
-	MiddleEasy,
-	HighEasy,
-}
-
-
-/// Resamplers provided by OpenAL-Soft.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum SoftResampler {
-	Point,
-	Linear,
-	Sinc4,
-	Sinc8,
-	BSinc,
-}
 
 
 /// Attributes that may be supplied during context creation.
@@ -264,7 +229,7 @@ impl Alto {
 		{
 			Ok(())
 		} else {
-			Err(AltoError::AlcUnsupportedVersion{major, minor})
+			Err(AltoError::UnsupportedVersion{major, minor})
 		}
 	}
 
@@ -347,7 +312,7 @@ impl Alto {
 		let dev = unsafe { self.0.api.alcOpenDevice(spec.as_ref().map(|s| s.as_ptr()).unwrap_or(ptr::null())) };
 
 		if dev == ptr::null_mut() {
-			Err(AltoError::AlcInvalidDevice)
+			Err(AltoError::InvalidDevice)
 		} else {
 			let dev = OutputDevice(Arc::new(DeviceInner{
 				alto: Alto(self.0.clone()),
@@ -370,7 +335,7 @@ impl Alto {
 		let dev = unsafe { asl.alcLoopbackOpenDeviceSOFT?(spec.as_ref().map(|s| s.as_ptr()).unwrap_or(ptr::null())) };
 
 		if dev == ptr::null_mut() {
-			Err(AltoError::AlcInvalidDevice)
+			Err(AltoError::InvalidDevice)
 		} else {
 			let dev = LoopbackDevice(
 				Arc::new(DeviceInner{
@@ -392,7 +357,7 @@ impl Alto {
 		let dev = unsafe { self.0.api.alcCaptureOpenDevice(spec.as_ref().map(|s| s.as_ptr()).unwrap_or(ptr::null()), freq, F::format().into_raw(None)?, len) };
 
 		if dev == ptr::null_mut() {
-			Err(AltoError::AlcInvalidDevice)
+			Err(AltoError::InvalidDevice)
 		} else {
 			let dev = Capture{alto: Alto(self.0.clone()), spec: spec, dev: dev, marker: PhantomData};
 			self.check_version(dev.dev).map(|_| dev)
@@ -573,7 +538,7 @@ impl OutputDevice {
 		let ctx = unsafe { self.0.alto.0.api.alcCreateContext(self.0.dev, attrs_vec.map(|a| a.as_slice().as_ptr()).unwrap_or(ptr::null())) };
 		if ctx == ptr::null_mut() {
 			match self.0.alto.get_error(self.0.dev) {
-				Ok(..) => Err(AltoError::AlcNullError),
+				Ok(..) => Err(AltoError::NullError),
 				Err(e) => Err(e),
 			}
 		} else {
@@ -693,7 +658,7 @@ impl<F: LoopbackFrame> LoopbackDevice<F> {
 		let ctx = unsafe { self.0.alto.0.api.alcCreateContext(self.0.dev, attrs_vec.as_slice().as_ptr()) };
 		if ctx == ptr::null_mut() {
 			match self.0.alto.get_error(self.0.dev) {
-				Ok(..) => Err(AltoError::AlcNullError),
+				Ok(..) => Err(AltoError::NullError),
 				Err(e) => Err(e),
 			}
 		} else {
@@ -703,15 +668,19 @@ impl<F: LoopbackFrame> LoopbackDevice<F> {
 
 
 	/// `alcRenderSamplesSOFT()`
+	/// Returns the number of samples rendered to the slice. In all practical cases, this will be the maximum number of samples that will fit.
 	pub fn soft_render_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> usize {
-		let mut data = data.as_buffer_data_mut();
-		let len = cmp::min(data.len(), sys::ALCsizei::max_value() as usize);
+		let (data, size) = data.as_buffer_data_mut();
+		let len = cmp::min(size / mem::size_of::<F>(), sys::ALCsizei::max_value() as usize);
+		if len == 0 {
+			return 0;
+		}
 
 		let asl = self.0.alto.0.exts.ALC_SOFT_loopback().unwrap();
 
-		unsafe { asl.alcRenderSamplesSOFT.unwrap()(self.0.dev, data.as_mut_ptr() as *mut _, len as sys::ALCsizei); }
+		unsafe { asl.alcRenderSamplesSOFT.unwrap()(self.0.dev, data, len as sys::ALCsizei); }
 
-		len
+		len as usize
 	}
 
 
@@ -807,12 +776,16 @@ impl<F: StandardFrame> Capture<F> {
 
 
 	/// `alcCaptureSamples()`
-	pub fn capture_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> AltoResult<()> {
-		let mut data = data.as_buffer_data_mut();
-		if data.len() > self.samples_len() as usize { return Err(AltoError::AlcInvalidValue) }
+	/// Returns the number of samples captured to the slice.
+	pub fn capture_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> AltoResult<usize> {
+		let (data, size) = data.as_buffer_data_mut();
+		let len = cmp::min(size / mem::size_of::<F>(), self.samples_len() as usize);
+		if len == 0 {
+			return Ok(0);
+		}
 
-		unsafe { self.alto.0.api.alcCaptureSamples(self.dev, data.as_mut_ptr() as *mut _, data.len() as sys::ALCsizei); }
-		Ok(())
+		unsafe { self.alto.0.api.alcCaptureSamples(self.dev, data, len as sys::ALCsizei); }
+		Ok(len as usize)
 	}
 }
 

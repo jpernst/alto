@@ -745,24 +745,23 @@ impl Buffer {
 
 
 	/// `alBufferData()`
-	pub fn set_data<F: SampleFrame, B: AsBufferData<F>>(&mut self, data: B, freq: i32) -> AltoResult<()> {
-		let data = data.as_buffer_data();
-		if sys::ALsizei::max_value() as usize / mem::size_of::<F>() < data.len() { return Err(AltoError::AlInvalidValue) }
-		let size = data.len() * mem::size_of::<F>();
+	pub fn set_data<F: SampleFrame, B: AsBufferData<F>>(&mut self, data: B, freq: sys::ALint) -> AltoResult<()> {
+		let (data, size) = data.as_buffer_data();
+		if (sys::ALsizei::max_value() as usize) < size { return Err(AltoError::InvalidValue) }
 
 		let _lock = self.ctx.make_current(true);
 		unsafe {
 			self.ctx.0.dev.0.alto.0.api.alBufferData(
 				self.buf,
 				F::format().into_raw(Some(&self.ctx))?,
-				data.as_ptr() as *const sys::ALvoid,
+				data,
 				size as sys::ALsizei,
-				freq as sys::ALint,
+				freq,
 			);
 		}
 		self.ctx.get_error()?;
 
-		self.len = data.len() as sys::ALsizei;
+		self.len = (size as usize / mem::size_of::<F::Sample>() / F::len()) as sys::ALsizei;
 		Ok(())
 	}
 
@@ -1275,7 +1274,7 @@ impl SourceInner {
 	fn set_direct_filter<F: Filter>(&self, value: &F) -> AltoResult<()> {
 		let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
 		if *value.context() != self.ctx {
-			return Err(AltoError::AlWrongContext);
+			return Err(AltoError::WrongContext);
 		}
 
 		let _lock = self.ctx.make_current(true);
@@ -1297,7 +1296,7 @@ impl SourceInner {
 	}
 	fn set_aux_send_filter<F: Filter>(arc_self: &Arc<SourceInner>, send: sys::ALint, slot: &mut AuxEffectSlot, filter: &F) -> AltoResult<()> {
 		if *filter.context() != arc_self.ctx {
-			return Err(AltoError::AlWrongContext);
+			return Err(AltoError::WrongContext);
 		}
 
 		SourceInner::set_aux_send_impl(arc_self, send, slot, filter.as_raw())
@@ -1305,7 +1304,7 @@ impl SourceInner {
 	fn set_aux_send_impl(arc_self: &Arc<SourceInner>, send: sys::ALint, slot: &mut AuxEffectSlot, filter: sys::ALuint) -> AltoResult<()> {
 		let efx = arc_self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
 		if send >= arc_self.ctx.0.dev.max_aux_sends() || *slot.context() != arc_self.ctx {
-			return Err(AltoError::AlWrongContext);
+			return Err(AltoError::WrongContext);
 		}
 
 		let _lock = arc_self.ctx.make_current(true);
@@ -1320,7 +1319,7 @@ impl SourceInner {
 		let _ = (|| -> AltoResult<_> {
 			let efx = self.ctx.0.dev.0.exts.ALC_EXT_EFX()?;
 			if send >= self.ctx.0.dev.max_aux_sends() {
-				return Err(AltoError::AlInvalidValue);
+				return Err(AltoError::InvalidValue);
 			}
 
 			let _lock = self.ctx.make_current(true);
@@ -1454,7 +1453,7 @@ impl StaticSource {
 	/// `alSourcei(AL_BUFFER)`
 	pub fn set_buffer(&mut self, buf: Arc<Buffer>) -> AltoResult<()> {
 		if buf.ctx.device().as_raw() != self.src.ctx.device().as_raw() {
-			return Err(AltoError::AlWrongDevice);
+			return Err(AltoError::WrongDevice);
 		}
 
 		{
@@ -1641,7 +1640,7 @@ impl StreamingSource {
 	pub fn queue_buffer(&mut self, buf: Buffer) -> AltoResult<()> {
 		{
 			if buf.ctx.device().as_raw() != self.src.ctx.device().as_raw() {
-				return Err(AltoError::AlWrongDevice);
+				return Err(AltoError::WrongDevice);
 			}
 			let _lock = self.src.ctx.make_current(true);
 

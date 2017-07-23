@@ -1,5 +1,4 @@
 use std::ops::{Deref, DerefMut};
-use std::slice;
 
 use ::{AltoError, AltoResult};
 use sys;
@@ -202,15 +201,17 @@ pub unsafe trait SampleFrame: Copy + 'static {
 pub unsafe trait StandardFrame: SampleFrame { }
 
 
-/// Implemented for types that can be converted into a slice of audio buffer data.
-pub trait AsBufferData<F: SampleFrame> {
-	fn as_buffer_data(&self) -> &[F];
+/// Implemented for types that represent a shared buffer of audio data.
+pub unsafe trait AsBufferData<F: SampleFrame> {
+	#[doc(hidden)]
+	fn as_buffer_data(&self) -> (*const sys::ALvoid, usize);
 }
 
 
-/// Implemented for types that can be converted into a mutable slice of audio buffer data.
-pub trait AsBufferDataMut<F: SampleFrame> {
-	fn as_buffer_data_mut(&mut self) -> &mut [F];
+/// Implemented for types that represent a mutable buffer of audio data.
+pub unsafe trait AsBufferDataMut<F: SampleFrame> {
+	#[doc(hidden)]
+	fn as_buffer_data_mut(&mut self) -> (*mut sys::ALvoid, usize);
 }
 
 
@@ -345,7 +346,7 @@ impl StandardFormat {
 
 impl ExtALawFormat {
 	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
-		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
+		ctx.ok_or(AltoError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtALawFormat::Mono => Ok(ctx.0.exts.AL_EXT_ALAW()?.AL_FORMAT_MONO_ALAW_EXT?),
 			ExtALawFormat::Stereo => Ok(ctx.0.exts.AL_EXT_ALAW()?.AL_FORMAT_STEREO_ALAW_EXT?),
 		})
@@ -355,7 +356,7 @@ impl ExtALawFormat {
 
 impl ExtBFormat {
 	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
-		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
+		ctx.ok_or(AltoError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtBFormat::B2DU8 => Ok(ctx.0.exts.AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_8?),
 			ExtBFormat::B2DI16 => Ok(ctx.0.exts.AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_16?),
 			ExtBFormat::B2DF32 => Ok(ctx.0.exts.AL_EXT_BFORMAT()?.AL_FORMAT_BFORMAT2D_FLOAT32?),
@@ -369,7 +370,7 @@ impl ExtBFormat {
 
 impl ExtDoubleFormat {
 	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
-		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
+		ctx.ok_or(AltoError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtDoubleFormat::Mono => Ok(ctx.0.exts.AL_EXT_double()?.AL_FORMAT_MONO_DOUBLE_EXT?),
 			ExtDoubleFormat::Stereo => Ok(ctx.0.exts.AL_EXT_double()?.AL_FORMAT_STEREO_DOUBLE_EXT?),
 		})
@@ -379,7 +380,7 @@ impl ExtDoubleFormat {
 
 impl ExtFloat32Format {
 	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
-		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
+		ctx.ok_or(AltoError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtFloat32Format::Mono => Ok(ctx.0.exts.AL_EXT_float32()?.AL_FORMAT_MONO_FLOAT32?),
 			ExtFloat32Format::Stereo => Ok(ctx.0.exts.AL_EXT_float32()?.AL_FORMAT_STEREO_FLOAT32?),
 		})
@@ -389,7 +390,7 @@ impl ExtFloat32Format {
 
 impl ExtIma4Format {
 	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
-		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
+		ctx.ok_or(AltoError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtIma4Format::Mono => Ok(ctx.0.exts.AL_EXT_IMA4()?.AL_FORMAT_MONO_IMA4?),
 			ExtIma4Format::Stereo => Ok(ctx.0.exts.AL_EXT_IMA4()?.AL_FORMAT_STEREO_IMA4?),
 		})
@@ -399,7 +400,7 @@ impl ExtIma4Format {
 
 impl ExtMcFormat {
 	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
-		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
+		ctx.ok_or(AltoError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtMcFormat::QuadU8 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD8?),
 			ExtMcFormat::QuadI16 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD16?),
 			ExtMcFormat::QuadF32 => Ok(ctx.0.exts.AL_EXT_MCFORMATS()?.AL_FORMAT_QUAD32?),
@@ -422,7 +423,7 @@ impl ExtMcFormat {
 
 impl ExtMuLawFormat {
 	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
-		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
+		ctx.ok_or(AltoError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtMuLawFormat::Mono => Ok(ctx.0.exts.AL_EXT_MULAW()?.AL_FORMAT_MONO_MULAW_EXT?),
 			ExtMuLawFormat::Stereo => Ok(ctx.0.exts.AL_EXT_MULAW()?.AL_FORMAT_STEREO_MULAW_EXT?),
 		})
@@ -432,7 +433,7 @@ impl ExtMuLawFormat {
 
 impl ExtMuLawBFormat {
 	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
-		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
+		ctx.ok_or(AltoError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtMuLawBFormat::B2D => Ok(ctx.0.exts.AL_EXT_MULAW_BFORMAT()?.AL_FORMAT_BFORMAT2D_MULAW?),
 			ExtMuLawBFormat::B3D => Ok(ctx.0.exts.AL_EXT_MULAW_BFORMAT()?.AL_FORMAT_BFORMAT3D_MULAW?),
 		})
@@ -442,7 +443,7 @@ impl ExtMuLawBFormat {
 
 impl ExtMuLawMcFormat {
 	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
-		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
+		ctx.ok_or(AltoError::ExtensionNotPresent).and_then(|ctx| match self {
 			ExtMuLawMcFormat::Mono => Ok(ctx.0.exts.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_MONO_MULAW?),
 			ExtMuLawMcFormat::Stereo => Ok(ctx.0.exts.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_STEREO_MULAW?),
 			ExtMuLawMcFormat::Quad => Ok(ctx.0.exts.AL_EXT_MULAW_MCFORMATS()?.AL_FORMAT_QUAD_MULAW?),
@@ -457,7 +458,7 @@ impl ExtMuLawMcFormat {
 
 impl SoftMsadpcmFormat {
 	pub fn into_raw(self, ctx: Option<&Context>) -> AltoResult<sys::ALint> {
-		ctx.ok_or(AltoError::AlExtensionNotPresent).and_then(|ctx| match self {
+		ctx.ok_or(AltoError::ExtensionNotPresent).and_then(|ctx| match self {
 			SoftMsadpcmFormat::Mono => Ok(ctx.0.exts.AL_SOFT_MSADPCM()?.AL_FORMAT_MONO_MSADPCM_SOFT?),
 			SoftMsadpcmFormat::Stereo => Ok(ctx.0.exts.AL_SOFT_MSADPCM()?.AL_FORMAT_STEREO_MSADPCM_SOFT?),
 		})
@@ -468,258 +469,258 @@ impl SoftMsadpcmFormat {
 unsafe impl SampleFrame for Mono<u8> {
 	type Sample = u8;
 
-	#[inline(always)] fn len() -> usize { 1 }
-	#[inline(always)] fn format() -> Format { Format::Standard(StandardFormat::MonoU8) }
+	#[inline] fn len() -> usize { 1 }
+	#[inline] fn format() -> Format { Format::Standard(StandardFormat::MonoU8) }
 }
 unsafe impl SampleFrame for Mono<i16> {
 	type Sample = i16;
 
-	#[inline(always)] fn len() -> usize { 1 }
-	#[inline(always)] fn format() -> Format { Format::Standard(StandardFormat::MonoI16) }
+	#[inline] fn len() -> usize { 1 }
+	#[inline] fn format() -> Format { Format::Standard(StandardFormat::MonoI16) }
 }
 unsafe impl SampleFrame for Mono<f32> {
 	type Sample = f32;
 
-	#[inline(always)] fn len() -> usize { 1 }
-	#[inline(always)] fn format() -> Format { Format::ExtFloat32(ExtFloat32Format::Mono) }
+	#[inline] fn len() -> usize { 1 }
+	#[inline] fn format() -> Format { Format::ExtFloat32(ExtFloat32Format::Mono) }
 }
 unsafe impl SampleFrame for Mono<f64> {
 	type Sample = f64;
 
-	#[inline(always)] fn len() -> usize { 1 }
-	#[inline(always)] fn format() -> Format { Format::ExtDouble(ExtDoubleFormat::Mono) }
+	#[inline] fn len() -> usize { 1 }
+	#[inline] fn format() -> Format { Format::ExtDouble(ExtDoubleFormat::Mono) }
 }
 unsafe impl SampleFrame for Mono<ALawSample> {
 	type Sample = ALawSample;
 
-	#[inline(always)] fn len() -> usize { 1 }
-	#[inline(always)] fn format() -> Format { Format::ExtALaw(ExtALawFormat::Mono) }
+	#[inline] fn len() -> usize { 1 }
+	#[inline] fn format() -> Format { Format::ExtALaw(ExtALawFormat::Mono) }
 }
 unsafe impl SampleFrame for Mono<MuLawSample> {
 	type Sample = MuLawSample;
 
-	#[inline(always)] fn len() -> usize { 1 }
-	#[inline(always)] fn format() -> Format { Format::ExtMuLaw(ExtMuLawFormat::Mono) }
+	#[inline] fn len() -> usize { 1 }
+	#[inline] fn format() -> Format { Format::ExtMuLaw(ExtMuLawFormat::Mono) }
 }
 
 
 unsafe impl SampleFrame for Stereo<u8> {
 	type Sample = u8;
 
-	#[inline(always)] fn len() -> usize { 2 }
-	#[inline(always)] fn format() -> Format { Format::Standard(StandardFormat::StereoU8) }
+	#[inline] fn len() -> usize { 2 }
+	#[inline] fn format() -> Format { Format::Standard(StandardFormat::StereoU8) }
 }
 unsafe impl SampleFrame for Stereo<i16> {
 	type Sample = i16;
 
-	#[inline(always)] fn len() -> usize { 2 }
-	#[inline(always)] fn format() -> Format { Format::Standard(StandardFormat::StereoI16) }
+	#[inline] fn len() -> usize { 2 }
+	#[inline] fn format() -> Format { Format::Standard(StandardFormat::StereoI16) }
 }
 unsafe impl SampleFrame for Stereo<f32> {
 	type Sample = f32;
 
-	#[inline(always)] fn len() -> usize { 2 }
-	#[inline(always)] fn format() -> Format { Format::ExtFloat32(ExtFloat32Format::Stereo) }
+	#[inline] fn len() -> usize { 2 }
+	#[inline] fn format() -> Format { Format::ExtFloat32(ExtFloat32Format::Stereo) }
 }
 unsafe impl SampleFrame for Stereo<f64> {
 	type Sample = f64;
 
-	#[inline(always)] fn len() -> usize { 2 }
-	#[inline(always)] fn format() -> Format { Format::ExtDouble(ExtDoubleFormat::Stereo) }
+	#[inline] fn len() -> usize { 2 }
+	#[inline] fn format() -> Format { Format::ExtDouble(ExtDoubleFormat::Stereo) }
 }
 unsafe impl SampleFrame for Stereo<ALawSample> {
 	type Sample = ALawSample;
 
-	#[inline(always)] fn len() -> usize { 2 }
-	#[inline(always)] fn format() -> Format { Format::ExtALaw(ExtALawFormat::Stereo) }
+	#[inline] fn len() -> usize { 2 }
+	#[inline] fn format() -> Format { Format::ExtALaw(ExtALawFormat::Stereo) }
 }
 unsafe impl SampleFrame for Stereo<MuLawSample> {
 	type Sample = MuLawSample;
 
-	#[inline(always)] fn len() -> usize { 2 }
-	#[inline(always)] fn format() -> Format { Format::ExtMuLaw(ExtMuLawFormat::Stereo) }
+	#[inline] fn len() -> usize { 2 }
+	#[inline] fn format() -> Format { Format::ExtMuLaw(ExtMuLawFormat::Stereo) }
 }
 
 
 unsafe impl SampleFrame for McRear<u8> {
 	type Sample = u8;
 
-	#[inline(always)] fn len() -> usize { 1 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::RearU8) }
+	#[inline] fn len() -> usize { 1 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::RearU8) }
 }
 unsafe impl SampleFrame for McRear<i16> {
 	type Sample = i16;
 
-	#[inline(always)] fn len() -> usize { 1 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::RearI16)  }
+	#[inline] fn len() -> usize { 1 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::RearI16)  }
 }
 unsafe impl SampleFrame for McRear<f32> {
 	type Sample = f32;
 
-	#[inline(always)] fn len() -> usize { 1 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::RearF32) }
+	#[inline] fn len() -> usize { 1 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::RearF32) }
 }
 unsafe impl SampleFrame for McRear<MuLawSample> {
 	type Sample = MuLawSample;
 
-	#[inline(always)] fn len() -> usize { 1 }
-	#[inline(always)] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Rear) }
+	#[inline] fn len() -> usize { 1 }
+	#[inline] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Rear) }
 }
 
 
 unsafe impl SampleFrame for McQuad<u8> {
 	type Sample = u8;
 
-	#[inline(always)] fn len() -> usize { 4 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::QuadU8) }
+	#[inline] fn len() -> usize { 4 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::QuadU8) }
 }
 unsafe impl SampleFrame for McQuad<i16> {
 	type Sample = i16;
 
-	#[inline(always)] fn len() -> usize { 4 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::QuadI16)  }
+	#[inline] fn len() -> usize { 4 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::QuadI16)  }
 }
 unsafe impl SampleFrame for McQuad<f32> {
 	type Sample = f32;
 
-	#[inline(always)] fn len() -> usize { 4 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::QuadF32) }
+	#[inline] fn len() -> usize { 4 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::QuadF32) }
 }
 unsafe impl SampleFrame for McQuad<MuLawSample> {
 	type Sample = MuLawSample;
 
-	#[inline(always)] fn len() -> usize { 4 }
-	#[inline(always)] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Quad) }
+	#[inline] fn len() -> usize { 4 }
+	#[inline] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Quad) }
 }
 
 
 unsafe impl SampleFrame for Mc51Chn<u8> {
 	type Sample = u8;
 
-	#[inline(always)] fn len() -> usize { 6 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc51ChnU8) }
+	#[inline] fn len() -> usize { 6 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc51ChnU8) }
 }
 unsafe impl SampleFrame for Mc51Chn<i16> {
 	type Sample = i16;
 
-	#[inline(always)] fn len() -> usize { 6 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc51ChnI16)  }
+	#[inline] fn len() -> usize { 6 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc51ChnI16)  }
 }
 unsafe impl SampleFrame for Mc51Chn<f32> {
 	type Sample = f32;
 
-	#[inline(always)] fn len() -> usize { 6 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc51ChnF32) }
+	#[inline] fn len() -> usize { 6 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc51ChnF32) }
 }
 unsafe impl SampleFrame for Mc51Chn<MuLawSample> {
 	type Sample = MuLawSample;
 
-	#[inline(always)] fn len() -> usize { 6 }
-	#[inline(always)] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Mc51Chn) }
+	#[inline] fn len() -> usize { 6 }
+	#[inline] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Mc51Chn) }
 }
 
 
 unsafe impl SampleFrame for Mc61Chn<u8> {
 	type Sample = u8;
 
-	#[inline(always)] fn len() -> usize { 7 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc61ChnU8) }
+	#[inline] fn len() -> usize { 7 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc61ChnU8) }
 }
 unsafe impl SampleFrame for Mc61Chn<i16> {
 	type Sample = i16;
 
-	#[inline(always)] fn len() -> usize { 7 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc61ChnI16)  }
+	#[inline] fn len() -> usize { 7 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc61ChnI16)  }
 }
 unsafe impl SampleFrame for Mc61Chn<f32> {
 	type Sample = f32;
 
-	#[inline(always)] fn len() -> usize { 7 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc61ChnF32) }
+	#[inline] fn len() -> usize { 7 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc61ChnF32) }
 }
 unsafe impl SampleFrame for Mc61Chn<MuLawSample> {
 	type Sample = MuLawSample;
 
-	#[inline(always)] fn len() -> usize { 7 }
-	#[inline(always)] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Mc61Chn) }
+	#[inline] fn len() -> usize { 7 }
+	#[inline] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Mc61Chn) }
 }
 
 
 unsafe impl SampleFrame for Mc71Chn<u8> {
 	type Sample = u8;
 
-	#[inline(always)] fn len() -> usize { 8 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc71ChnU8) }
+	#[inline] fn len() -> usize { 8 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc71ChnU8) }
 }
 unsafe impl SampleFrame for Mc71Chn<i16> {
 	type Sample = i16;
 
-	#[inline(always)] fn len() -> usize { 8 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc71ChnI16)  }
+	#[inline] fn len() -> usize { 8 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc71ChnI16)  }
 }
 unsafe impl SampleFrame for Mc71Chn<f32> {
 	type Sample = f32;
 
-	#[inline(always)] fn len() -> usize { 8 }
-	#[inline(always)] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc71ChnF32) }
+	#[inline] fn len() -> usize { 8 }
+	#[inline] fn format() -> Format { Format::ExtMcFormats(ExtMcFormat::Mc71ChnF32) }
 }
 unsafe impl SampleFrame for Mc71Chn<MuLawSample> {
 	type Sample = MuLawSample;
 
-	#[inline(always)] fn len() -> usize { 8 }
-	#[inline(always)] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Mc71Chn) }
+	#[inline] fn len() -> usize { 8 }
+	#[inline] fn format() -> Format { Format::ExtMuLawMcFormats(ExtMuLawMcFormat::Mc71Chn) }
 }
 
 
 unsafe impl SampleFrame for BFormat2D<u8> {
 	type Sample = u8;
 
-	#[inline(always)] fn len() -> usize { 3 }
-	#[inline(always)] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B2DU8) }
+	#[inline] fn len() -> usize { 3 }
+	#[inline] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B2DU8) }
 }
 unsafe impl SampleFrame for BFormat2D<i16> {
 	type Sample = i16;
 
-	#[inline(always)] fn len() -> usize { 3 }
-	#[inline(always)] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B2DI16) }
+	#[inline] fn len() -> usize { 3 }
+	#[inline] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B2DI16) }
 }
 unsafe impl SampleFrame for BFormat2D<f32> {
 	type Sample = f32;
 
-	#[inline(always)] fn len() -> usize { 3 }
-	#[inline(always)] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B2DF32) }
+	#[inline] fn len() -> usize { 3 }
+	#[inline] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B2DF32) }
 }
 unsafe impl SampleFrame for BFormat2D<MuLawSample> {
 	type Sample = MuLawSample;
 
-	#[inline(always)] fn len() -> usize { 3 }
-	#[inline(always)] fn format() -> Format { Format::ExtMuLawBFormat(ExtMuLawBFormat::B2D) }
+	#[inline] fn len() -> usize { 3 }
+	#[inline] fn format() -> Format { Format::ExtMuLawBFormat(ExtMuLawBFormat::B2D) }
 }
 
 
 unsafe impl SampleFrame for BFormat3D<u8> {
 	type Sample = u8;
 
-	#[inline(always)] fn len() -> usize { 4 }
-	#[inline(always)] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B3DU8) }
+	#[inline] fn len() -> usize { 4 }
+	#[inline] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B3DU8) }
 }
 unsafe impl SampleFrame for BFormat3D<i16> {
 	type Sample = i16;
 
-	#[inline(always)] fn len() -> usize { 4 }
-	#[inline(always)] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B3DI16) }
+	#[inline] fn len() -> usize { 4 }
+	#[inline] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B3DI16) }
 }
 unsafe impl SampleFrame for BFormat3D<f32> {
 	type Sample = f32;
 
-	#[inline(always)] fn len() -> usize { 4 }
-	#[inline(always)] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B3DF32) }
+	#[inline] fn len() -> usize { 4 }
+	#[inline] fn format() -> Format { Format::ExtBFormat(ExtBFormat::B3DF32) }
 }
 unsafe impl SampleFrame for BFormat3D<MuLawSample> {
 	type Sample = MuLawSample;
 
-	#[inline(always)] fn len() -> usize { 4 }
-	#[inline(always)] fn format() -> Format { Format::ExtMuLawBFormat(ExtMuLawBFormat::B3D) }
+	#[inline] fn len() -> usize { 4 }
+	#[inline] fn format() -> Format { Format::ExtMuLawBFormat(ExtMuLawBFormat::B3D) }
 }
 
 
@@ -831,185 +832,59 @@ unsafe impl LoopbackFrame for Mc71Chn<f32>
 }
 
 
-impl<S> AsBufferData<Mono<S>> for [Mono<S>] where S: Copy, Mono<S>: SampleFrame { fn as_buffer_data(&self) -> &[Mono<S>] { self } }
-impl<S> AsBufferData<Mono<S>> for [S] where
-	S: Copy,
-	Mono<S>: SampleFrame,
-{
-	fn as_buffer_data(&self) -> &[Mono<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Mono::<S>::len()) }
+unsafe impl<F> AsBufferData<F> for [F] where F: SampleFrame {
+	fn as_buffer_data(&self) -> (*const sys::ALvoid, usize) {
+		(self.as_ptr() as *const _, self.len() * mem::size_of::<F>())
 	}
 }
-impl<S> AsBufferData<Stereo<S>> for [Stereo<S>] where S: Copy, Stereo<S>: SampleFrame { fn as_buffer_data(&self) -> &[Stereo<S>] { self } }
-impl<S> AsBufferData<Stereo<S>> for [S] where
-	S: Copy,
-	Stereo<S>: SampleFrame,
-{
-	fn as_buffer_data(&self) -> &[Stereo<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Stereo::<S>::len()) }
+unsafe impl<F> AsBufferData<F> for [u8] where F: SampleFrame<Sample = u8> {
+	fn as_buffer_data(&self) -> (*const sys::ALvoid, usize) {
+		(self.as_ptr() as *const _, self.len() * mem::size_of::<u8>())
 	}
 }
-impl<S> AsBufferData<McRear<S>> for [McRear<S>] where S: Copy, McRear<S>: SampleFrame { fn as_buffer_data(&self) -> &[McRear<S>] { self } }
-impl<S> AsBufferData<McRear<S>> for [S] where
-	S: Copy,
-	McRear<S>: SampleFrame,
-{
-	fn as_buffer_data(&self) -> &[McRear<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / McRear::<S>::len()) }
+unsafe impl<F> AsBufferData<F> for [i16] where F: SampleFrame<Sample = i16> {
+	fn as_buffer_data(&self) -> (*const sys::ALvoid, usize) {
+		(self.as_ptr() as *const _, self.len() * mem::size_of::<i16>())
 	}
 }
-impl<S> AsBufferData<McQuad<S>> for [McQuad<S>] where S: Copy, McQuad<S>: SampleFrame { fn as_buffer_data(&self) -> &[McQuad<S>] { self } }
-impl<S> AsBufferData<McQuad<S>> for [S] where
-	S: Copy,
-	McQuad<S>: SampleFrame,
-{
-	fn as_buffer_data(&self) -> &[McQuad<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / McQuad::<S>::len()) }
+unsafe impl<F> AsBufferData<F> for [f32] where F: SampleFrame<Sample = f32> {
+	fn as_buffer_data(&self) -> (*const sys::ALvoid, usize) {
+		(self.as_ptr() as *const _, self.len() * mem::size_of::<f32>())
 	}
 }
-impl<S> AsBufferData<Mc51Chn<S>> for [Mc51Chn<S>] where S: Copy, Mc51Chn<S>: SampleFrame { fn as_buffer_data(&self) -> &[Mc51Chn<S>] { self } }
-impl<S> AsBufferData<Mc51Chn<S>> for [S] where
-	S: Copy,
-	Mc51Chn<S>: SampleFrame,
-{
-	fn as_buffer_data(&self) -> &[Mc51Chn<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Mc51Chn::<S>::len()) }
-	}
-}
-impl<S> AsBufferData<Mc61Chn<S>> for [Mc61Chn<S>] where S: Copy, Mc61Chn<S>: SampleFrame { fn as_buffer_data(&self) -> &[Mc61Chn<S>] { self } }
-impl<S> AsBufferData<Mc61Chn<S>> for [S] where
-	S: Copy,
-	Mc61Chn<S>: SampleFrame,
-{
-	fn as_buffer_data(&self) -> &[Mc61Chn<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Mc61Chn::<S>::len()) }
-	}
-}
-impl<S> AsBufferData<Mc71Chn<S>> for [Mc71Chn<S>] where S: Copy, Mc71Chn<S>: SampleFrame { fn as_buffer_data(&self) -> &[Mc71Chn<S>] { self } }
-impl<S> AsBufferData<Mc71Chn<S>> for [S] where
-	S: Copy,
-	Mc71Chn<S>: SampleFrame,
-{
-	fn as_buffer_data(&self) -> &[Mc71Chn<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / Mc71Chn::<S>::len()) }
-	}
-}
-impl<S> AsBufferData<BFormat2D<S>> for [BFormat2D<S>] where S: Copy, BFormat2D<S>: SampleFrame { fn as_buffer_data(&self) -> &[BFormat2D<S>] { self } }
-impl<S> AsBufferData<BFormat2D<S>> for [S] where
-	S: Copy,
-	BFormat2D<S>: SampleFrame,
-{
-	fn as_buffer_data(&self) -> &[BFormat2D<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / BFormat2D::<S>::len()) }
-	}
-}
-impl<S> AsBufferData<BFormat3D<S>> for [BFormat3D<S>] where S: Copy, BFormat3D<S>: SampleFrame { fn as_buffer_data(&self) -> &[BFormat3D<S>] { self } }
-impl<S> AsBufferData<BFormat3D<S>> for [S] where
-	S: Copy,
-	BFormat3D<S>: SampleFrame,
-{
-	fn as_buffer_data(&self) -> &[BFormat3D<S>] {
-		unsafe { slice::from_raw_parts(self.as_ptr() as *const _, self.len() / BFormat3D::<S>::len()) }
-	}
-}
-
-
-impl<F, T> AsBufferData<F> for T where
+unsafe impl<F, T> AsBufferData<F> for T where
 	F: SampleFrame,
 	T: Deref,
 	<T as Deref>::Target: AsBufferData<F>,
 {
-	fn as_buffer_data(&self) -> &[F] { (**self).as_buffer_data() }
+	fn as_buffer_data(&self) -> (*const sys::ALvoid, usize) { (**self).as_buffer_data() }
 }
 
 
-impl<S> AsBufferDataMut<Mono<S>> for [Mono<S>] where S: Copy, Mono<S>: SampleFrame { fn as_buffer_data_mut(&mut self) -> &mut [Mono<S>] { self } }
-impl<S> AsBufferDataMut<Mono<S>> for [S] where
-	S: Copy,
-	Mono<S>: SampleFrame,
-{
-	fn as_buffer_data_mut(&mut self) -> &mut [Mono<S>] {
-		unsafe { slice::from_raw_parts_mut(self.as_mut_ptr() as *mut _, self.len() / Mono::<S>::len()) }
+unsafe impl<F> AsBufferDataMut<F> for [F] where F: SampleFrame {
+	fn as_buffer_data_mut(&mut self) -> (*mut sys::ALvoid, usize) {
+		(self.as_mut_ptr() as *mut _, self.len() * mem::size_of::<F>())
 	}
 }
-impl<S> AsBufferDataMut<Stereo<S>> for [Stereo<S>] where S: Copy, Stereo<S>: SampleFrame { fn as_buffer_data_mut(&mut self) -> &mut [Stereo<S>] { self } }
-impl<S> AsBufferDataMut<Stereo<S>> for [S] where
-	S: Copy,
-	Stereo<S>: SampleFrame,
-{
-	fn as_buffer_data_mut(&mut self) -> &mut [Stereo<S>] {
-		unsafe { slice::from_raw_parts_mut(self.as_mut_ptr() as *mut _, self.len() / Stereo::<S>::len()) }
+unsafe impl<F> AsBufferDataMut<F> for [u8] where F: SampleFrame<Sample = u8> {
+	fn as_buffer_data_mut(&mut self) -> (*mut sys::ALvoid, usize) {
+		(self.as_mut_ptr() as *mut _, self.len() * mem::size_of::<u8>())
 	}
 }
-impl<S> AsBufferDataMut<McRear<S>> for [McRear<S>] where S: Copy, McRear<S>: SampleFrame { fn as_buffer_data_mut(&mut self) -> &mut [McRear<S>] { self } }
-impl<S> AsBufferDataMut<McRear<S>> for [S] where
-	S: Copy,
-	McRear<S>: SampleFrame,
-{
-	fn as_buffer_data_mut(&mut self) -> &mut [McRear<S>] {
-		unsafe { slice::from_raw_parts_mut(self.as_mut_ptr() as *mut _, self.len() / McRear::<S>::len()) }
+unsafe impl<F> AsBufferDataMut<F> for [i16] where F: SampleFrame<Sample = i16> {
+	fn as_buffer_data_mut(&mut self) -> (*mut sys::ALvoid, usize) {
+		(self.as_mut_ptr() as *mut _, self.len() * mem::size_of::<i16>())
 	}
 }
-impl<S> AsBufferDataMut<McQuad<S>> for [McQuad<S>] where S: Copy, McQuad<S>: SampleFrame { fn as_buffer_data_mut(&mut self) -> &mut [McQuad<S>] { self } }
-impl<S> AsBufferDataMut<McQuad<S>> for [S] where
-	S: Copy,
-	McQuad<S>: SampleFrame,
-{
-	fn as_buffer_data_mut(&mut self) -> &mut [McQuad<S>] {
-		unsafe { slice::from_raw_parts_mut(self.as_mut_ptr() as *mut _, self.len() / McQuad::<S>::len()) }
+unsafe impl<F> AsBufferDataMut<F> for [f32] where F: SampleFrame<Sample = f32> {
+	fn as_buffer_data_mut(&mut self) -> (*mut sys::ALvoid, usize) {
+		(self.as_mut_ptr() as *mut _, self.len() * mem::size_of::<f32>())
 	}
 }
-impl<S> AsBufferDataMut<Mc51Chn<S>> for [Mc51Chn<S>] where S: Copy, Mc51Chn<S>: SampleFrame { fn as_buffer_data_mut(&mut self) -> &mut [Mc51Chn<S>] { self } }
-impl<S> AsBufferDataMut<Mc51Chn<S>> for [S] where
-	S: Copy,
-	Mc51Chn<S>: SampleFrame,
-{
-	fn as_buffer_data_mut(&mut self) -> &mut [Mc51Chn<S>] {
-		unsafe { slice::from_raw_parts_mut(self.as_mut_ptr() as *mut _, self.len() / Mc51Chn::<S>::len()) }
-	}
-}
-impl<S> AsBufferDataMut<Mc61Chn<S>> for [Mc61Chn<S>] where S: Copy, Mc61Chn<S>: SampleFrame { fn as_buffer_data_mut(&mut self) -> &mut [Mc61Chn<S>] { self } }
-impl<S> AsBufferDataMut<Mc61Chn<S>> for [S] where
-	S: Copy,
-	Mc61Chn<S>: SampleFrame,
-{
-	fn as_buffer_data_mut(&mut self) -> &mut [Mc61Chn<S>] {
-		unsafe { slice::from_raw_parts_mut(self.as_mut_ptr() as *mut _, self.len() / Mc61Chn::<S>::len()) }
-	}
-}
-impl<S> AsBufferDataMut<Mc71Chn<S>> for [Mc71Chn<S>] where S: Copy, Mc71Chn<S>: SampleFrame { fn as_buffer_data_mut(&mut self) -> &mut [Mc71Chn<S>] { self } }
-impl<S> AsBufferDataMut<Mc71Chn<S>> for [S] where
-	S: Copy,
-	Mc71Chn<S>: SampleFrame,
-{
-	fn as_buffer_data_mut(&mut self) -> &mut [Mc71Chn<S>] {
-		unsafe { slice::from_raw_parts_mut(self.as_mut_ptr() as *mut _, self.len() / Mc71Chn::<S>::len()) }
-	}
-}
-impl<S> AsBufferDataMut<BFormat2D<S>> for [BFormat2D<S>] where S: Copy, BFormat2D<S>: SampleFrame { fn as_buffer_data_mut(&mut self) -> &mut [BFormat2D<S>] { self } }
-impl<S> AsBufferDataMut<BFormat2D<S>> for [S] where
-	S: Copy,
-	BFormat2D<S>: SampleFrame,
-{
-	fn as_buffer_data_mut(&mut self) -> &mut [BFormat2D<S>] {
-		unsafe { slice::from_raw_parts_mut(self.as_mut_ptr() as *mut _, self.len() / BFormat2D::<S>::len()) }
-	}
-}
-impl<S> AsBufferDataMut<BFormat3D<S>> for [BFormat3D<S>] where S: Copy, BFormat3D<S>: SampleFrame { fn as_buffer_data_mut(&mut self) -> &mut [BFormat3D<S>] { self } }
-impl<S> AsBufferDataMut<BFormat3D<S>> for [S] where
-	S: Copy,
-	BFormat3D<S>: SampleFrame,
-{
-	fn as_buffer_data_mut(&mut self) -> &mut [BFormat3D<S>] {
-		unsafe { slice::from_raw_parts_mut(self.as_mut_ptr() as *mut _, self.len() / BFormat3D::<S>::len()) }
-	}
-}
-
-
-impl<F, T> AsBufferDataMut<F> for T where
+unsafe impl<F, T> AsBufferDataMut<F> for T where
 	F: SampleFrame,
 	T: DerefMut,
 	<T as Deref>::Target: AsBufferDataMut<F>,
 {
-	fn as_buffer_data_mut(&mut self) -> &mut [F] { (**self).as_buffer_data_mut() }
+	fn as_buffer_data_mut(&mut self) -> (*mut sys::ALvoid, usize) { (**self).as_buffer_data_mut() }
 }

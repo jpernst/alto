@@ -668,7 +668,7 @@ impl<F: LoopbackFrame> LoopbackDevice<F> {
 
 
 	/// `alcRenderSamplesSOFT()`
-	/// Returns the number of samples rendered to the slice. In all practical cases, this will be the maximum number of samples that will fit.
+	/// Returns the number of sample frames rendered to the slice.
 	pub fn soft_render_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> usize {
 		let (data, size) = data.as_buffer_data_mut();
 		let len = cmp::min(size / mem::size_of::<F>(), sys::ALCsizei::max_value() as usize);
@@ -776,7 +776,7 @@ impl<F: StandardFrame> Capture<F> {
 
 
 	/// `alcCaptureSamples()`
-	/// Returns the number of samples captured to the slice.
+	/// Returns the number of sample-frames captured to the slice.
 	pub fn capture_samples<R: AsBufferDataMut<F>>(&mut self, mut data: R) -> AltoResult<usize> {
 		let (data, size) = data.as_buffer_data_mut();
 		let len = cmp::min(size / mem::size_of::<F>(), self.samples_len() as usize);

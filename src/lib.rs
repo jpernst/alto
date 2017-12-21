@@ -9,7 +9,7 @@
 //! can be instantiated.
 //!
 //! # WARNING
-//! Because Alto interacts with global C state via dynamic linking, having multiple versions of Alto in one project could lead to unsafetly.
+//! Because Alto interacts with global C state via dynamic linking, having multiple versions of Alto in one project could lead to unsafety.
 //! Please make sure only one version of Alto is in your dependency tree at any given time.
 
 

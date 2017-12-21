@@ -360,7 +360,8 @@ impl Alto {
 			Err(AltoError::InvalidDevice)
 		} else {
 			let dev = Capture{alto: Alto(self.0.clone()), spec: spec, dev: dev, marker: PhantomData};
-			self.check_version(dev.dev).map(|_| dev)
+			//self.check_version(dev.dev).map(|_| dev)
+			Ok(dev)
 		}
 	}
 

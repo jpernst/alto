@@ -13,4 +13,4 @@ categories = ["multimedia::audio", "api-bindings"]
 [dependencies]
 lazy_static = "0.2.1"
 parking_lot = "0.4.4"
-al-sys = "0.5.1"
+al-sys = { version = "0.5.1", path = "al-sys" }

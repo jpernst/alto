@@ -72,7 +72,7 @@ macro_rules! al_api {
 						$($sym: unsafe { lib.get(stringify!($sym).as_bytes())? },)*
 					})) {
 						Ok(syms) => Ok(AlApi(syms)),
-						Err(rental::TryNewError(e, _)) => return Err(e),
+						Err(rental::RentalError(e, _)) => return Err(e),
 					}
 				}
 

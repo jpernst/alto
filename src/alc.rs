@@ -331,7 +331,7 @@ impl Alto {
 		let asl = self.0.exts.ALC_SOFT_loopback()?;
 		asl.alcRenderSamplesSOFT?;
 
-		let spec = spec.map(|s| s.to_owned()).or_else(|| self.default_output());
+		let spec = spec.map(|s| s.to_owned());//.or_else(|| self.default_output());
 		let dev = unsafe { asl.alcLoopbackOpenDeviceSOFT?(spec.as_ref().map(|s| s.as_ptr()).unwrap_or(ptr::null())) };
 
 		if dev == ptr::null_mut() {

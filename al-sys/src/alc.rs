@@ -33,9 +33,9 @@ pub const ALC_CAPTURE_SAMPLES: ::std::os::raw::c_int = 786;
 pub const ALC_ENUMERATE_ALL_EXT: ::std::os::raw::c_int = 1;
 pub const ALC_DEFAULT_ALL_DEVICES_SPECIFIER: ::std::os::raw::c_int = 4114;
 pub const ALC_ALL_DEVICES_SPECIFIER: ::std::os::raw::c_int = 4115;
-pub enum ALCdevice_struct { }
+pub struct ALCdevice_struct { _priv: () }
 pub type ALCdevice = ALCdevice_struct;
-pub enum ALCcontext_struct { }
+pub struct ALCcontext_struct { _priv: () }
 pub type ALCcontext = ALCcontext_struct;
 pub type ALCboolean = ::std::os::raw::c_char;
 pub type ALCchar = ::std::os::raw::c_char;

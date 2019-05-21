@@ -14,10 +14,10 @@ categories = ["multimedia::audio", "external-ffi-bindings"]
 default = ["dynamic"]
 dynamic = ["libloading", "rental"]
 
-[build-dependencies]
-pkg-config = "0.3.8"
-
 [dependencies]
+
+[build-dependencies]
+cmake = "0.1.40"
 
 [target.'cfg(not(target_os = "emscripten"))'.dependencies]
 libloading = { version = "0.5", optional = true }

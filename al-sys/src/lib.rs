@@ -1,4 +1,4 @@
-#[cfg(not(target_os = "emscripten"))]
+#[cfg(all(not(target_os = "emscripten"), feature = "dynamic"))]
 #[macro_use]
 extern crate rental;
 
@@ -14,7 +14,7 @@ pub use efx::*;
 pub use efx_presets::*;
 
 
-#[cfg(not(target_os = "emscripten"))]
+#[cfg(all(not(target_os = "emscripten"), feature = "dynamic"))]
 macro_rules! al_api {
 	{
 		$($sym:ident: unsafe extern "C" fn ($($param:ident: $param_ty:ty),*) -> $ret_ty:ty,)*
@@ -90,7 +90,7 @@ macro_rules! al_api {
 }
 
 
-#[cfg(target_os = "emscripten")]
+#[cfg(any(target_os = "emscripten", not(feature = "dynamic")))]
 macro_rules! al_api {
 	{
 		$($sym:ident: unsafe extern "C" fn ($($param:ident: $param_ty:ty),*) -> $ret_ty:ty,)*

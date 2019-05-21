@@ -10,11 +10,15 @@ homepage = "https://www.jpernst.com"
 keywords = ["openal", "al", "sound", "audio"]
 categories = ["multimedia::audio", "external-ffi-bindings"]
 
-[build-dependencies]
-pkg-config = "0.3.8"
+[features]
+default = ["dynamic"]
+dynamic = ["libloading", "rental"]
 
 [dependencies]
-rental = "0.5.0"
+
+[build-dependencies]
+cmake = "0.1.40"
 
 [target.'cfg(not(target_os = "emscripten"))'.dependencies]
-libloading = "0.5"
+libloading = { version = "0.5", optional = true }
+rental = { version = "0.5.0", optional = true }

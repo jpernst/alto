@@ -75,8 +75,13 @@ fn build_openalsoft(openal_dir: PathBuf) {
     println!("cargo:rerun-if-env-changed=ANDROID_NATIVE_API_LEVEL");
     println!("cargo:rerun-if-env-changed=NDK_HOME");
     println!("cargo:rustc-link-search=native={}/build", dst.display());
-    println!("cargo:rustc-link-lib=static=common");
-    println!("cargo:rustc-link-lib=static=openal");
+
+    let link_type = match env::var("CARGO_FEATURE_DYNAMIC") {
+        Ok(_) => "dylib",
+        _ => "static"
+    };
+    println!("cargo:rustc-link-lib={}=common", link_type);
+    println!("cargo:rustc-link-lib={}=openal", link_type);
 }
 
 fn main() {
